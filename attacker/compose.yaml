@@ -1,0 +1,38 @@
+# Attacker-only integration. The group's Compose must provide the external network.
+services:
+  attacker:
+    build: .
+    init: true
+    environment:
+      ATTACKER_BIND: 0.0.0.0
+      ATTACKER_API_TOKEN: ${ATTACKER_API_TOKEN:?Set a controller token of at least 16 characters}
+      HACKER_API_PORT: ${HACKER_API_PORT:-9000}
+      HACKER_IP: ${HACKER_IP:-172.20.0.66}
+      SERVER_IP: ${SERVER_IP:-172.20.0.20}
+      SERVER_PORT: ${SERVER_PORT:-8000}
+      TARGET_SSH_PORT: ${TARGET_SSH_PORT:-22}
+      GODVIEW_TELEMETRY_URL: ${GODVIEW_TELEMETRY_URL:-http://172.20.0.99:8080/api/events/attack}
+      EXFIL_RECEIVER_PORT: 9001
+      LAB_SSH_USER: ${LAB_SSH_USER:-lab}
+      LAB_SANDBOX: ${LAB_SANDBOX:-/home/lab/pbl4-lab}
+      LAB_KNOWN_HOSTS: /run/lab-secrets/known_hosts
+      LAB_SSH_KEY_FILE: /run/lab-secrets/id_ed25519
+      LAB_SSH_PASSWORD_FILE: ${LAB_SSH_PASSWORD_FILE:-}
+    ports:
+      - "127.0.0.1:${HACKER_API_PORT:-9000}:${HACKER_API_PORT:-9000}"
+    cap_drop: [ALL]
+    cap_add: [NET_RAW]
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - ${LAB_SECRETS_DIR:?Set the directory containing verified SSH credentials}:/run/lab-secrets:ro
+      - attacker-data:/app/.data
+    networks:
+      lab:
+        ipv4_address: ${HACKER_IP:-172.20.0.66}
+    stop_grace_period: 10s
+networks:
+  lab:
+    external: true
+    name: ${DOCKER_NETWORK_NAME:-cybersec-net}
+volumes:
+  attacker-data:
