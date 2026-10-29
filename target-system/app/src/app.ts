@@ -1,3 +1,4 @@
+import path from 'path';
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import { apiRouter } from './routes';
@@ -12,14 +13,18 @@ export function createApp(): Application {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // Phục vụ giao diện tĩnh Storefront (public/index.html)
+  const publicDir = path.resolve(__dirname, '../public');
+  app.use(express.static(publicDir));
+
   // Middleware thu thập Telemetry Log gửi về God-View
   app.use(telemetryMiddleware);
 
   // Gắn các API endpoints chính
   app.use('/api', apiRouter);
 
-  // Trang chủ mặc định
-  app.get('/', (req: Request, res: Response) => {
+  // API Info & Documentation index
+  app.get('/api', (req: Request, res: Response) => {
     res.status(200).json({
       service: 'PBL4 Cyber Attack Simulation - Target Web Server',
       status: 'RUNNING',
