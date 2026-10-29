@@ -13,7 +13,7 @@ export const config = {
   host: process.env.SERVER_HOST || '0.0.0.0',
   nodeEnv: process.env.NODE_ENV || 'development',
   serverIp: process.env.SERVER_IP || '172.20.0.20',
-  godViewUrl: process.env.GODVIEW_URL || `http://${process.env.GODVIEW_IP || '172.20.0.99'}:${process.env.GODVIEW_BACKEND_PORT || '8080'}`,
+  godViewUrl: process.env.GODVIEW_URL || `http://${process.env.GODVIEW_IP || '127.0.0.1'}:${process.env.GODVIEW_PORT || process.env.PORT || '4000'}`,
   jwtSecret: process.env.JWT_SECRET || 'pbl4-cybersec-target-system-secret-key-2026',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '2h',
   

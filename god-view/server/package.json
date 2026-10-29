@@ -1,0 +1,25 @@
+{
+  "name": "god-view-server",
+  "version": "1.0.0",
+  "description": "God-View SIEM & Real-time Telemetry Ingestion Hub for PBL4",
+  "main": "dist/server.js",
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "test": "tsx src/verify-hub.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.13.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}

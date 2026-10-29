@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevSec Shop - Cổng Tài Nguyên & Sản Phẩm Bảo Mật</title>
+
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .pulse-dot {
+      animation: pulse-ring 2s infinite;
+    }
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+  <!-- ==========================================
+       1. TOP NAVBAR
+       ========================================== -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Logo & Brand -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div>
+          <span class="font-display font-extrabold text-xl tracking-tight text-slate-900">DevSec <span class="text-brand-600">Shop</span></span>
+          <span class="hidden md:inline-block ml-2 px-2 py-0.5 text-xs font-semibold bg-slate-100 text-slate-600 rounded-md border border-slate-200">Target Node :8000</span>
+        </div>
+      </div>
+
+      <!-- Center: Server Latency RTT Badge -->
+      <div class="flex items-center space-x-2">
+        <div id="rtt-badge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 transition-colors">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 pulse-dot"></span>
+          <span>Server RTT:</span>
+          <strong id="rtt-value" class="font-mono">-- ms</strong>
+        </div>
+
+        <div id="defense-badge" class="hidden sm:inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+          <span>Khiên L3:</span>
+          <span id="defense-status-text" class="font-bold text-amber-600">ĐANG TẮT</span>
+        </div>
+      </div>
+
+      <!-- Right: User Profile & Authentication Actions -->
+      <div class="flex items-center space-x-3">
+        <!-- Guest View (Not logged in) -->
+        <div id="guest-controls" class="flex items-center space-x-2">
+          <span class="hidden sm:inline text-xs text-slate-500">Khách vãng lai</span>
+          <button id="btn-open-login" class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm transition">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+            </svg>
+            Đăng nhập
+          </button>
+        </div>
+
+        <!-- Logged-in View -->
+        <div id="user-controls" class="hidden flex items-center space-x-3">
+          <div class="flex items-center space-x-2 text-right">
+            <div class="w-8 h-8 rounded-full bg-brand-100 border border-brand-200 text-brand-700 font-bold flex items-center justify-center text-sm" id="user-avatar">
+              U
+            </div>
+            <div class="hidden sm:block text-left leading-tight">
+              <div class="text-xs font-bold text-slate-800" id="user-display-name">admin</div>
+              <div class="text-[10px] text-slate-500 font-mono" id="user-display-role">ROLE: ADMIN</div>
+            </div>
+          </div>
+          <button id="btn-logout" class="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition">
+            Đăng xuất
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ==========================================
+       2. HERO PROMOTION BANNER
+       ========================================== -->
+  <section class="bg-gradient-to-b from-indigo-900 via-slate-900 to-slate-900 text-white py-10 px-4 sm:px-6 lg:px-8 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+      <div class="max-w-2xl">
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 mb-3">
+          🚀 Môi trường mô phỏng Web Store (PBL4 Lab Target)
+        </span>
+        <h1 class="text-3xl sm:text-4xl font-display font-extrabold tracking-tight">
+          Cổng Tài Nguyên & Sản Phẩm Bảo Mật
+        </h1>
+        <p class="mt-2 text-slate-300 text-sm sm:text-base leading-relaxed">
+          Nền tảng thương mại điện tử tích hợp cơ chế Telemetry giám sát toàn diện, hỗ trợ xác thực JWT và mô phỏng các kịch bản an toàn thông tin theo thời gian thực.
+        </p>
+      </div>
+
+      <!-- Quick Status Box -->
+      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-4 w-full md:w-80 backdrop-blur">
+        <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Trạng Thái Kết Nối</div>
+        <div class="flex items-center justify-between py-1 border-b border-slate-700 text-xs">
+          <span class="text-slate-400">Node IP:</span>
+          <span class="font-mono text-indigo-300 font-semibold">172.20.0.20 (Server)</span>
+        </div>
+        <div class="flex items-center justify-between py-1 border-b border-slate-700 text-xs">
+          <span class="text-slate-400">Cổng dịch vụ:</span>
+          <span class="font-mono text-emerald-400 font-semibold">Port 8000 (Express)</span>
+        </div>
+        <div class="flex items-center justify-between py-1 text-xs">
+          <span class="text-slate-400">Telemetry Stream:</span>
+          <span class="font-mono text-emerald-400">God-View :4000</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================
+       3. JWT TOKEN NOTIFICATION (If logged in)
+       ========================================== -->
+  <div id="token-banner" class="hidden bg-indigo-50 border-b border-indigo-100 py-2.5 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+      <div class="flex items-center space-x-2 text-indigo-900">
+        <span class="font-bold">🔑 Bearer Token hiện hành:</span>
+        <code class="font-mono bg-white px-2 py-0.5 rounded border border-indigo-200 text-indigo-700 max-w-xs sm:max-w-md truncate" id="token-snippet">eyJhbGciOi...</code>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button id="btn-copy-token" class="text-indigo-600 hover:text-indigo-800 font-semibold underline">Sao chép Token</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       4. PRODUCT & RESOURCE SHOWCASE
+       ========================================== -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+    
+    <!-- Section Title & Filters -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div>
+        <h2 class="text-2xl font-display font-bold text-slate-900">Danh Mục Tài Nguyên & Sản Phẩm</h2>
+        <p class="text-sm text-slate-500">Danh sách tài nguyên nội bộ và sản phẩm Web Store được bảo vệ bởi cơ chế xác thực JWT.</p>
+      </div>
+
+      <!-- Category Filter Tabs -->
+      <div class="flex items-center space-x-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm text-xs font-semibold">
+        <button class="filter-tab active px-3 py-1.5 rounded-lg bg-brand-600 text-white" data-cat="all">Tất cả</button>
+        <button class="filter-tab px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100" data-cat="store">Sản phẩm</button>
+        <button class="filter-tab px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100" data-cat="security">Bảo mật</button>
+        <button class="filter-tab px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100" data-cat="financial">Tài chính</button>
+        <button class="filter-tab px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100" data-cat="database">Cơ sở dữ liệu</button>
+      </div>
+    </div>
+
+    <!-- LOCKED BANNER (Shown when NOT logged in) -->
+    <div id="locked-showcase-banner" class="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-8 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-4">
+        <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 text-2xl">
+          🔒
+        </div>
+        <div>
+          <h3 class="font-display font-bold text-amber-900 text-base">Danh Mục Tài Nguyên Mật Đang Khóa</h3>
+          <p class="text-sm text-amber-700 mt-0.5">
+            Các tài liệu ngân sách, SSH keys dự phòng và bản sao lưu cơ sở dữ liệu chỉ hiển thị khi có <strong>Bearer Token xác thực</strong>.
+          </p>
+        </div>
+      </div>
+      <button id="btn-prompt-login" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl text-sm shadow-sm shrink-0 transition">
+        Đăng nhập để mở khóa
+      </button>
+    </div>
+
+    <!-- Product Grid -->
+    <div id="resource-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Loading Placeholder -->
+      <div class="col-span-full py-12 text-center text-slate-400">
+        <svg class="animate-spin h-8 w-8 text-brand-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        Đang tải danh mục tài nguyên...
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ==========================================
+       5. LOGIN MODAL
+       ========================================== -->
+  <div id="login-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"></div>
+
+    <div class="flex min-h-full items-center justify-center p-4">
+      <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 sm:p-8 overflow-hidden z-10">
+        
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div>
+            <h3 class="text-lg font-display font-bold text-slate-900">Đăng Nhập DevSec Shop</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Xác thực tài khoản để nhận JWT Bearer Token</p>
+          </div>
+          <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+            ✕
+          </button>
+        </div>
+
+        <!-- Quick Login Buttons for Demo -->
+        <div class="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Điền Nhanh Tài Khoản Mẫu (Demo)</div>
+          <div class="grid grid-cols-2 gap-1.5">
+            <button class="btn-quick-fill text-left px-2.5 py-1.5 bg-white hover:bg-indigo-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700" data-user="admin" data-pass="adminPassword2026!">
+              👑 admin (Quản trị)
+            </button>
+            <button class="btn-quick-fill text-left px-2.5 py-1.5 bg-white hover:bg-indigo-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700" data-user="alice" data-pass="aliceSecretPassword">
+              👩 alice (User)
+            </button>
+            <button class="btn-quick-fill text-left px-2.5 py-1.5 bg-white hover:bg-indigo-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700" data-user="guest" data-pass="guestPassword">
+              👤 guest (Khách)
+            </button>
+            <button class="btn-quick-fill text-left px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-lg text-xs font-bold text-rose-700" data-user="admin' --" data-pass="randomPassword">
+              💉 SQLi Bypass
+            </button>
+          </div>
+        </div>
+
+        <!-- Form -->
+        <form id="login-form" class="mt-4 space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Tên đăng nhập</label>
+            <input type="text" id="input-username" required class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white font-mono" placeholder="ví dụ: admin hoặc admin' --" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Mật khẩu</label>
+            <input type="password" id="input-password" required class="w-full px-3.5 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white font-mono" placeholder="••••••••" />
+          </div>
+
+          <div class="flex items-center justify-between text-xs">
+            <label class="flex items-center text-slate-600">
+              <input type="checkbox" id="input-remember" class="rounded text-brand-600 focus:ring-brand-500 mr-2" />
+              Ghi nhớ đăng nhập
+            </label>
+            <span class="text-slate-400">Endpoint: POST /api/login</span>
+          </div>
+
+          <!-- Alert error inside modal -->
+          <div id="modal-error" class="hidden text-xs bg-rose-50 border border-rose-200 text-rose-700 p-2.5 rounded-lg"></div>
+
+          <button type="submit" id="btn-submit-login" class="w-full py-2.5 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm rounded-xl shadow-md transition flex items-center justify-center space-x-2">
+            <span>Xác thực Đăng nhập</span>
+          </button>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       6. NETWORK TEST WIDGET (FLOATING BOTTOM-RIGHT)
+       ========================================== -->
+  <div class="fixed bottom-4 right-4 z-30">
+    <div id="widget-card" class="bg-slate-900 text-white rounded-2xl shadow-2xl border border-slate-700 w-80 overflow-hidden transition-all duration-300">
+      
+      <!-- Widget Header -->
+      <div class="p-3 bg-slate-800 flex items-center justify-between cursor-pointer border-b border-slate-700" id="widget-header">
+        <div class="flex items-center space-x-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+          <span class="font-display font-bold text-xs uppercase tracking-wider text-slate-200">Công Cụ Đo Mạng & Tải</span>
+        </div>
+        <button id="btn-toggle-widget" class="text-slate-400 hover:text-white text-xs">
+          ▼
+        </button>
+      </div>
+
+      <!-- Widget Body -->
+      <div id="widget-body" class="p-3.5 space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-test-ping" class="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg font-semibold text-emerald-400 transition flex items-center justify-center space-x-1">
+            <span>⚡ Test Ping</span>
+          </button>
+          <button id="btn-test-download" class="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg font-semibold text-indigo-400 transition flex items-center justify-center space-x-1">
+            <span>📥 Tải file 1MB</span>
+          </button>
+        </div>
+
+        <button id="btn-test-heavy" class="w-full p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg font-semibold text-amber-400 transition flex items-center justify-center space-x-1">
+          <span>🔥 Test Heavy Load (DoS)</span>
+        </button>
+
+        <!-- Mini Output Console -->
+        <div class="bg-black/60 rounded-lg p-2 font-mono text-[11px] text-slate-300 border border-slate-800 h-24 overflow-y-auto" id="widget-console">
+          <div class="text-slate-500">> Sẵn sàng kiểm thử mạng...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed top-20 right-4 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- ==========================================
+       7. FOOTER
+       ========================================== -->
+  <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500 mt-auto">
+    <div class="max-w-7xl mx-auto px-4">
+      <p>PBL4 - Hệ Thống Mô Phỏng & Giám Sát Tấn Công Mạng & Hệ Điều Hành (God-View)</p>
+      <p class="mt-1 font-mono text-slate-400">Target Server: 172.20.0.20 | Web Storefront v1.0</p>
+    </div>
+  </footer>
+
+  <!-- ==========================================
+       8. JAVASCRIPT LOGIC
+       ========================================== -->
+  <script>
+    // State
+    const appState = {
+      user: null,
+      token: localStorage.getItem('jwt_token') || null,
+      resources: [],
+      currentCategory: 'all',
+      isWidgetCollapsed: false,
+    };
+
+    // Public demo fallback resources (shown when not logged in)
+    const PUBLIC_RESOURCES = [
+      {
+        id: 'res-004',
+        name: 'Danh mục Sản phẩm Công khai Web Store',
+        description: 'Danh sách sản phẩm phần mềm, thiết bị mạng và dịch vụ tư vấn bảo mật đang bán.',
+        category: 'store',
+        price: 499.99,
+        stock: 50,
+        isPublic: true,
+        metadata: { classification: 'PUBLIC' }
+      }
+    ];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initEventListeners();
+      checkAuthStatus();
+      startPingPolling();
+      checkDefenseStatus();
+    });
+
+    // ----------------------------------------------------
+    // Event Listeners
+    // ----------------------------------------------------
+    function initEventListeners() {
+      // Modal Open/Close
+      document.getElementById('btn-open-login')?.addEventListener('click', openModal);
+      document.getElementById('btn-prompt-login')?.addEventListener('click', openModal);
+      document.getElementById('btn-close-modal')?.addEventListener('click', closeModal);
+
+      // Quick fill credentials
+      document.querySelectorAll('.btn-quick-fill').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.getElementById('input-username').value = btn.dataset.user;
+          document.getElementById('input-password').value = btn.dataset.pass;
+        });
+      });
+
+      // Login submit
+      document.getElementById('login-form')?.addEventListener('submit', handleLogin);
+
+      // Logout
+      document.getElementById('btn-logout')?.addEventListener('click', handleLogout);
+
+      // Copy token
+      document.getElementById('btn-copy-token')?.addEventListener('click', copyToken);
+
+      // Filter tabs
+      document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.filter-tab').forEach(t => {
+            t.classList.remove('bg-brand-600', 'text-white');
+            t.classList.add('text-slate-600');
+          });
+          tab.classList.add('bg-brand-600', 'text-white');
+          tab.classList.remove('text-slate-600');
+          appState.currentCategory = tab.dataset.cat;
+          renderResources();
+        });
+      });
+
+      // Widget toggle
+      document.getElementById('widget-header')?.addEventListener('click', () => {
+        appState.isWidgetCollapsed = !appState.isWidgetCollapsed;
+        const body = document.getElementById('widget-body');
+        const arrow = document.getElementById('btn-toggle-widget');
+        body.classList.toggle('hidden', appState.isWidgetCollapsed);
+        arrow.textContent = appState.isWidgetCollapsed ? '▲' : '▼';
+      });
+
+      // Network Test Buttons
+      document.getElementById('btn-test-ping')?.addEventListener('click', runPingTest);
+      document.getElementById('btn-test-download')?.addEventListener('click', runDownloadTest);
+      document.getElementById('btn-test-heavy')?.addEventListener('click', runHeavyTest);
+    }
+
+    // ----------------------------------------------------
+    // Authentication & Authorization
+    // ----------------------------------------------------
+    async function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('input-username').value.trim();
+      const password = document.getElementById('input-password').value;
+      const rememberMe = document.getElementById('input-remember').checked;
+      const errorDiv = document.getElementById('modal-error');
+      errorDiv.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, rememberMe }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'Sai thông tin đăng nhập.');
+        }
+
+        // Lưu token
+        appState.token = data.token || data.accessToken;
+        appState.user = data.user;
+        localStorage.setItem('jwt_token', appState.token);
+        localStorage.setItem('user_info', JSON.stringify(data.user));
+
+        closeModal();
+        showToast(data.message || 'Đăng nhập thành công!', 'success');
+        updateAuthUI(true);
+        fetchProtectedResources();
+
+      } catch (err) {
+        errorDiv.textContent = err.message;
+        errorDiv.classList.remove('hidden');
+      }
+    }
+
+    function handleLogout() {
+      appState.token = null;
+      appState.user = null;
+      localStorage.removeItem('jwt_token');
+      localStorage.removeItem('user_info');
+      updateAuthUI(false);
+      showToast('Đã đăng xuất khỏi hệ thống.', 'info');
+      renderResources();
+    }
+
+    function checkAuthStatus() {
+      const storedToken = localStorage.getItem('jwt_token');
+      const storedUser = localStorage.getItem('user_info');
+
+      if (storedToken && storedUser) {
+        appState.token = storedToken;
+        try {
+          appState.user = JSON.parse(storedUser);
+          updateAuthUI(true);
+          fetchProtectedResources();
+          return;
+        } catch (e) {
+          // Token hỏng
+        }
+      }
+      updateAuthUI(false);
+      renderResources();
+    }
+
+    function updateAuthUI(isLoggedIn) {
+      const guestControls = document.getElementById('guest-controls');
+      const userControls = document.getElementById('user-controls');
+      const tokenBanner = document.getElementById('token-banner');
+      const lockedBanner = document.getElementById('locked-showcase-banner');
+
+      if (isLoggedIn && appState.user) {
+        guestControls.classList.add('hidden');
+        userControls.classList.remove('hidden');
+        tokenBanner.classList.remove('hidden');
+        lockedBanner.classList.add('hidden');
+
+        document.getElementById('user-avatar').textContent = (appState.user.username || 'U')[0].toUpperCase();
+        document.getElementById('user-display-name').textContent = appState.user.username;
+        document.getElementById('user-display-role').textContent = `ROLE: ${(appState.user.role || 'USER').toUpperCase()}`;
+        document.getElementById('token-snippet').textContent = appState.token;
+      } else {
+        guestControls.classList.remove('hidden');
+        userControls.classList.add('hidden');
+        tokenBanner.classList.add('hidden');
+        lockedBanner.classList.remove('hidden');
+      }
+    }
+
+    // ----------------------------------------------------
+    // Fetch & Render Resources
+    // ----------------------------------------------------
+    async function fetchProtectedResources() {
+      if (!appState.token) {
+        renderResources();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/resources', {
+          headers: {
+            'Authorization': `Bearer ${appState.token}`
+          }
+        });
+
+        if (res.status === 401 || res.status === 403) {
+          handleLogout();
+          return;
+        }
+
+        const data = await res.json();
+        appState.resources = data.resources || [];
+        renderResources();
+      } catch (err) {
+        console.error('Lỗi tải tài nguyên:', err);
+        renderResources();
+      }
+    }
+
+    function renderResources() {
+      const grid = document.getElementById('resource-grid');
+      grid.innerHTML = '';
+
+      let items = appState.token ? appState.resources : PUBLIC_RESOURCES;
+
+      // Filter category
+      if (appState.currentCategory !== 'all') {
+        items = items.filter(r => (r.category || '').toLowerCase() === appState.currentCategory);
+      }
+
+      if (items.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-12 text-center bg-white rounded-2xl border border-slate-200">
+            <div class="text-3xl mb-2">📦</div>
+            <div class="text-slate-600 font-semibold">Không tìm thấy tài nguyên trong mục này.</div>
+            <div class="text-xs text-slate-400 mt-1">Vui lòng chọn danh mục khác hoặc đăng nhập tài khoản quyền cao hơn.</div>
+          </div>
+        `;
+        return;
+      }
+
+      items.forEach(item => {
+        const card = createResourceCard(item);
+        grid.appendChild(card);
+      });
+    }
+
+    function createResourceCard(item) {
+      const card = document.createElement('div');
+      card.className = 'bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between';
+
+      const isConfidential = !item.isPublic;
+      const badgeClass = isConfidential
+        ? 'bg-rose-50 text-rose-700 border-rose-200'
+        : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      const badgeText = item.metadata?.classification || (isConfidential ? 'CONFIDENTIAL' : 'PUBLIC STORE');
+
+      const priceDisplay = item.price ? `$${item.price.toFixed(2)}` : (item.fileSize ? `${(item.fileSize / 1024).toFixed(1)} KB` : 'Nội bộ');
+
+      card.innerHTML = `
+        <div>
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold border ${badgeClass}">
+              ${badgeText}
+            </span>
+            <span class="text-xs font-mono text-slate-400 uppercase">${item.category || 'GENERAL'}</span>
+          </div>
+
+          <h3 class="font-display font-bold text-slate-900 text-base leading-snug mb-2">${item.name}</h3>
+          <p class="text-xs text-slate-600 leading-relaxed mb-4 line-clamp-3">${item.description || 'Tài nguyên bảo mật hệ thống.'}</p>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+          <div>
+            <div class="text-[10px] text-slate-400 uppercase font-semibold">Giá trị / Dung lượng</div>
+            <div class="text-sm font-bold text-brand-700 font-mono">${priceDisplay}</div>
+          </div>
+
+          <div class="flex space-x-1.5">
+            <button class="btn-action-buy px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-sm transition">
+              ${item.isPublic ? 'Mua hàng' : 'Xem nội dung'}
+            </button>
+            ${item.downloadUrl ? `
+              <button class="btn-action-download px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs transition" title="Tải file">
+                📥
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+
+      card.querySelector('.btn-action-buy')?.addEventListener('click', () => {
+        showToast(`Đã chọn: ${item.name}`, 'info');
+      });
+
+      card.querySelector('.btn-action-download')?.addEventListener('click', () => {
+        showToast(`Bắt đầu tải: ${item.fileName || 'resource.dat'}`, 'success');
+      });
+
+      return card;
+    }
+
+    // ----------------------------------------------------
+    // Network Testing Widget Functions
+    // ----------------------------------------------------
+    async function startPingPolling() {
+      pollPing();
+      setInterval(pollPing, 4000);
+    }
+
+    async function pollPing() {
+      const start = Date.now();
+      try {
+        const res = await fetch(`/api/ping?t=${start}`);
+        const rtt = Date.now() - start;
+        document.getElementById('rtt-value').textContent = `${rtt} ms`;
+      } catch (e) {
+        document.getElementById('rtt-value').textContent = 'OFFLINE';
+      }
+    }
+
+    async function checkDefenseStatus() {
+      try {
+        const res = await fetch('/api/defense/status');
+        const data = await res.json();
+        const badge = document.getElementById('defense-status-text');
+        if (data.defense_enabled) {
+          badge.textContent = 'BẬT (SAFE)';
+          badge.className = 'font-bold text-emerald-600';
+        } else {
+          badge.textContent = 'TẮT (SQLi OPEN)';
+          badge.className = 'font-bold text-rose-600';
+        }
+      } catch (e) {}
+    }
+
+    async function runPingTest() {
+      logConsole('>>> Gọi GET /api/ping...');
+      const start = Date.now();
+      try {
+        const res = await fetch(`/api/ping?t=${start}&echo=client-browser`);
+        const data = await res.json();
+        const rtt = Date.now() - start;
+        logConsole(`✓ Pong! RTT: ${rtt}ms, Server IP: ${data.client_ip}`);
+        showToast(`Ping thành công! RTT: ${rtt}ms`, 'success');
+      } catch (err) {
+        logConsole(`✗ Ping thất bại: ${err.message}`);
+      }
+    }
+
+    async function runDownloadTest() {
+      logConsole('>>> Gọi GET /api/download?size=1mb...');
+      const start = Date.now();
+      try {
+        const res = await fetch('/api/download?size=1mb');
+        const buffer = await res.arrayBuffer();
+        const durationSec = Math.max(0.01, (Date.now() - start) / 1000);
+        const speedMbps = ((buffer.byteLength * 8) / (durationSec * 1024 * 1024)).toFixed(2);
+        logConsole(`✓ Đã tải ${buffer.byteLength} bytes trong ${durationSec.toFixed(2)}s (~${speedMbps} Mbps)`);
+        showToast(`Tải file 1MB hoàn tất (${speedMbps} Mbps)`, 'success');
+      } catch (err) {
+        logConsole(`✗ Download thất bại: ${err.message}`);
+      }
+    }
+
+    async function runHeavyTest() {
+      logConsole('>>> Gọi GET /api/heavy-load (DoS test)...');
+      const start = Date.now();
+      try {
+        const res = await fetch('/api/heavy-load?iterations=150000&delay=50');
+        const data = await res.json();
+        const total = Date.now() - start;
+        logConsole(`✓ Hoàn thành DoS test: ${total}ms (CPU băm: ${data.metrics?.cpu_time_ms}ms)`);
+        showToast(`Heavy load test hoàn thành (${total}ms)`, 'info');
+      } catch (err) {
+        logConsole(`✗ Heavy test thất bại: ${err.message}`);
+      }
+    }
+
+    function logConsole(msg) {
+      const consoleDiv = document.getElementById('widget-console');
+      const line = document.createElement('div');
+      line.textContent = msg;
+      consoleDiv.appendChild(line);
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
+    // ----------------------------------------------------
+    // Modal & Toast Helpers
+    // ----------------------------------------------------
+    function openModal() {
+      document.getElementById('login-modal').classList.remove('hidden');
+      document.getElementById('input-username').focus();
+    }
+
+    function closeModal() {
+      document.getElementById('login-modal').classList.add('hidden');
+    }
+
+    function copyToken() {
+      if (!appState.token) return;
+      navigator.clipboard.writeText(appState.token);
+      showToast('Đã sao chép Bearer Token vào bộ nhớ tạm!', 'success');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-600 text-white',
+        error: 'bg-rose-600 text-white',
+        info: 'bg-slate-900 text-white',
+      };
+
+      toast.className = `${colors[type] || colors.info} px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold flex items-center space-x-2 transition-all duration-300 pointer-events-auto transform translate-y-2 opacity-0`;
+      toast.innerHTML = `<span>${message}</span>`;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+  </script>
+</body>
+</html>

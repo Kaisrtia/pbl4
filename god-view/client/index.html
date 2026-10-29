@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PBL4 - GOD-VIEW SIEM & FIREWALL MONITOR</title>
+  
+  <!-- Google Fonts: Orbitron & Rajdhani & Share Tech Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="cyber-theme">
+  <!-- Scanline CRT Effect Overlay -->
+  <div class="scanlines"></div>
+  <div class="grid-overlay"></div>
+
+  <!-- TOP HEADER BAR -->
+  <header class="header-bar">
+    <div class="header-left">
+      <div class="cyber-badge">SIEM CORE v1.0</div>
+      <div class="header-title-group">
+        <h1 class="header-title">PBL4 - GOD-VIEW SIEM & FIREWALL MONITOR</h1>
+        <div class="header-sub">CYBER ATTACK SIMULATION & TELEMETRY INGESTION HUB</div>
+      </div>
+    </div>
+
+    <!-- Alert Warning Banner (Dynamic) -->
+    <div id="warning-banner" class="warning-banner hidden">
+      <div class="warning-siren">⚠️</div>
+      <div class="warning-text">
+        <span class="warning-label">CRITICAL ATTACK DETECTED:</span>
+        <span id="warning-details">SQL_INJECTION FROM 172.20.0.66 -> /api/login</span>
+      </div>
+      <button id="btn-dismiss-warning" class="btn-icon">✕</button>
+    </div>
+
+    <div class="header-right">
+      <div class="status-indicator">
+        <span id="socket-led" class="pulse-led disconnected"></span>
+        <span id="socket-status-text">DISCONNECTED</span>
+      </div>
+      <div class="metric-pill">
+        <span class="pill-label">RTT:</span>
+        <span id="rtt-value" class="pill-value">-- ms</span>
+      </div>
+      <div class="metric-pill">
+        <span class="pill-label">BUFFER:</span>
+        <span id="buffer-count-badge" class="pill-value">0 / 300</span>
+      </div>
+      <button id="btn-reset-state" class="cyber-btn btn-danger" title="Xóa rỗng bộ đệm Telemetry">
+        <span class="btn-glow"></span>
+        RESET STATE
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN DASHBOARD CONTENT -->
+  <main class="main-layout">
+    
+    <!-- TOP ROW: TOPOLOGY STREAM + DEFENSE SIDE PANEL -->
+    <div class="top-section">
+      
+      <!-- TOPOLOGY STREAM CANVAS -->
+      <section class="card topology-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="neon-icon">⚡</span> NETWORK TOPOLOGY & PACKET FLOW STREAM
+          </div>
+          <div class="card-badges">
+            <span class="badge badge-normal">NORMAL (GREEN)</span>
+            <span class="badge badge-attack">ATTACK (RED)</span>
+            <span id="shield-badge-indicator" class="badge badge-shield">SHIELD: ACTIVE</span>
+          </div>
+        </div>
+
+        <div class="canvas-container" id="canvas-wrapper">
+          <!-- HTML5 Canvas for real-time particle animation -->
+          <canvas id="topology-canvas"></canvas>
+
+          <!-- Interactive Node Cards positioned on canvas -->
+          <div class="topology-nodes">
+            <!-- Node 1: Client -->
+            <div class="topo-node client-node" id="node-client">
+              <div class="node-icon">💻</div>
+              <div class="node-content">
+                <div class="node-role">CLIENT NODE</div>
+                <div class="node-name">Legitimate User</div>
+                <div class="node-ip">192.168.1.10 <small>(172.20.0.10)</small></div>
+                <div class="node-status" id="client-status">IDLE</div>
+              </div>
+            </div>
+
+            <!-- Node 2: Target Server (Protected) -->
+            <div class="topo-node server-node" id="node-server">
+              <!-- Holographic Shield Visual -->
+              <div class="shield-aura" id="shield-aura">
+                <div class="shield-energy-grid"></div>
+                <div class="shield-label">DEFENSE SHIELD</div>
+              </div>
+              <div class="node-icon">🛡️</div>
+              <div class="node-content">
+                <div class="node-role">TARGET SERVER</div>
+                <div class="node-name">Web Store & API</div>
+                <div class="node-ip">192.168.1.100 <small>(172.20.0.20)</small></div>
+                <div class="node-status" id="server-status">ONLINE (PORT 8000)</div>
+              </div>
+            </div>
+
+            <!-- Node 3: Hacker / Attacker -->
+            <div class="topo-node hacker-node" id="node-hacker">
+              <div class="node-icon">💀</div>
+              <div class="node-content">
+                <div class="node-role">HACKER NODE</div>
+                <div class="node-name">Adversary CLI/API</div>
+                <div class="node-ip">192.168.1.200 <small>(172.20.0.66)</small></div>
+                <div class="node-status" id="hacker-status">STANDBY</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SIDE PANEL: DEFENSE CONTROLS & TCP SOCKET METRICS -->
+      <aside class="card side-panel-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="neon-icon">⚙️</span> FIREWALL & SYSTEM TELEMETRY
+          </div>
+        </div>
+
+        <div class="side-panel-content">
+          <!-- Remote Defense Toggle -->
+          <div class="control-box">
+            <div class="control-header">
+              <span class="control-title">REMOTE DEFENSE TOGGLE</span>
+              <span id="defense-state-pill" class="pill-inactive">BYPASSED</span>
+            </div>
+            <p class="control-desc">
+              Bật/tắt khiên chắn L3/L7 (Parameterized Queries, Input Sanitization & Anti-DoS).
+            </p>
+            <div class="defense-toggle-wrapper">
+              <button id="btn-toggle-defense" class="cyber-btn btn-defense-toggle">
+                <span class="btn-glow"></span>
+                <span id="defense-btn-text">TOGGLE L3 DEFENSE</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- TCP Socket Meters -->
+          <div class="sockets-box">
+            <div class="box-title">TCP SOCKET CONNECTIONS</div>
+            <div class="socket-grid">
+              <div class="socket-metric">
+                <div class="metric-top">
+                  <span class="metric-label">ESTABLISHED</span>
+                  <span id="metric-established" class="metric-num">12</span>
+                </div>
+                <div class="meter-bar">
+                  <div id="meter-established-fill" class="meter-fill fill-green" style="width: 25%;"></div>
+                </div>
+              </div>
+
+              <div class="socket-metric">
+                <div class="metric-top">
+                  <span class="metric-label">SYN_RECV (SYN FLOOD)</span>
+                  <span id="metric-syn-recv" class="metric-num">0</span>
+                </div>
+                <div class="meter-bar">
+                  <div id="meter-syn-recv-fill" class="meter-fill fill-red" style="width: 0%;"></div>
+                </div>
+              </div>
+
+              <div class="socket-metric">
+                <div class="metric-top">
+                  <span class="metric-label">TIME_WAIT</span>
+                  <span id="metric-time-wait" class="metric-num">4</span>
+                </div>
+                <div class="meter-bar">
+                  <div id="meter-time-wait-fill" class="meter-fill fill-yellow" style="width: 15%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Test Traffic Generator (For Easy Live Demo) -->
+          <div class="demo-tools-box">
+            <div class="box-title">QUICK TEST TRAFFIC (DEMO)</div>
+            <div class="demo-btn-group">
+              <button id="btn-demo-ping" class="btn-micro btn-micro-green">Ping Check</button>
+              <button id="btn-demo-user" class="btn-micro btn-micro-cyan">Normal Login</button>
+              <button id="btn-demo-sqli" class="btn-micro btn-micro-red">SQLi Attack</button>
+              <button id="btn-demo-dos" class="btn-micro btn-micro-orange">Heavy DoS</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+
+    <!-- BOTTOM ROW: PACKET CAPTURE STREAM (TERMINAL LOG TABLE) -->
+    <section class="card packet-stream-card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="neon-icon">📡</span> REAL-TIME PACKET CAPTURE & TELEMETRY LOGS
+          <span id="table-record-count" class="badge badge-normal">0 entries</span>
+        </div>
+
+        <div class="stream-controls">
+          <div class="search-box">
+            <input type="text" id="log-search-input" placeholder="Search IP, endpoint, status, tag..." />
+          </div>
+
+          <div class="filter-dropdown">
+            <select id="log-filter-tag">
+              <option value="ALL">ALL TRAFFIC</option>
+              <option value="NORMAL">NORMAL ONLY</option>
+              <option value="SQL_INJECTION">SQL INJECTION</option>
+              <option value="HEAVY_DOS">HEAVY DoS</option>
+              <option value="SYN_FLOOD">SYN FLOOD</option>
+              <option value="ATTACK_ONLY">ALL ATTACKS</option>
+            </select>
+          </div>
+
+          <button id="btn-toggle-autoscroll" class="cyber-btn btn-sm active">
+            AUTO-SCROLL [ON]
+          </button>
+          <button id="btn-clear-table" class="cyber-btn btn-sm">
+            CLEAR VIEW
+          </button>
+        </div>
+      </div>
+
+      <!-- Logs Table -->
+      <div class="table-container" id="table-scroll-container">
+        <table class="packet-table" id="packet-table">
+          <thead>
+            <tr>
+              <th width="110">TIME</th>
+              <th width="80">METHOD</th>
+              <th>ENDPOINT</th>
+              <th width="90">STATUS</th>
+              <th width="100">LATENCY</th>
+              <th width="140">CLIENT IP</th>
+              <th width="150">CLASSIFICATION</th>
+              <th width="110">DEFENSE</th>
+              <th width="180">PAYLOAD SUMMARY</th>
+            </tr>
+          </thead>
+          <tbody id="packet-table-body">
+            <!-- Dynamic rows will be inserted here -->
+            <tr class="empty-row">
+              <td colspan="9">Waiting for telemetry stream from Target App (POST /api/telemetry)...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal for inspecting full telemetry JSON payload -->
+  <div id="inspector-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>TELEMETRY PAYLOAD INSPECTOR</h3>
+        <button id="btn-close-modal" class="btn-icon">✕</button>
+      </div>
+      <div class="modal-body">
+        <pre id="modal-json-content"><code>{}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Socket.io Client Library -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Fallback CDN in case served standalone -->
+  <script>
+    if (typeof io === 'undefined') {
+      document.write('<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"><\/script>');
+    }
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
