@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pbl4.local/schemas/attacker-event-v1.json",
+  "title": "Attacker event v1 (integration proposal)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event_id", "run_id", "timestamp", "source_node", "source_ip", "target_ip", "scenario", "event_type", "execution_mode", "payload"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "event_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "timestamp": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T.*Z$" },
+    "source_node": { "const": "ATTACKER" },
+    "source_ip": { "type": "string" },
+    "target_ip": { "type": "string" },
+    "scenario": { "enum": ["S1", "S2", "S3", "S4"] },
+    "event_type": { "enum": ["RUN_STATE", "WORKER_EVENT"] },
+    "execution_mode": { "const": "real" },
+    "payload": { "type": "object" }
+  },
+  "allOf": [{
+    "if": { "properties": { "event_type": { "const": "RUN_STATE" } } },
+    "then": { "properties": { "payload": {
+      "required": ["state"],
+      "properties": { "state": { "enum": ["STARTING", "RUNNING", "STOPPING", "COMPLETED", "STOPPED", "FAILED"] } }
+    } } },
+    "else": { "properties": { "payload": {
+      "required": ["run_id", "type"],
+      "properties": { "run_id": { "type": "string" }, "type": { "enum": ["ready", "progress", "result", "error"] } }
+    } } }
+  }]
+}

@@ -53,3 +53,7 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Attacker runtime evidence and local SSH fixtures
+attacker/.data/
+attacker/tests/.runtime/

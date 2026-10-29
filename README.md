@@ -249,7 +249,18 @@ npm test
 
 ---
 
-## 🤝 8. Quy chuẩn Đóng góp & Quy trình Git (Gitflow)
+## 📚 8. Tài liệu Phân hệ & Kịch bản Tấn công (Module Documentation)
+
+- 💀 **Phân hệ Attacker (S1–S4):** [Hướng dẫn chạy, cấu hình Docker và kiểm thử](attacker/README.md)
+- 🔌 **API Attacker cho God-View:** [Tài liệu API Attacker](docs/api/attacker/attacker-api.md)
+- 📋 **Điều kiện tích hợp Target:** [Target Integration Contract](docs/api/attacker/target-contract.md)
+- 🧪 **Phạm vi kiểm chứng và giới hạn:** [Attacker Runbook & Verification](docs/runbooks/attacker-verification.md)
+
+> *Ghi chú:* Attacker có fixture bốn node để kiểm thử riêng. Fixture không thay thế phần Target/Client/God-View do các thành viên còn lại phụ trách.
+
+---
+
+## 🤝 9. Quy chuẩn Đóng góp & Quy trình Git (Gitflow)
 
 Dự án áp dụng mô hình **Gitflow cải tiến**, sử dụng quy ước **Conventional Commits** và chiến lược **Squash and Merge** khi gộp tính năng vào nhánh `develop`:
 
@@ -261,7 +272,7 @@ Chi tiết quy chuẩn phân nhánh, cách đặt tên commit và mở Pull Requ
 
 ---
 
-## 👥 9. Nhóm tác giả thực hiện
+## 👥 10. Nhóm tác giả thực hiện
 
 * **Trung (TV1):** Phụ trách Kiến trúc hệ thống, Target Web App & Telemetry Agent.
 * **Trí (TV2):** Phụ trách Kịch bản tấn công (L2/L4/L7), PCAP Analysis & Hacker Module.
