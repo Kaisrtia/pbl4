@@ -1,0 +1,53 @@
+# Isolated four-node integration fixture, NOT the group's production Compose.
+services:
+  target:
+    build:
+      context: ./fixtures
+      dockerfile: target.Dockerfile
+    environment: { SERVER_IP: 172.29.44.20 }
+    volumes: ["credentials:/secrets"]
+    networks: { lab: { ipv4_address: 172.29.44.20 } }
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 2s
+      retries: 20
+  godview:
+    image: node:22-bookworm-slim
+    command: [node, /fixture/observer.mjs]
+    volumes: ["./fixtures/observer.mjs:/fixture/observer.mjs:ro"]
+    ports: ["127.0.0.1:18080:8080"]
+    networks: { lab: { ipv4_address: 172.29.44.99 } }
+  client:
+    image: node:22-bookworm-slim
+    command: [node, /fixture/observer.mjs]
+    environment: { ROLE: client }
+    volumes: ["./fixtures/observer.mjs:/fixture/observer.mjs:ro"]
+    networks: { lab: { ipv4_address: 172.29.44.10 } }
+    depends_on: { target: { condition: service_healthy } }
+  attacker:
+    build: ..
+    environment:
+      ATTACKER_BIND: 0.0.0.0
+      ATTACKER_API_TOKEN: fixture-only-token-not-for-deployment
+      HACKER_IP: 172.29.44.66
+      SERVER_IP: 172.29.44.20
+      GODVIEW_TELEMETRY_URL: http://172.29.44.99:8080/api/events/attack
+    cap_drop: [ALL]
+    cap_add: [NET_RAW]
+    security_opt: [no-new-privileges:true]
+    volumes: ["credentials:/run/lab-secrets:ro", "evidence:/app/.data"]
+    ports: ["127.0.0.1:19000:9000"]
+    networks: { lab: { ipv4_address: 172.29.44.66 } }
+    depends_on: { target: { condition: service_healthy } }
+    stop_grace_period: 10s
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:9000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      retries: 20
+networks:
+  lab:
+    ipam:
+      config: [{ subnet: 172.29.44.0/24 }]
+volumes:
+  credentials:
+  evidence:
