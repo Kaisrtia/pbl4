@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PBL4 · Attacker Lab</title>
+  <style>
+    :root{color-scheme:dark;--bg:#10141c;--panel:#19212c;--line:#314153;--text:#edf3fc;--muted:#a8b8cb;--accent:#86dfbb}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 system-ui,sans-serif}main{max-width:1120px;margin:auto;padding:36px 24px}header{display:flex;justify-content:space-between;align-items:start;gap:20px;margin-bottom:28px}h1{font-size:30px;letter-spacing:-1px;margin:0}h2{font-size:18px;margin:0 0 14px}.eyebrow{color:var(--accent);font-size:12px;letter-spacing:2px}.muted{color:var(--muted)}p{margin:8px 0}.panel{border:1px solid var(--line);border-radius:14px;padding:22px;background:var(--panel);margin-bottom:18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}label{display:block;font-size:13px;color:var(--muted);flex:1}input,select,button{font:inherit;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#101822;color:var(--text)}input,select{width:100%;margin-top:5px}button{cursor:pointer}button.primary{background:var(--accent);color:#10241d;border-color:var(--accent);font-weight:700}button.danger{border-color:#e28c8c;color:#ffbbbb}button:disabled{opacity:.45;cursor:default}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#101822;border-radius:8px;padding:16px;max-height:360px;overflow:auto;font:12px/1.7 ui-monospace,monospace}.badge{border:1px solid var(--line);padding:5px 10px;border-radius:20px;font-size:12px}#notice{white-space:pre-wrap;color:#ffcb87;min-height:24px}#runs{max-height:240px;overflow:auto}#runs button{display:block;text-align:left;width:100%;margin:6px 0;font-size:12px}#description{min-height:54px}@media(max-width:700px){.grid{grid-template-columns:1fr}header{display:block}.badge{display:inline-block;margin-top:12px}main{padding:20px 14px}}
+  </style>
+</head>
+<body><main>
+  <header><div><div class="eyebrow">PBL4 / MÁY THỰC NGHIỆM</div><h1>Attacker Lab</h1><p class="muted">Điều khiển S1–S4 · Kết quả trực tiếp từ worker</p></div><span class="badge" id="connection">Chưa kết nối</span></header>
+  <section class="panel"><div class="controls"><label>API token (chỉ giữ trong bộ nhớ trang)<input id="token" type="password" autocomplete="off" placeholder="Token cấu hình trên controller"></label><button id="connect">Kết nối</button><button id="preflight">Kiểm tra kết nối Target</button></div><p id="notice" role="status" aria-live="polite"></p><p class="muted" id="target">Đang chờ cấu hình…</p></section>
+  <div class="grid"><section class="panel"><h2>Chạy thực nghiệm</h2>
+    <label>Kịch bản<select id="scenario"><option value="S1">S1 · Chuỗi SSH lab</option><option value="S2">S2 · SYN có giới hạn</option><option value="S3">S3 · Giới hạn file descriptor</option><option value="S4">S4 · Truyền tệp mẫu</option></select></label>
+    <p id="description" class="muted"></p><div id="parameters" class="controls"></div>
+    <div class="controls" style="margin-top:18px"><button class="primary" id="start" disabled>Chạy kịch bản</button><button class="danger" id="stop" disabled>Yêu cầu dừng</button></div>
+    <p class="muted">Một lần chạy tại một thời điểm. Phòng thủ do Target quản lý; dữ liệu Client/Target được đối chiếu tại God-View.</p>
+  </section><section class="panel"><h2>Lần chạy đã chọn <span id="state" class="badge">—</span></h2><p id="run-id" class="muted">Chưa có lần chạy</p><pre id="result">Kết quả chưa có. Chạy xong không đồng nghĩa vượt qua phòng thủ.</pre></section></div>
+  <div class="grid"><section class="panel"><h2>Lịch sử gần đây</h2><div id="runs">Chưa có dữ liệu.</div></section><section class="panel"><h2>Sự kiện của lần chạy</h2><pre id="events">Chưa có dữ liệu.</pre></section></div>
+  <p class="muted">S1 dùng SSH thật; bước reconnect và xóa bản sao nhật ký chỉ là thao tác trên tệp lab. Không có kết quả mô phỏng tự động khi backend lỗi.</p>
+</main><script type="module" src="/app.js"></script></body></html>
