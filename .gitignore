@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+env/
+
+# Environment configurations
+.env
+.env.local
+.env.*.local
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build & Bundler outputs
+dist/
+build/
+out/
+.next/
+
+# Testing & Coverage cache
+.pytest_cache/
+.coverage
+coverage/
+.ruff_cache/
+htmlcov/
+
+# Network captures & large dumps
+*.pcap
+*.cap
+*.pcapng
+# Exception: allow committed sample pcaps in shared/pcap
+!shared/pcap/*.pcap
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs & temp
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
