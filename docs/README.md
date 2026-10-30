@@ -17,7 +17,8 @@ Mọi thành viên trong nhóm khi thực hiện task đều có trách nhiệm 
 ```text
 docs/
 ├── README.md                     # File này: Hướng dẫn cơ cấu và ý nghĩa các thư mục tài liệu
-├── Kế hoạch thực hiện &...pdf    # File kế hoạch gốc 6 tuần và phân công chi tiết
+├── plan.pdf                      # File kế hoạch 6 tuần cập nhật và phân công chi tiết
+├── plan(old).pdf                 # Kế hoạch ban đầu (lưu vết tham chiếu)
 │
 ├── architecture/                 # Kiến trúc tổng thể hệ thống & sơ đồ mạng Docker
 │   └── system-architecture.md    # Đặc tả 4 container, dải IP tĩnh và luồng Telemetry
@@ -49,21 +50,21 @@ docs/
 
 ### 3.1. `docs/architecture/` (Kiến trúc hệ thống)
 * **Ý nghĩa:** Là tài liệu nền móng của dự án. Quy định sơ đồ mạng Docker 4 container (`isolated-net` subnet `172.20.0.0/24`), IP tĩnh của từng node, cấu hình sysctl nhân Linux và luồng truyền thông điệp JSON Schema giữa các agent.
-* **Người phụ trách chính:** **Trung (TV1)** kết hợp với cả nhóm.
+* **Người phụ trách chính:** **Hoàng Trung (TV3)** kết hợp với cả nhóm.
 * **Tài liệu hiện có:** [system-architecture.md](architecture/system-architecture.md).
 
 ### 3.2. `docs/api/` (Đặc tả API phân tán)
 * **Ý nghĩa:** Chứa tài liệu đặc tả REST API và WebSocket của từng node độc lập, giúp các thành viên phát triển mã nguồn không bị xung đột format dữ liệu:
-  - `target-server/`: Mô tả các API người dùng và các điểm cắm lỗ hổng L7 (Command Injection, Path Traversal, Brute-force). **Trung (TV1)** phụ trách.
-  - `god-view/`: Mô tả API nhận Telemetry, kênh phát WebSocket thời gian thực và API điều khiển phòng thủ. **Nguyên (TV3)** phụ trách.
-  - `attacker/`: Mô tả API điều khiển module tấn công (start, stop, status). **Trí (TV2)** phụ trách.
+  - `target-server/`: Mô tả các API người dùng và các điểm cắm lỗ hổng L7 (Command Injection, Path Traversal, Brute-force). **Hoàng Trung (TV3)** phụ trách.
+  - `god-view/`: Mô tả API nhận Telemetry, kênh phát WebSocket thời gian thực và API điều khiển phòng thủ. **Hạnh Nguyên (TV1)** phụ trách.
+  - `attacker/`: Mô tả API điều khiển module tấn công (start, stop, status). **Minh Trí (TV2)** phụ trách.
 
 ### 3.3. `docs/attacks/` (Kịch bản tấn công)
 * **Ý nghĩa:** Lưu trữ toàn bộ tài liệu nghiên cứu và hướng dẫn thực thi các đòn tấn công mạng và hệ điều hành:
   - Tầng Mạng (L2/L4): ARP Spoofing + MitM Sniffing, TCP SYN Flood (hping3), TCP RST Injection (Scapy/tcpkill).
   - Tầng OS/L7: Khai thác Reverse Shell, đọc `/etc/passwd`, Heavy API DoS.
   - Kịch bản liên hoàn (**Kill Chain** - Tuần 6): Do thám $\rightarrow$ Chiếm quyền $\rightarrow$ Làm sập dịch vụ $\rightarrow$ Thử thách phòng thủ.
-* **Người phụ trách chính:** **Trí (TV2)**.
+* **Người phụ trách chính:** **Minh Trí (TV2)**.
 
 ### 3.4. `docs/defense/` (Cơ chế phòng thủ 3 lớp)
 * **Ý nghĩa:** Tài liệu kỹ thuật về cơ chế "Phòng thủ chiều sâu" (Defense-in-Depth) với 3 tầng khiên chắn độc lập:
@@ -71,13 +72,13 @@ docs/
   - Lớp 2 (HĐH): `tcp_syncookies=1`, giới hạn tài nguyên `ulimit`/`cgroups`, vô hiệu hóa shell `nologin`.
   - Lớp 3 (Ứng dụng): Middleware API Rate Limiting theo IP/User, Input Sanitization.
   - Báo cáo **Kiểm thử chéo (Cross-Layer Testing - Tuần 5)**: Minh chứng tại sao chỉ bật phòng thủ ở một lớp là không đủ.
-* **Người phụ trách chính:** **Trung (TV1)** & **Nguyên (TV3)**.
+* **Người phụ trách chính:** **Hoàng Trung (TV3)** & **Hạnh Nguyên (TV1)**.
 
 ### 3.5. `docs/pcap-analysis/` (Phân tích gói tin mạng & Cơ chế nhân HĐH)
 * **Ý nghĩa:** Sản phẩm học thuật chuyên sâu nộp ở Tuần 6:
   - Chụp và bóc tách từng trường trong gói tin pcap (Wireshark): Các cờ TCP (SYN, ACK, RST), ARP reply giả mạo.
   - Giải thích cơ chế nhân Linux (Kernel TCP/IP stack): Hàng đợi SYN backlog queue, Accept queue, thuật toán sinh cookie khi bị SYN Flood.
-* **Người phụ trách chính:** **Trí (TV2)**.
+* **Người phụ trách chính:** **Minh Trí (TV2)**.
 
 ### 3.6. `docs/runbooks/` (Kịch bản thực nghiệm & Demo)
 * **Ý nghĩa:** Bản hướng dẫn thao tác từng bước dành cho buổi thuyết trình trước hội đồng và giảng viên chấm đồ án:
