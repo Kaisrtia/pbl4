@@ -48,10 +48,10 @@ flowchart LR
 
 | Node | IP Tĩnh | Vai trò & Trách nhiệm | Thành viên phụ trách |
 | :--- | :--- | :--- | :--- |
-| **Client** | `172.20.0.10` | Đóng vai trò người dùng bình thường: gửi request hợp lệ (đăng nhập, tải file), chạy telemetry agent theo dõi ARP/TCP từ phía Client. | **Trung** (TV1) |
-| **Target Server** | `172.20.0.20` | Máy chủ mục tiêu chạy Web App (có lỗ hổng L7). Chạy các daemon Telemetry Agent (Network & OS) và chứa các script kích hoạt 3 lớp phòng thủ. | **Trung** (TV1) |
+| **Client** | `172.20.0.10` | Đóng vai trò người dùng bình thường: gửi request hợp lệ (đăng nhập, tải file), chạy telemetry agent theo dõi ARP/TCP từ phía Client. | **Trung** (TV3) |
+| **Target Server** | `172.20.0.20` | Máy chủ mục tiêu chạy Web App (có lỗ hổng L7). Chạy các daemon Telemetry Agent (Network & OS) và chứa các script kích hoạt 3 lớp phòng thủ. | **Trung** (TV3) |
 | **Hacker / Attacker** | `172.20.0.66` | Máy kẻ tấn công: chứa công cụ tấn công (Scapy, hping3, arpspoof, tcpkill), module hóa qua CLI/API và gửi sự kiện tấn công về God-View. | **Trí** (TV2) |
-| **God-View** | `172.20.0.99` | Trạm giám sát trung tâm: Backend nhận và phân phối telemetry qua WebSocket; Frontend hiển thị topology mạng động, Process Tree và Bảng điều khiển phòng thủ. | **Nguyên** (TV3) |
+| **God-View** | `172.20.0.99` | Trạm giám sát trung tâm: Backend nhận và phân phối telemetry qua WebSocket; Frontend hiển thị topology mạng động, Process Tree và Bảng điều khiển phòng thủ. | **Nguyên** (TV1) |
 
 ---
 
@@ -96,7 +96,7 @@ cybersec-visualize/
 │
 └── docs/                           # Tài liệu kỹ thuật dự án
     ├── architecture/               # Thông số kỹ thuật kiến trúc hệ thống (file này)
-    └── Kế hoạch thực hiện &...pdf  # Kế hoạch chi tiết 6 tuần của nhóm
+    └── plan.pdf                    # Kế hoạch chi tiết 6 tuần cập nhật của nhóm
 ```
 
 ---

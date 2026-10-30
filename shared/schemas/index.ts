@@ -1,7 +1,7 @@
 /**
  * Barrel export cho tất cả schemas dùng chung trong dự án PBL4
- * Cho phép các module (target-system, god-view, attacker) import trực tiếp từ 'shared/schemas'
+ * Cho phép các module (god-view, attacker, target-system) import trực tiếp từ 'shared/schemas'
  */
 
-export * from './target-app';
 export * from './telemetry';
+
