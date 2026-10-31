@@ -1,0 +1,11 @@
+[ARDUINO SA OFFICIAL]
+Document: Datasheet Arduino Uno R4 WiFi
+Microcontroller: Renesas RA4M1 32-bit ARM Cortex-M4 (48MHz)
+Connectivity: ESP32-S3-MINI-1 (Wi-Fi 802.11 b/g/n, Bluetooth 5.0)
+Operating Voltage: 5V
+Input Voltage (recommended): 6-24V
+Digital I/O Pins: 14 (6 PWM)
+Analog Input Pins: 6
+DAC: 1 (12-bit)
+CAN Bus: Yes (supported by RA4M1)
+Status: Public Technical Documentation

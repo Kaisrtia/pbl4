@@ -1,0 +1,8 @@
+[POWERTECH LABS]
+Document: LM2596 DC-DC Buck Converter Step-Down Module Schematics
+Input Voltage: 4.0V - 40V DC
+Output Voltage: 1.25V - 37V DC (Adjustable via multi-turn potentiometer)
+Max Output Current: 3A (Heatsink recommended for > 2A)
+Conversion Efficiency: Up to 92%
+Switching Frequency: 150kHz
+Status: Public Technical Documentation

@@ -1,0 +1,22 @@
+================================================================================
+CLASSIFIED - TOP SECRET // RESTRICTED ACCESS
+PROJECT: ELECTROSHOP HARDWARE HUB & LAB TESTBED SPECS 2026
+BLUEPRINT IDENTIFIER: BP-2026-CONF-0091
+================================================================================
+
+WARNING:
+This document contains proprietary circuit designs, hardware attack surface 
+specifications, and firmware security configurations. Unauthorized distribution, 
+extraction, or downloading is strictly prohibited under project defense policies.
+
+LAB TESTBED SECURITY FLAG:
+FLAG{PBL4_PATH_TRAVERSAL_AND_CONFIDENTIAL_DOC_LEAKED}
+
+ATTACK VECTOR RECONNAISSANCE:
+- Target Backend API: http://localhost:8000/api
+- Database Engine: SQLite WAL Mode (devsec.sqlite)
+- Ingestion Hub: God-View Network Telemetry (Port 4000)
+- Defense Shield Engine: L3 Dynamic Filter (SQLi, RateLimiter, Path Sanitizer)
+
+END OF RESTRICTED FILE.
+================================================================================

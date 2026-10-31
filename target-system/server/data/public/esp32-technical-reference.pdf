@@ -1,0 +1,8 @@
+[ESPRESSIF SYSTEMS]
+Document: ESP32 Technical Reference Manual v4.8
+CPU: Dual-core Xtensa 32-bit LX6 240MHz
+Memory: 520KB SRAM, 4MB External SPI Flash
+Wireless: 802.11 b/g/n Wi-Fi up to 150 Mbps, Bluetooth v4.2 BR/EDR and BLE
+Peripherals: 12-bit SAR ADC, 2x 8-bit DAC, 10x touch sensors, SPI, I2S, I2C, UART
+Operating Voltage: 3.0V - 3.6V
+Status: Public Technical Documentation
