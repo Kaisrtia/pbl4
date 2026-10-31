@@ -4,4 +4,4 @@
  */
 
 export * from './telemetry';
-
+export * from './shop-api';
