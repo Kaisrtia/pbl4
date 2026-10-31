@@ -1,7 +1,7 @@
 /**
  * ==============================================================================
  * Project: PBL4 - ElectroShop Shared API Contracts & Types
- * Target Systems: Backend NestJS (target-system/server) & Frontend Next.js (target-system/client)
+ * Target Systems: Backend NestJS (target-app/server) & Frontend Next.js (target-app/client)
  * ==============================================================================
  */
 

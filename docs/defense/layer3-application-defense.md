@@ -2,7 +2,7 @@
 
 > **Phụ trách:** Hoàng Trung (TV3) & Hạnh Nguyên (TV1)  
 > **Dự án:** PBL4 — Hệ thống Mô phỏng & Giám sát Tấn công Mạng & Hệ điều hành (God-View)  
-> **Phạm vi triển khai:** Máy chủ ứng dụng `target-system/server` (NestJS)
+> **Phạm vi triển khai:** Máy chủ ứng dụng `target-app/server` (NestJS)
 
 ---
 
@@ -46,7 +46,7 @@ flowchart TD
 ## 3. Chi tiết 4 Cơ chế Bảo vệ của Khiên L3
 
 ### 3.1. Chống SQL Injection (Anti-SQLi)
-- **Mã nguồn:** [`auth.service.ts`](file:///D:/Project Github/PBL4/target-system/server/src/modules/auth/auth.service.ts)
+- **Mã nguồn:** [`auth.service.ts`](file:///D:/Project Github/PBL4/target-app/server/src/modules/auth/auth.service.ts)
 - **Nguyên lý:**
   - **Khi tắt khiên (`anti_sqli = false`):** Ứng dụng ghép chuỗi SQL trực tiếp:
     ```typescript
@@ -70,7 +70,7 @@ flowchart TD
 ---
 
 ### 3.2. Giới hạn tần suất động (Dynamic Rate Limiting)
-- **Mã nguồn:** [`dynamic-rate-limit.guard.ts`](file:///D:/Project Github/PBL4/target-system/server/src/modules/defense/guards/dynamic-rate-limit.guard.ts)
+- **Mã nguồn:** [`dynamic-rate-limit.guard.ts`](file:///D:/Project Github/PBL4/target-app/server/src/modules/defense/guards/dynamic-rate-limit.guard.ts)
 - **Thuật toán:** **Cửa sổ trượt theo thời gian thực (Sliding Window Log)**:
   - Mỗi IP được lưu một mảng các mốc thời gian (`timestamps[]`) trong bộ nhớ RAM.
   - Cấu hình ngưỡng (lấy từ biến môi trường):
@@ -82,7 +82,7 @@ flowchart TD
 ---
 
 ### 3.3. Làm sạch dữ liệu đầu vào (Input Sanitization)
-- **Mã nguồn:** [`files.service.ts`](file:///D:/Project Github/PBL4/target-system/server/src/modules/files/files.service.ts)
+- **Mã nguồn:** [`files.service.ts`](file:///D:/Project Github/PBL4/target-app/server/src/modules/files/files.service.ts)
 - **Nguyên lý:**
   - Phòng chống tấn công leo thang thư mục (Directory / Path Traversal) khi người dùng truyền tham số đường dẫn file tải về:
     ```typescript
@@ -100,7 +100,7 @@ flowchart TD
 ---
 
 ### 3.4. Kiểm soát truy cập tài liệu mật (Confidential Data Protection)
-- **Mã nguồn:** [`documents.service.ts`](file:///D:/Project Github/PBL4/target-system/server/src/modules/documents/documents.service.ts)
+- **Mã nguồn:** [`documents.service.ts`](file:///D:/Project Github/PBL4/target-app/server/src/modules/documents/documents.service.ts)
 - **Nguyên lý:**
   - Trong bảng `documents`, bản thiết kế kiến trúc phần cứng `rd-confidential-hardware-blueprint.pdf` được đánh dấu cờ `is_confidential = 1`.
   - Khi Khiên L3 bật: Mọi nỗ lực tải file mật qua ID sẽ bị chặn lại bằng mã **403 Forbidden**.
@@ -112,4 +112,4 @@ flowchart TD
 
 - **API điều khiển:** `POST /api/defense/toggle` cho phép gạt công tắc đảo trạng thái của toàn bộ Khiên L3.
 - **Tích hợp UI:** Được kết nối với nút nổi **"Lab Control"** ở góc dưới bên phải giao diện ElectroShop.
-- **Bắn Telemetry:** Toàn bộ request đi qua hệ thống đều được [`TelemetryInterceptor`](file:///D:/Project Github/PBL4/target-system/server/src/common/interceptors/telemetry.interceptor.ts) ghi nhận thời gian phản hồi (ms) và phát hiện các dấu hiệu bất thường (`SQL_INJECTION`, `HEAVY_DOS`, `PATH_TRAVERSAL`, `RATE_LIMIT_BLOCKED`) để bắn sang trạm quan sát **God-View (Port 4000)** mà không làm nghẽn luồng xử lý chính của Target Server.
+- **Bắn Telemetry:** Toàn bộ request đi qua hệ thống đều được [`TelemetryInterceptor`](file:///D:/Project Github/PBL4/target-app/server/src/common/interceptors/telemetry.interceptor.ts) ghi nhận thời gian phản hồi (ms) và phát hiện các dấu hiệu bất thường (`SQL_INJECTION`, `HEAVY_DOS`, `PATH_TRAVERSAL`, `RATE_LIMIT_BLOCKED`) để bắn sang trạm quan sát **God-View (Port 4000)** mà không làm nghẽn luồng xử lý chính của Target Server.

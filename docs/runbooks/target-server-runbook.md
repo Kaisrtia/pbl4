@@ -12,7 +12,7 @@
    - Công cụ gửi yêu cầu: Trình duyệt web, cURL, hoặc giao diện Swagger UI.
 2. **Di chuyển vào thư mục máy chủ:**
    ```powershell
-   cd target-system/server
+   cd target-app/server
    ```
 3. **Thiết lập biến môi trường:**
    ```powershell
