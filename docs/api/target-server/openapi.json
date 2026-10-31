@@ -1,0 +1,818 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/defense/status": {
+      "get": {
+        "description": "Trả về trạng thái của Master Shield và các cờ con: anti_sqli, rate_limit, input_sanitization.",
+        "operationId": "DefenseController_getStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lấy trạng thái thành công"
+          }
+        },
+        "summary": "Lấy trạng thái Khiên L3 hiện tại",
+        "tags": [
+          "Defense"
+        ]
+      }
+    },
+    "/api/defense/toggle": {
+      "post": {
+        "description": "Gửi body rỗng `{}` để đảo toàn bộ Master L3 (bật/tắt cả 3 khiên con), hoặc gửi `{ \"flag\": \"anti_sqli\" }` để đảo riêng 1 khiên con.",
+        "operationId": "DefenseController_toggle",
+        "parameters": [],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "flag": {
+                    "type": "string",
+                    "enum": [
+                      "anti_sqli",
+                      "rate_limit",
+                      "input_sanitization"
+                    ],
+                    "description": "Cờ con muốn toggle riêng (bỏ trống để toggle Master L3)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Đã đảo trạng thái khiên thành công"
+          }
+        },
+        "summary": "Bật / Tắt Khiên L3 (Nút Lab Control)",
+        "tags": [
+          "Defense"
+        ]
+      }
+    },
+    "/api/defense/set": {
+      "post": {
+        "operationId": "DefenseController_setFlags",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Cập nhật cờ thành công"
+          }
+        },
+        "summary": "Gán trạng thái cụ thể cho các cờ phòng thủ",
+        "tags": [
+          "Defense"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "description": "Khi Khiên L3 TẮT: Hỗ trợ bypass SQL Injection với payload `admin' --`. Khi Khiên L3 BẬT: Sử dụng Prepared Statement và chặn mã 401.",
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Đăng nhập thành công, trả về access_token 30 ngày."
+          },
+          "401": {
+            "description": "Tài khoản hoặc mật khẩu không chính xác (hoặc bị Khiên L3 chặn đứng)."
+          },
+          "429": {
+            "description": "Bị giới hạn tần suất gửi yêu cầu (Rate Limit)."
+          }
+        },
+        "summary": "Đăng nhập người dùng & Cấp JWT 30 ngày",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/reports/analytics": {
+      "get": {
+        "description": "Chạy lặp băm SHA-256 từ 1.000 đến 2.000.000 vòng để tiêu tốn chu kỳ CPU máy chủ mục tiêu. Được bảo vệ bởi DynamicRateLimitGuard khi Khiên L3 bật.",
+        "operationId": "ReportsController_getAnalytics",
+        "parameters": [
+          {
+            "name": "iterations",
+            "required": false,
+            "in": "query",
+            "description": "Số vòng lặp băm SHA-256 (mặc định 100.000)",
+            "schema": {
+              "example": 100000,
+              "type": "string"
+            }
+          },
+          {
+            "name": "delay_ms",
+            "required": false,
+            "in": "query",
+            "description": "Độ trễ giả lập nhân tạo (ms, tối đa 5000ms)",
+            "schema": {
+              "example": 0,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tính toán hoàn tất"
+          },
+          "429": {
+            "description": "Bị Rate Limit chặn đứng"
+          }
+        },
+        "summary": "Tác vụ tính toán CPU nặng (Mô phỏng L7 DoS)",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/reports/heavy": {
+      "post": {
+        "operationId": "ReportsController_postHeavyLoad",
+        "parameters": [],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "iterations": {
+                    "type": "number",
+                    "example": 100000
+                  },
+                  "delay_ms": {
+                    "type": "number",
+                    "example": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tính toán hoàn tất"
+          },
+          "429": {
+            "description": "Bị Rate Limit chặn đứng"
+          }
+        },
+        "summary": "Tác vụ CPU nặng qua phương thức POST",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/files/download": {
+      "get": {
+        "description": "Khi Khiên L3 BẬT: Chặn các payload chứa `..`, `/`, `\\` (mã lỗi 400 Bad Request). Khi Khiên L3 TẮT: Nối chuỗi đường dẫn trực tiếp cho phép đọc file tùy ý.",
+        "operationId": "FilesController_downloadFile",
+        "parameters": [
+          {
+            "name": "name",
+            "required": true,
+            "in": "query",
+            "description": "Tên file cần tải (Thử payload `../../etc/passwd` để test Path Traversal)",
+            "schema": {
+              "example": "sample_report.txt",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tải file thành công"
+          },
+          "400": {
+            "description": "Bị Khiên Input Sanitization chặn đứng"
+          },
+          "404": {
+            "description": "Không tìm thấy file"
+          }
+        },
+        "summary": "Tải file công khai (Mô phỏng tấn công Path Traversal)",
+        "tags": [
+          "Files"
+        ]
+      }
+    },
+    "/api/system/ping": {
+      "get": {
+        "description": "Gửi timestamp của client để server tính toán độ trễ mili-giây (latency_ms) phục vụ đo lường trước/trong khi bị tấn công DoS.",
+        "operationId": "SystemController_ping",
+        "parameters": [
+          {
+            "name": "t",
+            "required": false,
+            "in": "query",
+            "description": "Timestamp mili-giây từ client (`Date.now()`)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "echo",
+            "required": false,
+            "in": "query",
+            "description": "Chuỗi thông điệp phản hồi",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Phản hồi pong thành công"
+          }
+        },
+        "summary": "Đo độ trễ phản hồi (Latency Ping)",
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/api/system/health": {
+      "get": {
+        "operationId": "SystemController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Server đang online"
+          }
+        },
+        "summary": "Kiểm tra trạng thái sống của máy chủ & Khiên L3",
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/api/products/categories": {
+      "get": {
+        "description": "Dùng để hiển thị các Filter Pills: Tất cả (6), Vi điều khiển (2), Cảm biến (2), Module nguồn (2).",
+        "operationId": "ProductsController_getCategories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lấy danh mục thành công"
+          }
+        },
+        "summary": "Lấy danh sách danh mục & số lượng linh kiện",
+        "tags": [
+          "Products"
+        ]
+      }
+    },
+    "/api/products": {
+      "get": {
+        "description": "Hỗ trợ lọc theo category slug (vi-dieu-khien, cam-bien, module-nguon), tìm kiếm từ khóa, và sắp xếp theo giá.",
+        "operationId": "ProductsController_getProducts",
+        "parameters": [
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "description": "Slug danh mục cần lọc (ví dụ: vi-dieu-khien)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Từ khóa tìm kiếm theo tên, SKU, hãng sx",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "Kiểu sắp xếp theo giá",
+            "schema": {
+              "enum": [
+                "price_asc",
+                "price_desc"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách linh kiện thành công"
+          }
+        },
+        "summary": "Lấy danh sách linh kiện ElectroShop",
+        "tags": [
+          "Products"
+        ]
+      }
+    },
+    "/api/products/sku/{sku}": {
+      "get": {
+        "operationId": "ProductsController_getProductBySku",
+        "parameters": [
+          {
+            "name": "sku",
+            "required": true,
+            "in": "path",
+            "description": "Mã linh kiện SKU",
+            "schema": {
+              "example": "MCU-ARD-R4",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tìm thấy sản phẩm"
+          },
+          "404": {
+            "description": "Không tìm thấy sản phẩm"
+          }
+        },
+        "summary": "Xem chi tiết sản phẩm theo mã linh kiện (SKU)",
+        "tags": [
+          "Products"
+        ]
+      }
+    },
+    "/api/products/{id}": {
+      "get": {
+        "operationId": "ProductsController_getProductById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID số của sản phẩm",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tìm thấy sản phẩm"
+          },
+          "404": {
+            "description": "Không tìm thấy sản phẩm"
+          }
+        },
+        "summary": "Xem chi tiết sản phẩm theo ID",
+        "tags": [
+          "Products"
+        ]
+      }
+    },
+    "/api/cart": {
+      "get": {
+        "description": "Mặc định dùng session khách demo `demo-guest-session-pbl4` (trả về sẵn 2 món linh kiện khớp badge [2] trên UI).",
+        "operationId": "CartController_getCart",
+        "parameters": [
+          {
+            "name": "x-session-id",
+            "required": false,
+            "in": "header",
+            "description": "ID phiên khách (Session ID)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "session_id",
+            "required": false,
+            "in": "query",
+            "description": "Hoặc truyền qua query param",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy giỏ hàng thành công"
+          }
+        },
+        "summary": "Lấy thông tin giỏ hàng & số lượng cho badge Navbar",
+        "tags": [
+          "Cart"
+        ]
+      },
+      "post": {
+        "description": "Bấm nút \"Thêm giỏ\" trên thẻ sản phẩm để thêm vào giỏ.",
+        "operationId": "CartController_addToCart",
+        "parameters": [
+          {
+            "name": "x-session-id",
+            "required": false,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "session_id",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddToCartDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Đã thêm sản phẩm vào giỏ hàng"
+          },
+          "404": {
+            "description": "Không tìm thấy sản phẩm"
+          }
+        },
+        "summary": "Thêm linh kiện vào giỏ hàng",
+        "tags": [
+          "Cart"
+        ]
+      },
+      "delete": {
+        "operationId": "CartController_clearCart",
+        "parameters": [
+          {
+            "name": "x-session-id",
+            "required": false,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "session_id",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Đã xóa toàn bộ giỏ hàng"
+          }
+        },
+        "summary": "Xóa toàn bộ sản phẩm trong giỏ hàng",
+        "tags": [
+          "Cart"
+        ]
+      }
+    },
+    "/api/cart/items/{id}": {
+      "patch": {
+        "operationId": "CartController_updateQuantity",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID của mục trong giỏ",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "x-session-id",
+            "required": false,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "session_id",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCartItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Đã cập nhật số lượng"
+          },
+          "404": {
+            "description": "Không tìm thấy mục giỏ hàng"
+          }
+        },
+        "summary": "Cập nhật số lượng linh kiện trong giỏ",
+        "tags": [
+          "Cart"
+        ]
+      },
+      "delete": {
+        "operationId": "CartController_removeItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID của mục trong giỏ",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "x-session-id",
+            "required": false,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "session_id",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Đã xóa sản phẩm khỏi giỏ hàng"
+          }
+        },
+        "summary": "Xóa một linh kiện khỏi giỏ",
+        "tags": [
+          "Cart"
+        ]
+      }
+    },
+    "/api/documents": {
+      "get": {
+        "description": "Mặc định ẩn các tài liệu tuyệt mật (Confidential) trừ khi truyền `include_confidential=true`.",
+        "operationId": "DocumentsController_getDocuments",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Tìm theo tiêu đề hoặc tên file",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "product_id",
+            "required": false,
+            "in": "query",
+            "description": "Lọc tài liệu theo ID sản phẩm",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_confidential",
+            "required": false,
+            "in": "query",
+            "description": "Hiện cả tài liệu tuyệt mật (true/false)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lấy danh sách tài liệu thành công"
+          }
+        },
+        "summary": "Lấy danh sách tài liệu kỹ thuật (Datasheet, Pinout, Blueprint)",
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
+    "/api/documents/{id}": {
+      "get": {
+        "operationId": "DocumentsController_getDocumentById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID tài liệu",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tìm thấy tài liệu"
+          },
+          "404": {
+            "description": "Không tìm thấy tài liệu"
+          }
+        },
+        "summary": "Lấy thông tin chi tiết một tài liệu theo ID",
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
+    "/api/documents/{id}/download": {
+      "get": {
+        "description": "Đối với tài liệu tuyệt mật (Confidential): Khi Khiên L3 BẬT -> chặn 403 Forbidden. Khi Khiên L3 TẮT -> cho phép tải lậu (mô phỏng rò rỉ dữ liệu).",
+        "operationId": "DocumentsController_downloadDocument",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID tài liệu cần tải",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tải file thành công"
+          },
+          "403": {
+            "description": "Bị Khiên L3 chặn tải tài liệu tuyệt mật"
+          },
+          "404": {
+            "description": "Không tìm thấy file vật lý"
+          }
+        },
+        "summary": "Tải file tài liệu kỹ thuật về máy",
+        "tags": [
+          "Documents"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "ElectroShop Target Server API & Defense Testbed",
+    "description": "Hệ sinh thái API Backend NestJS cho ứng dụng thương mại điện tử ElectroShop và môi trường thử nghiệm phòng thủ mạng L3 (PBL4).",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Xác thực tài khoản, khai thác/chặn SQL Injection và cấp phát JWT"
+    },
+    {
+      "name": "Products",
+      "description": "Quản lý linh kiện, danh mục và bộ lọc thông số kỹ thuật"
+    },
+    {
+      "name": "Cart",
+      "description": "Quản lý giỏ hàng và đồng bộ badge Navbar [2]"
+    },
+    {
+      "name": "Documents",
+      "description": "Tài liệu kỹ thuật Datasheets và Blueprint tuyệt mật"
+    },
+    {
+      "name": "Defense",
+      "description": "Điều khiển Khiên L3 (Master Toggle, Anti-SQLi, Rate Limit, Sanitization)"
+    },
+    {
+      "name": "Reports",
+      "description": "Mô phỏng tác vụ CPU nặng phục vụ kịch bản L7 DoS"
+    },
+    {
+      "name": "Files",
+      "description": "Tải tài liệu và mô phỏng tấn công Path Traversal"
+    },
+    {
+      "name": "System",
+      "description": "Kiểm tra trạng thái máy chủ (health, ping latency)"
+    }
+  ],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "JWT-auth": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "name": "Authorization",
+        "description": "Nhập Access Token JWT (thời hạn 30 ngày) nhận được từ API đăng nhập",
+        "in": "header"
+      }
+    },
+    "schemas": {
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "admin",
+            "description": "Tên đăng nhập (Thử payload SQLi: `admin' --` khi Khiên L3 tắt)"
+          },
+          "password": {
+            "type": "string",
+            "example": "adminPassword2026!",
+            "description": "Mật khẩu tài khoản (Tùy ý nếu khai thác SQLi bypass)"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ]
+      },
+      "AddToCartDto": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "number",
+            "example": 1,
+            "description": "ID của sản phẩm cần thêm vào giỏ"
+          },
+          "quantity": {
+            "type": "number",
+            "example": 1,
+            "default": 1,
+            "description": "Số lượng sản phẩm muốn thêm"
+          }
+        },
+        "required": [
+          "productId"
+        ]
+      },
+      "UpdateCartItemDto": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "example": 2,
+            "description": "Số lượng mới cho mục giỏ hàng (<= 0 sẽ xóa món khỏi giỏ)"
+          }
+        },
+        "required": [
+          "quantity"
+        ]
+      }
+    }
+  }
+}
