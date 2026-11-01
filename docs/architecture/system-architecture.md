@@ -71,7 +71,7 @@ cybersec-visualize/
 │   ├── scripts/                    # Scripts demo tấn công dạng dòng lệnh (Scapy, hping3, arpspoof)
 │   └── src/                        # Module tấn công được đóng gói (gọi qua CLI/API, phát telemetry)
 │
-├── target-system/                  # [Node Target Server & Client - 172.20.0.20 & 172.20.0.10]
+├── target-app/                     # [Node Target Server & Client - 172.20.0.20 & 172.20.0.10]
 │   ├── app/                        # Ứng dụng Web Store (Login, Heavy API, Download, lỗ hổng L7)
 │   ├── agents/                     # Telemetry Agents thu thập trạng thái hệ thống:
 │   │   ├── network_agent           # Đọc định kỳ /proc/net/arp, /proc/net/tcp, ss -tan

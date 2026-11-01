@@ -1,0 +1,14 @@
+[ELECROBO SENSOR]
+Document: HC-SR04 Ultrasonic Distance Sensor Pinout & Specifications
+Operating Voltage: DC 5V
+Operating Current: 15mA
+Operating Frequency: 40kHz
+Range: 2cm - 400cm (Resolution: 0.3cm)
+Trigger Input Signal: 10uS TTL pulse
+Echo Output Signal: Output TTL level signal, proportional with distance range
+Pinout: 
+  Pin 1: VCC (5V)
+  Pin 2: Trig (Trigger)
+  Pin 3: Echo (Receive)
+  Pin 4: GND (Ground)
+Status: Public Technical Documentation
