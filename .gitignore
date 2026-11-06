@@ -62,3 +62,4 @@ Thumbs.db
 # Attacker runtime evidence and local SSH fixtures
 attacker/.data/
 attacker/tests/.runtime/
+integration/.artifacts/

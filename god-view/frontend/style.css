@@ -915,3 +915,11 @@ body.cyber-theme {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--neon-cyan);
 }
+
+/* Integration evidence: kept separate from HTTP request records. */
+.attack-events-card { margin-top: 20px; }
+#attack-events { padding: 16px; max-height: 360px; overflow: auto; font-family: monospace; }
+#attack-events details { margin: 8px 0; }
+#attack-events summary { cursor: pointer; overflow-wrap: anywhere; }
+#attack-events pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+#defense-error { color: #ffb875; font-size: 14px; padding: 0 12px; }

@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.local
+**/.env.*.local
+**/*.sqlite*
+**/*.tsbuildinfo
+**/__pycache__
+.git
+attacker/.data
+attacker/tests/.runtime
+integration/.artifacts

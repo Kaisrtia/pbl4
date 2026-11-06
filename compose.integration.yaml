@@ -1,0 +1,86 @@
+name: pbl4-integration
+
+services:
+  godview:
+    build:
+      context: .
+      dockerfile: integration/godview.Dockerfile
+    init: true
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4000
+      TARGET_APP_URL: http://target:8000
+      CLIENT_IP: ${LAB_CLIENT_IP:-172.30.44.10}
+      SERVER_IP: ${LAB_TARGET_IP:-172.30.44.20}
+      HACKER_IP: ${LAB_ATTACKER_IP:-172.30.44.66}
+    ports: ["127.0.0.1:${LAB_GODVIEW_PORT:-14000}:4000"]
+    networks: { lab: { ipv4_address: "${LAB_GODVIEW_IP:-172.30.44.99}" } }
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      retries: 30
+  target:
+    build:
+      context: .
+      dockerfile: integration/target.Dockerfile
+    init: true
+    environment:
+      PORT: 8000
+      SERVER_IP: ${LAB_TARGET_IP:-172.30.44.20}
+      DATABASE_PATH: /data/target.sqlite
+      JWT_SECRET: ${LAB_JWT_SECRET:?Run ./scripts/integration-lab.sh init first}
+      GODVIEW_TELEMETRY_URL: http://godview:4000/api/telemetry
+      DEFENSE_L3_ENABLED: "false"
+    volumes: ["credentials:/secrets", "target-data:/data"]
+    ports: ["127.0.0.1:${LAB_TARGET_PORT:-18000}:8000"]
+    networks: { lab: { ipv4_address: "${LAB_TARGET_IP:-172.30.44.20}" } }
+    depends_on: { godview: { condition: service_healthy } }
+    healthcheck:
+      test: [CMD, python3, /integration/target-health.py]
+      interval: 3s
+      retries: 30
+  attacker:
+    build: ./attacker
+    environment:
+      ATTACKER_BIND: 0.0.0.0
+      ATTACKER_API_TOKEN: ${LAB_ATTACKER_TOKEN:?Run ./scripts/integration-lab.sh init first}
+      HACKER_API_PORT: 9000
+      HACKER_IP: ${LAB_ATTACKER_IP:-172.30.44.66}
+      SERVER_IP: ${LAB_TARGET_IP:-172.30.44.20}
+      SERVER_PORT: 8000
+      GODVIEW_TELEMETRY_URL: http://godview:4000/api/events/attack
+    cap_drop: [ALL]
+    cap_add: [NET_RAW]
+    security_opt: [no-new-privileges:true]
+    volumes: ["credentials:/run/lab-secrets:ro", "attacker-data:/app/.data"]
+    ports: ["127.0.0.1:${LAB_ATTACKER_PORT:-19090}:9000"]
+    networks: { lab: { ipv4_address: "${LAB_ATTACKER_IP:-172.30.44.66}" } }
+    depends_on: { target: { condition: service_healthy } }
+    stop_grace_period: 10s
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:9000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      retries: 30
+  client:
+    image: node:26-bookworm-slim
+    init: true
+    command: [node, /integration/client.mjs]
+    environment:
+      TARGET_APP_URL: http://target:8000
+      CLIENT_INTERVAL_MS: 3000
+    volumes: ["./integration/client.mjs:/integration/client.mjs:ro"]
+    networks: { lab: { ipv4_address: "${LAB_CLIENT_IP:-172.30.44.10}" } }
+    depends_on: { target: { condition: service_healthy } }
+    healthcheck:
+      test: [CMD, node, -e, "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/client-probe.json'));process.exit(x.ok&&Date.now()-Date.parse(x.timestamp)<15000?0:1)"]
+      interval: 5s
+      retries: 20
+networks:
+  lab:
+    driver: bridge
+    ipam:
+      config: [{ subnet: "${LAB_SUBNET:-172.30.44.0/24}" }]
+volumes:
+  credentials:
+  target-data:
+  attacker-data:

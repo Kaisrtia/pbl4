@@ -5,7 +5,11 @@ import cors from 'cors';
 import path from 'path';
 import { config } from './config';
 import { RingBuffer } from './ring-buffer';
-import { TelemetryLog } from '@shared/schemas';
+import type { TelemetryLog } from '@shared/schemas';
+import type { AttackEvent } from '@shared/schemas/attack-event';
+import { readFileSync } from 'node:fs';
+import Ajv from 'ajv';
+import { TargetDefense } from './defense';
 
 const app = express();
 const server = http.createServer(app);
@@ -27,8 +31,11 @@ app.use(express.urlencoded({ extended: true }));
 const telemetryBuffer = new RingBuffer<TelemetryLog>(config.maxBufferSize);
 
 // Trạng thái hệ thống và sockets giả lập thời gian thực
-let defenseL3State = false;
-let socketMetrics = {
+const defense = new TargetDefense(config.targetAppUrl);
+const attackEvents = new Map<string, AttackEvent>();
+const validateAttack = new Ajv({ strict: false }).compile<AttackEvent>(JSON.parse(readFileSync(config.attackSchema, 'utf8')));
+const socketMetrics = {
+  source: 'simulated',
   established: 12,
   syn_recv: 0,
   time_wait: 4,
@@ -68,7 +75,7 @@ setInterval(() => {
   if (socketMetrics.established > 12) {
     socketMetrics.established = Math.max(12, socketMetrics.established - 1);
   }
-}, 1500);
+}, 1500).unref();
 
 // ==========================================
 // REST API ENDPOINTS
@@ -105,7 +112,7 @@ app.post('/api/telemetry', (req: Request, res: Response) => {
     log,
     buffer_size: telemetryBuffer.size(),
     metrics: socketMetrics,
-    defense_l3_state: defenseL3State,
+    defense_l3_state: defense.state,
   });
 
   res.status(200).json({
@@ -125,7 +132,7 @@ app.get('/api/telemetry/history', (req: Request, res: Response) => {
     count: telemetryBuffer.size(),
     capacity: telemetryBuffer.getCapacity(),
     history: telemetryBuffer.getAll(),
-    defense_l3_state: defenseL3State,
+    defense_l3_state: defense.state,
     metrics: socketMetrics,
   });
 });
@@ -136,6 +143,7 @@ app.get('/api/telemetry/history', (req: Request, res: Response) => {
  */
 app.delete('/api/telemetry/clear', (req: Request, res: Response) => {
   telemetryBuffer.clear();
+  attackEvents.clear();
   socketMetrics.syn_recv = 0;
   socketMetrics.established = 12;
 
@@ -155,57 +163,64 @@ app.delete('/api/telemetry/clear', (req: Request, res: Response) => {
  * POST /api/defense/toggle
  * Chuyển tiếp (proxy) lệnh bật/tắt khiên L3/L7 tới Target App và đồng bộ hóa qua WebSocket
  */
+function broadcastDefense() {
+  const payload = { defense_l3_state: defense.state, proxied_to_target: defense.state !== null, updated_at: new Date().toISOString() };
+  io.emit('DEFENSE_TOGGLED', payload);
+  return payload;
+}
+
 app.post('/api/defense/toggle', async (req: Request, res: Response) => {
-  const { enabled } = req.body;
-  let targetAppResponded = false;
-
-  try {
-    // Thử gửi lệnh sang Target App (172.20.0.20:8000 hoặc localhost:8000)
-    const response = await fetch(`${config.targetAppUrl}/api/defense/toggle`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled }),
-      signal: AbortSignal.timeout(1500),
-    });
-
-    if (response.ok) {
-      const data: any = await response.json();
-      defenseL3State = Boolean(data.defense_l3_app);
-      targetAppResponded = true;
-    }
-  } catch (err) {
-    // Nếu Target App chưa online, chuyển trạng thái local để phục vụ demo độc lập
-    if (typeof enabled === 'boolean') {
-      defenseL3State = enabled;
-    } else {
-      defenseL3State = !defenseL3State;
-    }
+  const { enabled } = req.body || {};
+  if (enabled !== undefined && typeof enabled !== 'boolean') {
+    res.status(400).json({ success: false, message: 'enabled must be boolean' });
+    return;
   }
-
-  // Phát sự kiện đổi trạng thái khiên chắn tới toàn bộ browser clients
-  io.emit('DEFENSE_TOGGLED', {
-    defense_l3_state: defenseL3State,
-    proxied_to_target: targetAppResponded,
-    updated_at: new Date().toISOString(),
-  });
-
-  res.status(200).json({
-    success: true,
-    defense_l3_app: defenseL3State,
-    proxied_to_target: targetAppResponded,
-    message: `Khiên phòng thủ L3/L7 hiện đang: ${defenseL3State ? 'BẬT (ACTIVE)' : 'TẮT (BYPASSED)'}`,
-  });
+  try {
+    await defense.change(enabled);
+    broadcastDefense();
+    res.json({ success: true, defense_l3_app: defense.state, proxied_to_target: true });
+  } catch {
+    broadcastDefense();
+    res.status(502).json({ success: false, defense_l3_app: null, proxied_to_target: false, message: 'Không xác nhận được trạng thái từ Target. Hãy kiểm tra kết nối.' });
+  }
 });
 
-/**
- * GET /api/defense/status
- * Lấy trạng thái hiện tại của khiên chắn
- */
-app.get('/api/defense/status', (req: Request, res: Response) => {
-  res.status(200).json({
-    defense_l3_app: defenseL3State,
-    target_url: config.targetAppUrl,
-  });
+app.get('/api/defense/status', async (_req: Request, res: Response) => {
+  try {
+    await defense.read();
+    broadcastDefense();
+    res.json({ defense_l3_app: defense.state, target_url: config.targetAppUrl, proxied_to_target: true });
+  } catch {
+    broadcastDefense();
+    res.status(502).json({ defense_l3_app: null, proxied_to_target: false });
+  }
+});
+
+// Attack events are not HTTP logs. Preserve the worker evidence and run_id.
+app.post('/api/events/attack', (req: Request, res: Response) => {
+  const event = req.body;
+  if (!validateAttack(event) || (event.event_type === 'WORKER_EVENT' && event.payload.run_id !== event.run_id)) {
+    res.status(400).json({ success: false, message: 'Invalid attacker event v1' });
+    return;
+  }
+  const existing = attackEvents.get(event.event_id);
+  if (existing) {
+    res.json({ success: true, duplicate: true, event_id: event.event_id });
+    return;
+  }
+  attackEvents.set(event.event_id, event);
+  if (attackEvents.size > config.maxBufferSize) attackEvents.delete(attackEvents.keys().next().value!);
+  io.emit('ATTACK_EVENT', event);
+  res.json({ success: true, duplicate: false, event_id: event.event_id });
+});
+
+app.get('/api/events/attack', (req: Request, res: Response) => {
+  const events = [...attackEvents.values()].filter(event => !req.query.run_id || event.run_id === req.query.run_id);
+  res.json({ count: events.length, capacity: config.maxBufferSize, events });
+});
+
+app.get('/api/config', (_req: Request, res: Response) => {
+  res.json({ nodes: config.nodes, metrics_source: 'simulated' });
 });
 
 /**
@@ -245,8 +260,10 @@ io.on('connection', (socket) => {
   // Gửi trạng thái ban đầu và lịch sử log cho client mới kết nối
   socket.emit('INITIAL_STATE', {
     history: telemetryBuffer.getAll(),
+    attack_events: [...attackEvents.values()],
+    nodes: config.nodes,
     metrics: socketMetrics,
-    defense_l3_state: defenseL3State,
+    defense_l3_state: defense.state,
     capacity: telemetryBuffer.getCapacity(),
   });
 
@@ -260,23 +277,16 @@ io.on('connection', (socket) => {
 
   // Client yêu cầu toggle khiên chắn trực tiếp từ socket
   socket.on('TOGGLE_DEFENSE', async () => {
-    defenseL3State = !defenseL3State;
     try {
-      await fetch(`${config.targetAppUrl}/api/defense/toggle`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: defenseL3State }),
-        signal: AbortSignal.timeout(1000),
-      });
-    } catch (e) {
-      // Ignored
+      await defense.change();
+      broadcastDefense();
+    } catch {
+      broadcastDefense();
+      socket.emit('DEFENSE_ERROR', { message: 'Không xác nhận được trạng thái từ Target.' });
     }
-
-    io.emit('DEFENSE_TOGGLED', {
-      defense_l3_state: defenseL3State,
-      updated_at: new Date().toISOString(),
-    });
   });
+
+  void defense.read().then(broadcastDefense).catch(broadcastDefense);
 
   socket.on('disconnect', () => {
     console.log(`[Socket.io] Client ngắt kết nối: ${socket.id}`);
