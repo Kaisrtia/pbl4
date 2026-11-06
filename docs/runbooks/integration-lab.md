@@ -4,6 +4,8 @@ Bản đề xuất tích hợp cho nhánh `feature/integration-lab`, dựa trên
 `91d2cbf`. Dùng **backend Target thật**, God-View thật và Attacker S1–S4 hiện có.
 Client hiện là HTTP ping probe; chưa thay thế Client bot đăng nhập/tải file của Trung.
 
+Demo hai máy: xem [hướng dẫn hotspot điện thoại](demo-two-machines-hotspot.md).
+
 ## Khởi chạy
 
 Yêu cầu Docker Engine + Compose v2 (`--wait`), Python 3 để tạo cấu hình,
@@ -35,7 +37,9 @@ và các cổng host trong `integration/.env.local` trước khi chạy. Các c�
 vẫn là Target 8000, God-View 4000, Attacker 9000/9001 và SSH Target 22.
 
 Compose project luôn là `pbl4-integration`, không dùng `container_name` cố định,
-mạng bridge riêng, chỉ publish lên loopback. Không mount Docker socket,
+mạng bridge riêng, mặc định chỉ publish lên loopback. Lệnh `lan <IPv4>` đổi
+`LAB_BIND_IP` sang đúng địa chỉ Wi-Fi của máy chủ để máy thứ hai truy cập; lệnh
+`local` đưa về loopback. Chạy lại `up` sau khi đổi. Không mount Docker socket,
 filesystem host hoặc dùng `privileged`/host network. Attacker chỉ thêm `NET_RAW`;
 chưa thêm quyền hoặc cấu hình phòng thủ L1/L2 cho các bài sau.
 

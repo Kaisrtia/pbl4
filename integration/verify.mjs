@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-const target = `http://127.0.0.1:${process.env.LAB_TARGET_PORT || 18000}`;
-const hub = `http://127.0.0.1:${process.env.LAB_GODVIEW_PORT || 14000}`;
-const attacker = `http://127.0.0.1:${process.env.LAB_ATTACKER_PORT || 19090}`;
+const host = process.env.LAB_BIND_IP || '127.0.0.1';
+const target = `http://${host}:${process.env.LAB_TARGET_PORT || 18000}`;
+const hub = `http://${host}:${process.env.LAB_GODVIEW_PORT || 14000}`;
+const attacker = `http://${host}:${process.env.LAB_ATTACKER_PORT || 19090}`;
 const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.LAB_ATTACKER_TOKEN}` };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function api(base, path, body, expected = 200) {

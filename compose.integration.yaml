@@ -13,7 +13,7 @@ services:
       CLIENT_IP: ${LAB_CLIENT_IP:-172.30.44.10}
       SERVER_IP: ${LAB_TARGET_IP:-172.30.44.20}
       HACKER_IP: ${LAB_ATTACKER_IP:-172.30.44.66}
-    ports: ["127.0.0.1:${LAB_GODVIEW_PORT:-14000}:4000"]
+    ports: ["${LAB_BIND_IP:-127.0.0.1}:${LAB_GODVIEW_PORT:-14000}:4000"]
     networks: { lab: { ipv4_address: "${LAB_GODVIEW_IP:-172.30.44.99}" } }
     healthcheck:
       test: [CMD, node, -e, "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -32,7 +32,7 @@ services:
       GODVIEW_TELEMETRY_URL: http://godview:4000/api/telemetry
       DEFENSE_L3_ENABLED: "false"
     volumes: ["credentials:/secrets", "target-data:/data"]
-    ports: ["127.0.0.1:${LAB_TARGET_PORT:-18000}:8000"]
+    ports: ["${LAB_BIND_IP:-127.0.0.1}:${LAB_TARGET_PORT:-18000}:8000"]
     networks: { lab: { ipv4_address: "${LAB_TARGET_IP:-172.30.44.20}" } }
     depends_on: { godview: { condition: service_healthy } }
     healthcheck:
@@ -53,7 +53,7 @@ services:
     cap_add: [NET_RAW]
     security_opt: [no-new-privileges:true]
     volumes: ["credentials:/run/lab-secrets:ro", "attacker-data:/app/.data"]
-    ports: ["127.0.0.1:${LAB_ATTACKER_PORT:-19090}:9000"]
+    ports: ["${LAB_BIND_IP:-127.0.0.1}:${LAB_ATTACKER_PORT:-19090}:9000"]
     networks: { lab: { ipv4_address: "${LAB_ATTACKER_IP:-172.30.44.66}" } }
     depends_on: { target: { condition: service_healthy } }
     stop_grace_period: 10s

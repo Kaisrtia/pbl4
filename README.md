@@ -1,5 +1,6 @@
 # PBL4 - Hệ Thống Mô Phỏng & Giám Sát Tấn Công Mạng (Cyber Attack Simulation & Monitoring System)
 
+- [Demo hai máy qua Wi-Fi hotspot điện thoại — từng bước](docs/runbooks/demo-two-machines-hotspot.md)
 - [Lab tích hợp bốn node: khởi chạy và kiểm chứng](docs/runbooks/integration-lab.md)
 - [Cấu hình và hợp đồng cần Nguyên/Trung review](docs/api/god-view/integration-contract.md)
 

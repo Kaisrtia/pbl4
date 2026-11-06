@@ -20,6 +20,7 @@ Ngày kiểm tra: 06/11/2026. Nhánh local: `feature/integration-lab`, nền `de
 
 - `compose.integration.yaml` và `integration/.env.example`: cấu hình chung.
 - [Hướng dẫn chạy và dừng](integration-lab.md).
+- [Demo hai máy qua hotspot điện thoại](demo-two-machines-hotspot.md).
 - [Hợp đồng API, phạm vi review cho từng người](../api/god-view/integration-contract.md).
 - Toàn bộ source của bản tích hợp hoặc archive `pbl4-integration-review.zip`.
 
@@ -45,6 +46,7 @@ Nếu hai bạn đang dùng chung một máy, lab này có project name cố đ�
 | S4 | Truyền mẫu thật, SHA-256 khớp receiver |
 | Target offline/response sai | Hub trả lỗi, không báo bật/tắt khiên thành công giả |
 | Browser | Kết nối Socket.IO, hiển thị run S4 COMPLETED và JSON byte/hash thật; không ghi nhận lỗi console |
+| Chế độ LAN | S1–S4 và L3 đạt qua IP Wi-Fi của A; cần thử health từ B để xác nhận hotspot |
 
 Các run kiểm chứng trên Target tích hợp:
 
