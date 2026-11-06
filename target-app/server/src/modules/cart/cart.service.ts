@@ -199,6 +199,114 @@ export class CartService {
     };
   }
 
+  /**
+   * Thanh toán giỏ hàng (Chỉ dành cho người dùng đã xác thực JWT)
+   */
+  checkout(
+    userId: number,
+    sessionId: string = 'demo-guest-session-pbl4',
+    shippingAddress: string = 'Hà Nội, Việt Nam',
+  ) {
+    // 1. Lấy toàn bộ linh kiện trong giỏ hàng
+    const cart = this.getCart(sessionId, userId);
+    if (!cart.items || cart.items.length === 0) {
+      throw new BadRequestException(
+        'Giỏ hàng của bạn đang trống! Vui lòng chọn linh kiện trước khi thanh toán.',
+      );
+    }
+
+    // 2. Tạo mã hóa đơn điện tử duy nhất
+    const orderCode = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // 3. Khởi tạo đơn hàng trong cơ sở dữ liệu
+    this.db.query(
+      `
+      INSERT INTO orders (order_code, user_id, total_amount, total_items, shipping_address, status)
+      VALUES (?, ?, ?, ?, ?, 'COMPLETED')
+    `,
+      [orderCode, userId, cart.total_price, cart.total_items, shippingAddress],
+    );
+
+    const createdOrderRows = this.db.query(
+      'SELECT id, order_code, user_id, total_amount, total_items, shipping_address, status, created_at FROM orders WHERE order_code = ?',
+      [orderCode],
+    );
+    const order = createdOrderRows[0];
+
+    // 4. Lưu từng mục sản phẩm vào bảng order_items
+    for (const item of cart.items) {
+      this.db.query(
+        `
+        INSERT INTO order_items (order_id, product_id, product_name, product_sku, price, quantity, subtotal)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+        [
+          order.id,
+          item.product_id,
+          item.name,
+          item.sku,
+          item.price,
+          item.quantity,
+          item.subtotal,
+        ],
+      );
+    }
+
+    // 5. Xóa sạch giỏ hàng sau khi hoàn tất thủ tục thanh toán
+    this.clearCart(sessionId, userId);
+
+    this.logger.log(
+      `[CHECKOUT] User ID [${userId}] placed order [${orderCode}] (${cart.total_items} items, ${cart.total_price.toLocaleString('vi-VN')} VND)`,
+    );
+
+    return {
+      status: 'success',
+      message: `🎉 Đặt hàng thành công! Đơn hàng #${orderCode} đã được tạo và thanh toán hoàn tất.`,
+      order: {
+        id: order.id,
+        order_code: order.order_code,
+        user_id: order.user_id,
+        total_amount: order.total_amount,
+        total_items: order.total_items,
+        shipping_address: order.shipping_address,
+        status: order.status,
+        created_at: order.created_at,
+        items: cart.items,
+      },
+    };
+  }
+
+  /**
+   * Lấy lịch sử danh sách đơn hàng đã đặt của người dùng
+   */
+  getOrders(userId: number) {
+    const orders = this.db.query(
+      `
+      SELECT id, order_code, user_id, total_amount, total_items, shipping_address, status, created_at
+      FROM orders
+      WHERE user_id = ?
+      ORDER BY id DESC
+    `,
+      [userId],
+    );
+
+    return orders.map((order: any) => {
+      const items = this.db.query(
+        `
+        SELECT id, product_id, product_name, product_sku, price, quantity, subtotal
+        FROM order_items
+        WHERE order_id = ?
+        ORDER BY id ASC
+      `,
+        [order.id],
+      );
+      return {
+        ...order,
+        items,
+      };
+    });
+  }
+
   private findCartItem(itemId: number, sessionId: string, userId?: number) {
     const rows = this.db.query(
       `
