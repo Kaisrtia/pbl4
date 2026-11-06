@@ -1,6 +1,6 @@
 # Gửi Nguyên và Trung review bản tích hợp
 
-Ngày kiểm tra: 06/11/2026. Nhánh local: `codex/integration-lab`, nền `develop`
+Ngày kiểm tra: 06/11/2026. Nhánh local: `feature/integration-lab`, nền `develop`
 `91d2cbf`. Chưa merge vào nhánh chung.
 
 ## Tin nhắn đề xuất gửi nhóm

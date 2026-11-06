@@ -1,6 +1,6 @@
 # Lab tích hợp bốn node
 
-Bản đề xuất tích hợp cho nhánh `codex/integration-lab`, dựa trên `develop`
+Bản đề xuất tích hợp cho nhánh `feature/integration-lab`, dựa trên `develop`
 `91d2cbf`. Dùng **backend Target thật**, God-View thật và Attacker S1–S4 hiện có.
 Client hiện là HTTP ping probe; chưa thay thế Client bot đăng nhập/tải file của Trung.
 
