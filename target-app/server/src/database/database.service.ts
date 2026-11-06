@@ -110,6 +110,32 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (product_id) REFERENCES products(id)
       );
+
+      -- 6. Bảng đơn hàng (Yêu cầu xác thực JWT khi thanh toán)
+      CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_code TEXT UNIQUE NOT NULL,
+        user_id INTEGER NOT NULL,
+        total_amount INTEGER NOT NULL,
+        total_items INTEGER NOT NULL,
+        shipping_address TEXT,
+        status TEXT NOT NULL DEFAULT 'COMPLETED',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
+
+      -- 7. Bảng chi tiết đơn hàng
+      CREATE TABLE IF NOT EXISTS order_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        product_name TEXT NOT NULL,
+        product_sku TEXT,
+        price INTEGER NOT NULL,
+        quantity INTEGER NOT NULL,
+        subtotal INTEGER NOT NULL,
+        FOREIGN KEY (order_id) REFERENCES orders(id)
+      );
     `);
   }
 
@@ -360,6 +386,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   resetCart(): void {
     this.db.exec('DELETE FROM cart_items;');
     this.seedDefaultCart();
+  }
+
+  /**
+   * Khôi phục đơn hàng (dành cho kiểm thử E2E)
+   */
+  resetOrders(): void {
+    this.db.exec('DELETE FROM order_items;');
+    this.db.exec('DELETE FROM orders;');
   }
 
   private seedDefaultCart() {

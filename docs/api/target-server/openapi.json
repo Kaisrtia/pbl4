@@ -115,6 +115,50 @@
         ]
       }
     },
+    "/api/auth/profile": {
+      "get": {
+        "description": "Yêu cầu Bearer JWT Token hợp lệ trong Header Authorization. Trả về mã 401 nếu chưa đăng nhập hoặc token đã hết hạn.",
+        "operationId": "AuthController_getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Xác thực JWT thành công, trả về thông tin người dùng."
+          },
+          "401": {
+            "description": "Chưa đăng nhập, thiếu token hoặc token không hợp lệ."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lấy thông tin tài khoản người dùng đang đăng nhập",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "operationId": "AuthController_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Alias cho endpoint GET /api/auth/profile",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
     "/api/reports/analytics": {
       "get": {
         "description": "Chạy lặp băm SHA-256 từ 1.000 đến 2.000.000 vòng để tiêu tốn chu kỳ CPU máy chủ mục tiêu. Được bảo vệ bởi DynamicRateLimitGuard khi Khiên L3 bật.",
@@ -597,6 +641,73 @@
           }
         },
         "summary": "Xóa một linh kiện khỏi giỏ",
+        "tags": [
+          "Cart"
+        ]
+      }
+    },
+    "/api/cart/checkout": {
+      "post": {
+        "description": "Chỉ người dùng đã đăng nhập có Token JWT hợp lệ mới được thực hiện thanh toán. Trả về mã 401 Unauthorized nếu chưa đăng nhập.",
+        "operationId": "CartController_checkout",
+        "parameters": [
+          {
+            "name": "x-session-id",
+            "required": false,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "session_id",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Thanh toán thành công, trả về mã đơn hàng và chi tiết đơn."
+          },
+          "400": {
+            "description": "Giỏ hàng đang trống, không thể thanh toán."
+          },
+          "401": {
+            "description": "Chưa đăng nhập - Vui lòng gửi Header Authorization: Bearer <token>."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Thanh toán đơn hàng & Chuyển đổi giỏ hàng thành Order (Bắt buộc JWT)",
+        "tags": [
+          "Cart"
+        ]
+      }
+    },
+    "/api/cart/orders": {
+      "get": {
+        "operationId": "CartController_getOrders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lấy lịch sử đơn hàng thành công."
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc Token JWT không hợp lệ."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lấy danh sách lịch sử đơn hàng của tài khoản đang đăng nhập (Bắt buộc JWT)",
         "tags": [
           "Cart"
         ]
