@@ -76,6 +76,28 @@ export interface UpdateCartItemRequest {
   quantity: number;
 }
 
+export interface OrderItem {
+  id: number;
+  product_id: number;
+  product_name: string;
+  product_sku?: string;
+  price: number;
+  quantity: number;
+  subtotal: number;
+}
+
+export interface OrderSummary {
+  id: number;
+  order_code: string;
+  user_id: number;
+  total_amount: number;
+  total_items: number;
+  shipping_address?: string;
+  status: string;
+  created_at: string;
+  items?: OrderItem[];
+}
+
 // ------------------------------------------------------------------------------
 // 3. TÀI LIỆU KỸ THUẬT (TECHNICAL DOCUMENTS)
 // ------------------------------------------------------------------------------
