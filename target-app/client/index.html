@@ -64,12 +64,15 @@
         <!-- Center Nav Links -->
         <nav class="hidden md:flex items-center gap-8 text-[14px] font-medium text-slate-600">
           <a class="text-slate-900 font-semibold relative after:absolute after:bottom-[-22px] after:left-0 after:right-0 after:h-[2px] after:bg-slate-900"
-            href="#">Trang chủ</a>
-          <a class="hover:text-slate-900 transition-colors" href="#product-grid">Vi điều khiển</a>
-          <a class="hover:text-slate-900 transition-colors" href="#product-grid">Cảm biến</a>
-          <a class="hover:text-slate-900 transition-colors" href="#product-grid">Module nguồn</a>
-          <a class="hover:text-slate-900 transition-colors flex items-center gap-1.5" href="#"
-            onclick="openLabDrawer(); return false;">
+            href="#" onclick="filterItems('all', null); return false;">Trang chủ</a>
+          <a class="hover:text-slate-900 transition-colors" href="#product-grid"
+            onclick="filterItems('vi-dieu-khien', null)">Vi điều khiển</a>
+          <a class="hover:text-slate-900 transition-colors" href="#product-grid"
+            onclick="filterItems('cam-bien', null)">Cảm biến</a>
+          <a class="hover:text-slate-900 transition-colors" href="#product-grid"
+            onclick="filterItems('module-nguon', null)">Module nguồn</a>
+          <a class="hover:text-slate-900 transition-colors flex items-center gap-1.5 cursor-pointer"
+            onclick="openDocumentsModal(); return false;">
             <span>Tài liệu kỹ thuật</span>
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
           </a>
@@ -79,23 +82,49 @@
           <!-- Sleek Search Input -->
           <div class="relative hidden sm:block w-48 lg:w-64">
             <input
+              id="search-input"
               class="w-full bg-slate-100/80 hover:bg-slate-100 focus:bg-white text-[13px] text-slate-900 placeholder:text-slate-600 pl-9 pr-3 py-2 rounded-full border border-transparent focus:border-slate-300 focus:outline-none transition-all"
-              placeholder="Tìm linh kiện..." type="text">
+              placeholder="Tìm linh kiện..." type="text"
+              oninput="handleSearchInput(this.value)">
             <span class="material-symbols-outlined text-slate-600 text-[18px] absolute left-3 top-2.5">search</span>
           </div>
           <!-- Shopping Cart Pill -->
-          <a class="flex items-center gap-2 py-2 px-3 rounded-full bg-slate-100 hover:bg-slate-200/80 text-slate-800 transition-colors text-[13px] font-medium"
-            href="#" onclick="showCartQuickToast(); return false;">
+          <a class="flex items-center gap-2 py-2 px-3 rounded-full bg-slate-100 hover:bg-slate-200/80 text-slate-800 transition-colors text-[13px] font-medium cursor-pointer"
+            href="#" onclick="openCartModal(); return false;">
             <span class="material-symbols-outlined text-[19px] text-slate-700">shopping_bag</span>
-            <span class="font-semibold text-slate-900" id="header-cart-count">2</span>
+            <span class="font-semibold text-slate-900" id="header-cart-count">0</span>
           </a>
-          <!-- Minimal Đăng nhập Button (triggers Modal) -->
-          <button
-            class="text-[13px] font-semibold text-slate-900 hover:text-white bg-white hover:bg-slate-900 border border-slate-300 hover:border-slate-900 px-4 py-2 rounded-full transition-all duration-150 shadow-xs flex items-center gap-1.5"
-            onclick="openAuthModal()">
-            <span class="material-symbols-outlined text-[17px]">person</span>
-            <span>Đăng nhập</span>
-          </button>
+          <!-- Auth Button & User Profile Dropdown -->
+          <div class="relative" id="auth-dropdown-wrapper">
+            <button
+              id="header-auth-btn"
+              class="text-[13px] font-semibold text-slate-900 hover:text-white bg-white hover:bg-slate-900 border border-slate-300 hover:border-slate-900 px-4 py-2 rounded-full transition-all duration-150 shadow-xs flex items-center gap-1.5 cursor-pointer"
+              onclick="toggleUserMenuOrOpenAuth()">
+              <span class="material-symbols-outlined text-[17px]">person</span>
+              <span>Đăng nhập</span>
+            </button>
+            <!-- User Dropdown Menu (When Logged In) -->
+            <div id="user-dropdown-menu" class="hidden absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-2 z-50 text-[13px] transition-all">
+              <div class="p-3 bg-slate-50 rounded-xl mb-1.5 border border-slate-100">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs" id="user-avatar-initials">U</div>
+                  <div class="truncate">
+                    <p class="font-semibold text-slate-900 leading-tight truncate" id="user-menu-fullname">User</p>
+                    <p class="text-[11px] text-slate-500 font-mono mt-0.5" id="user-menu-role">Role: user</p>
+                  </div>
+                </div>
+              </div>
+              <button onclick="openOrdersModal()" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-100 flex items-center gap-2.5 text-slate-700 transition-colors cursor-pointer">
+                <span class="material-symbols-outlined text-[18px] text-slate-500">receipt_long</span>
+                <span class="font-medium">Lịch sử đơn hàng</span>
+              </button>
+              <div class="border-t border-slate-100 my-1"></div>
+              <button onclick="handleLogout()" class="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-50 text-rose-600 flex items-center gap-2.5 transition-colors cursor-pointer">
+                <span class="material-symbols-outlined text-[18px]">logout</span>
+                <span class="font-medium">Đăng xuất</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -122,7 +151,7 @@
     <!-- Filter Pills & Sorting Ribbon -->
     <div
       class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 border-b border-slate-200/80 pb-5">
-      <!-- Category Filter Pills -->
+      <!-- Category Filter Pills (Dynamically loaded from GET /api/products/categories) -->
       <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0" id="filter-container">
         <button
           class="category-pill active-pill px-4 py-1.5 rounded-full text-[13px] font-medium bg-slate-900 text-white shadow-xs transition-all whitespace-nowrap"
@@ -131,17 +160,17 @@
         </button>
         <button
           class="category-pill px-4 py-1.5 rounded-full text-[13px] font-medium bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition-all whitespace-nowrap"
-          onclick="filterItems('mcu', this)">
+          onclick="filterItems('vi-dieu-khien', this)">
           Vi điều khiển (2)
         </button>
         <button
           class="category-pill px-4 py-1.5 rounded-full text-[13px] font-medium bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition-all whitespace-nowrap"
-          onclick="filterItems('sensor', this)">
+          onclick="filterItems('cam-bien', this)">
           Cảm biến (2)
         </button>
         <button
           class="category-pill px-4 py-1.5 rounded-full text-[13px] font-medium bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition-all whitespace-nowrap"
-          onclick="filterItems('power', this)">
+          onclick="filterItems('module-nguon', this)">
           Module nguồn (2)
         </button>
       </div>
@@ -150,325 +179,24 @@
         <span class="text-[12px] font-medium text-slate-600 uppercase tracking-wider">Sắp xếp:</span>
         <div class="relative">
           <select
-            class="appearance-none bg-white text-[13px] font-medium text-slate-800 border border-slate-200/90 rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer shadow-2xs">
-            <option>Phổ biến nhất</option>
-            <option>Giá: Thấp đến Cao</option>
-            <option>Giá: Cao đến Thấp</option>
-            <option>Mới cập nhật</option>
+            id="sort-select"
+            class="appearance-none bg-white text-[13px] font-medium text-slate-800 border border-slate-200/90 rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-slate-900 cursor-pointer shadow-2xs"
+            onchange="handleSortChange(this.value)">
+            <option value="">Phổ biến nhất</option>
+            <option value="price_asc">Giá: Thấp đến Cao</option>
+            <option value="price_desc">Giá: Cao đến Thấp</option>
           </select>
           <span
             class="material-symbols-outlined text-slate-600 text-[18px] absolute right-2 top-2 pointer-events-none">expand_more</span>
         </div>
       </div>
     </div>
-    <!-- Product Cards Grid (3 Columns, Apple/Adafruit Aesthetic) -->
+    <!-- Product Cards Grid (Dynamically rendered by app.js from GET /api/products) -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7" id="product-grid">
-      <!-- Product 1: Arduino Uno R4 WiFi -->
-      <article
-        class="product-item group bg-white rounded-2xl border border-slate-200/70 p-5 flex flex-col justify-between hover:shadow-xl hover:border-slate-300 transition-all duration-300"
-        data-cat="mcu">
-        <div>
-          <!-- Thumbnail Container -->
-          <div
-            class="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 mb-5 flex items-center justify-center">
-            <img alt="Arduino Uno R4 WiFi"
-              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuChuccybepULQ9tp5GLZODL-2QlIZmEw4dIMHHUqbJBuwl2vJ_dLRFTMzuVwpCYWVUG0xD34XJE-UrOh2-EqUv0zqYbXcKy2Cf5LyP2gFPXJpLa0DShLDdNzeqeC8MB3jeUzbDq5bBoRvUqrD5DFYnNZhq4fZ-zJNmD9lL7KJ8yITPj2t2AF20d3QilC6kxici_7gukoBTYIXYqf1b50xWn9ecgUAnPe9DMQlbiTD-yO34_kr2kI-j9">
-            <!-- Discreet Calm Stock Badge -->
-            <div
-              class="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md border border-slate-200/50 text-[11px] font-medium text-slate-700 shadow-2xs">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span>Sẵn hàng (48)</span>
-            </div>
-            <div
-              class="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-white/80 font-mono text-[10px] text-slate-500 font-semibold border border-slate-200/40">
-              MCU-ARD-R4
-            </div>
-          </div>
-          <!-- Product Details -->
-          <div class="space-y-2">
-            <span class="text-[12px] font-medium text-slate-600 block">Arduino SA Official</span>
-            <h3
-              class="text-[17px] font-semibold text-slate-900 group-hover:text-brand-600 transition-colors leading-snug">
-              Arduino Uno R4 WiFi
-            </h3>
-            <p class="text-[13px] text-slate-600 line-clamp-2 leading-relaxed">
-              Renesas RA4M1 32-bit ARM Cortex-M4 (48MHz) kèm module ESP32-S3 hỗ trợ WiFi 802.11 b/g/n &amp; Bluetooth LE
-              5.0.
-            </p>
-            <!-- Technical Tags -->
-            <div class="flex flex-wrap gap-1.5 pt-1.5">
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">Cortex-M4</span>
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">5V Logic</span>
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">WiFi / BLE</span>
-            </div>
-          </div>
-        </div>
-        <!-- Footer Card: Price & Add to Cart -->
-        <div class="pt-5 mt-5 border-t border-slate-100 flex items-center justify-between gap-3">
-          <div>
-            <span class="block text-[11px] text-slate-600 uppercase font-medium">Giá bán lẻ</span>
-            <span class="text-[18px] font-bold text-slate-900">320.000 ₫</span>
-          </div>
-          <button
-            class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white text-[13px] font-semibold transition-all shadow-2xs"
-            onclick="triggerCartAdd('Arduino Uno R4 WiFi', 320000)">
-            <span class="material-symbols-outlined text-[17px]">add_shopping_cart</span>
-            <span>Thêm giỏ</span>
-          </button>
-        </div>
-      </article>
-      <!-- Product 2: ESP32-WROOM-32D DevBoard -->
-      <article
-        class="product-item group bg-white rounded-2xl border border-slate-200/70 p-5 flex flex-col justify-between hover:shadow-xl hover:border-slate-300 transition-all duration-300"
-        data-cat="mcu">
-        <div>
-          <div
-            class="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 mb-5 flex items-center justify-center">
-            <img alt="ESP32-WROOM-32D DevBoard"
-              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDY1bC4I9h8H0jaKj6mc7bafN7-29X1mL1mdiAJpR9yX_bNUC8-uoiwn5kKqoDNCvqxtrU7o8pmrGmfVm31jjGZpCqZ66W1SBcSOr14lSo8rHeAg8Fv446VGW2rQ-DjjujUZL9_ygwspQeAarrtF5ZgN65VpqcOxac3XfBHvsYaHCEFM0-4CxbsaJHocNCVaZYObQg-hfuQ66L49yHbKyj155Fn2_Mz6CBmROtxKBsY2hf5-uk2ZEo4">
-            <div
-              class="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md border border-slate-200/50 text-[11px] font-medium text-slate-700 shadow-2xs">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span>Sẵn hàng (120)</span>
-            </div>
-            <div
-              class="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-white/80 font-mono text-[10px] text-slate-500 font-semibold border border-slate-200/40">
-              MCU-ESP-32D
-            </div>
-          </div>
-          <div class="space-y-2">
-            <span class="text-[12px] font-medium text-slate-600 block">Espressif Systems</span>
-            <h3
-              class="text-[17px] font-semibold text-slate-900 group-hover:text-brand-600 transition-colors leading-snug">
-              ESP32-WROOM-32D DevBoard
-            </h3>
-            <p class="text-[13px] text-slate-600 line-clamp-2 leading-relaxed">
-              Dual-core Xtensa 32-bit LX6 240MHz, 520KB SRAM, 4MB SPI Flash tích hợp, ăng-ten PCB trên bo tiện dụng.
-            </p>
-            <div class="flex flex-wrap gap-1.5 pt-1.5">
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">240MHz
-                Dual-Core</span>
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">4MB Flash</span>
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">NodeMCU 38P</span>
-            </div>
-          </div>
-        </div>
-        <div class="pt-5 mt-5 border-t border-slate-100 flex items-center justify-between gap-3">
-          <div>
-            <span class="block text-[11px] text-slate-600 uppercase font-medium">Giá bán lẻ</span>
-            <span class="text-[18px] font-bold text-slate-900">95.000 ₫</span>
-          </div>
-          <button
-            class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white text-[13px] font-semibold transition-all shadow-2xs"
-            onclick="triggerCartAdd('ESP32-WROOM-32D DevBoard', 95000)">
-            <span class="material-symbols-outlined text-[17px]">add_shopping_cart</span>
-            <span>Thêm giỏ</span>
-          </button>
-        </div>
-      </article>
-      <!-- Product 3: HC-SR04 Ultrasonic Distance Sensor -->
-      <article
-        class="product-item group bg-white rounded-2xl border border-slate-200/70 p-5 flex flex-col justify-between hover:shadow-xl hover:border-slate-300 transition-all duration-300"
-        data-cat="sensor">
-        <div>
-          <div
-            class="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 mb-5 flex items-center justify-center">
-            <img alt="Cảm biến siêu âm HC-SR04"
-              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5wasAV4ye6VnArPp0fKN4wqAalG9lCgZ4gWO6hzpYvITjhAxo0nWFVwTjKkdFzDPggm4qzlT-mH0gF56rfHs5trYd2RPtzdlvsD43Pwq4yuMx4hnVJRpufnlt6Xy3Ehy-2hnfE3iqCBbfYdxQy69XyVI4PD2x1Asn4G6C-zNL6t-w-NViCQP2F5MZiXZ5Yri5Y8OSfLvSnNxlpnmyfMwBrqMXHMSdmBB0bI7LIN6NfjFqIZvoAbRF">
-            <div
-              class="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md border border-slate-200/50 text-[11px] font-medium text-slate-700 shadow-2xs">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span>Sẵn hàng (250)</span>
-            </div>
-            <div
-              class="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-white/80 font-mono text-[10px] text-slate-500 font-semibold border border-slate-200/40">
-              SEN-HC-SR04
-            </div>
-          </div>
-          <div class="space-y-2">
-            <span class="text-[12px] font-medium text-slate-600 block">ElecRobo Sensor</span>
-            <h3
-              class="text-[17px] font-semibold text-slate-900 group-hover:text-brand-600 transition-colors leading-snug">
-              Cảm biến siêu âm HC-SR04
-            </h3>
-            <p class="text-[13px] text-slate-600 line-clamp-2 leading-relaxed">
-              Dải đo khoảng cách 2cm – 400cm, độ phân giải 0.3cm, góc đo 15 độ. Tương thích chuẩn 5V TTL cho Arduino,
-              STM32.
-            </p>
-            <div class="flex flex-wrap gap-1.5 pt-1.5">
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">2cm - 400cm</span>
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">5V DC / 15mA</span>
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">40kHz Sonar</span>
-            </div>
-          </div>
-        </div>
-        <div class="pt-5 mt-5 border-t border-slate-100 flex items-center justify-between gap-3">
-          <div>
-            <span class="block text-[11px] text-slate-600 uppercase font-medium">Giá bán lẻ</span>
-            <span class="text-[18px] font-bold text-slate-900">25.000 ₫</span>
-          </div>
-          <button
-            class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white text-[13px] font-semibold transition-all shadow-2xs"
-            onclick="triggerCartAdd('Cảm biến siêu âm HC-SR04', 25000)">
-            <span class="material-symbols-outlined text-[17px]">add_shopping_cart</span>
-            <span>Thêm giỏ</span>
-          </button>
-        </div>
-      </article>
-      <!-- Product 4: DC-DC Step-Down LM2596 -->
-      <article
-        class="product-item group bg-white rounded-2xl border border-slate-200/70 p-5 flex flex-col justify-between hover:shadow-xl hover:border-slate-300 transition-all duration-300"
-        data-cat="power">
-        <div>
-          <div
-            class="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 mb-5 flex items-center justify-center">
-            <img alt="Module Nguồn Hạ Áp LM2596"
-              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsL-DvxrSEwrqr8bmuyfINzqEg7lvNAXP5yj3RQEGlfjzLAQr20_du_6aZyGAHImOV5sEhSMdXntke4bZUTv-3XtWHl1NC-gUhCIuXtyymIU8ySmqWqpdBcV_ucSZpG1xHg35n22V3U4vBFZpVLuqJL9JW_yngRyAI4FCJhlv6ZBazq_yekr5GAQCGaNKwnbW0JChxrEKtLhKeigq11Pyss-pWjxckjVyYcx8M2-h8GdDy3KCoIgUf">
-            <div
-              class="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md border border-slate-200/50 text-[11px] font-medium text-slate-700 shadow-2xs">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span>Sẵn hàng (85)</span>
-            </div>
-            <div
-              class="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-white/80 font-mono text-[10px] text-slate-500 font-semibold border border-slate-200/40">
-              PWR-LM-2596
-            </div>
-          </div>
-          <div class="space-y-2">
-            <span class="text-[12px] font-medium text-slate-600 block">PowerTech Labs</span>
-            <h3
-              class="text-[17px] font-semibold text-slate-900 group-hover:text-brand-600 transition-colors leading-snug">
-              Module Nguồn Hạ Áp LM2596
-            </h3>
-            <p class="text-[13px] text-slate-600 line-clamp-2 leading-relaxed">
-              Điện áp vào 4V–40V DC, điện áp ra điều chỉnh 1.25V–37V DC. Dòng tải tối đa 3A, hiệu suất chuyển đổi lên
-              tới 92%.
-            </p>
-            <div class="flex flex-wrap gap-1.5 pt-1.5">
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">In: 4-40V</span>
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">Out:
-                1.25-37V</span>
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">Imax: 3A</span>
-            </div>
-          </div>
-        </div>
-        <div class="pt-5 mt-5 border-t border-slate-100 flex items-center justify-between gap-3">
-          <div>
-            <span class="block text-[11px] text-slate-600 uppercase font-medium">Giá bán lẻ</span>
-            <span class="text-[18px] font-bold text-slate-900">18.000 ₫</span>
-          </div>
-          <button
-            class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white text-[13px] font-semibold transition-all shadow-2xs"
-            onclick="triggerCartAdd('Module Nguồn Hạ Áp LM2596', 18000)">
-            <span class="material-symbols-outlined text-[17px]">add_shopping_cart</span>
-            <span>Thêm giỏ</span>
-          </button>
-        </div>
-      </article>
-      <!-- Product 5: DHT22 / AM2302 Sensor -->
-      <article
-        class="product-item group bg-white rounded-2xl border border-slate-200/70 p-5 flex flex-col justify-between hover:shadow-xl hover:border-slate-300 transition-all duration-300"
-        data-cat="sensor">
-        <div>
-          <div
-            class="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 mb-5 flex items-center justify-center">
-            <img alt="Cảm biến nhiệt ẩm DHT22"
-              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLhXO1pOPLztRCbbOiiKK3PbqQRwGaCRPb5TBXHhPbIZXd75Zk6erRiHRipxkqFIH2_K2V_ZoAheoZsm3QgwMKFBQM39BL8R_gW_NWcMc4IC9QbUxDhlnxvRqQCilZejwuZOO7UohZk8EOySnPYBLxbVAGHrbmNRNMn_Yhn_vCE3rMUP4RJE9sDeAnMsHzBybvkNUeOcBxczLClGmWOSj798as2ArCwWwA7JDzmtCvlrjHF2JvhIMv">
-            <div
-              class="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md border border-slate-200/50 text-[11px] font-medium text-slate-700 shadow-2xs">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span>Sẵn hàng (64)</span>
-            </div>
-            <div
-              class="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-white/80 font-mono text-[10px] text-slate-500 font-semibold border border-slate-200/40">
-              SEN-DHT-22
-            </div>
-          </div>
-          <div class="space-y-2">
-            <span class="text-[12px] font-medium text-slate-600 block">Aosong Electronics</span>
-            <h3
-              class="text-[17px] font-semibold text-slate-900 group-hover:text-brand-600 transition-colors leading-snug">
-              Cảm biến nhiệt ẩm DHT22 (AM2302)
-            </h3>
-            <p class="text-[13px] text-slate-600 line-clamp-2 leading-relaxed">
-              Độ chính xác cao: nhiệt độ -40°C đến 80°C (±0.5°C), độ ẩm 0-100% RH (±2% RH). Tín hiệu số Single-Bus
-              Digital.
-            </p>
-            <div class="flex flex-wrap gap-1.5 pt-1.5">
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">±0.5°C Acc</span>
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">0-100% RH</span>
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">3.3V - 6V</span>
-            </div>
-          </div>
-        </div>
-        <div class="pt-5 mt-5 border-t border-slate-100 flex items-center justify-between gap-3">
-          <div>
-            <span class="block text-[11px] text-slate-600 uppercase font-medium">Giá bán lẻ</span>
-            <span class="text-[18px] font-bold text-slate-900">68.000 ₫</span>
-          </div>
-          <button
-            class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white text-[13px] font-semibold transition-all shadow-2xs"
-            onclick="triggerCartAdd('Cảm biến nhiệt ẩm DHT22', 68000)">
-            <span class="material-symbols-outlined text-[17px]">add_shopping_cart</span>
-            <span>Thêm giỏ</span>
-          </button>
-        </div>
-      </article>
-      <!-- Product 6: 4-Channel 5V Relay Module -->
-      <article
-        class="product-item group bg-white rounded-2xl border border-slate-200/70 p-5 flex flex-col justify-between hover:shadow-xl hover:border-slate-300 transition-all duration-300"
-        data-cat="power">
-        <div>
-          <div
-            class="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 mb-5 flex items-center justify-center">
-            <img alt="Module Relay 4 Kênh 5V Cách Ly Opto"
-              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAlue1QWOPut50HJxfUSiJkK4z6gWj-5CC-ByJlhMV3tKEcjd10RVGOMNV98koiPdz_GC7-nP_gZ2gSkHLTnPOukdVjcmaLLhPMTs74yPJ-B-ZPpw7cXZADNVvAYHk5fqq5FBTj_Z3cp_2H36wc0ztOSCTXHf6r4WWwebDW3T3PO7o6fw-_WxrlblqRq_Gb-owG1DVoVptr06NOiKdbBs4xpWp0C90BDolb39LKK7RJ0Rt0443_6oZ6">
-            <div
-              class="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md border border-slate-200/50 text-[11px] font-medium text-slate-700 shadow-2xs">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span>Sẵn hàng (92)</span>
-            </div>
-            <div
-              class="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-white/80 font-mono text-[10px] text-slate-500 font-semibold border border-slate-200/40">
-              MOD-RLY-4CH
-            </div>
-          </div>
-          <div class="space-y-2">
-            <span class="text-[12px] font-medium text-slate-600 block">Songle Automation</span>
-            <h3
-              class="text-[17px] font-semibold text-slate-900 group-hover:text-brand-600 transition-colors leading-snug">
-              Module Relay 4 Kênh 5V Cách Ly Opto
-            </h3>
-            <p class="text-[13px] text-slate-600 line-clamp-2 leading-relaxed">
-              Đóng ngắt AC 250V 10A / DC 30V 10A. Cách ly quang Optocoupler chống nhiễu ngược bảo vệ vi điều khiển nhạy
-              cảm.
-            </p>
-            <div class="flex flex-wrap gap-1.5 pt-1.5">
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">4 Channels</span>
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">10A 250VAC</span>
-              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[11px]">Opto PC817</span>
-            </div>
-          </div>
-        </div>
-        <div class="pt-5 mt-5 border-t border-slate-100 flex items-center justify-between gap-3">
-          <div>
-            <span class="block text-[11px] text-slate-600 uppercase font-medium">Giá bán lẻ</span>
-            <span class="text-[18px] font-bold text-slate-900">42.000 ₫</span>
-          </div>
-          <button
-            class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white text-[13px] font-semibold transition-all shadow-2xs"
-            onclick="triggerCartAdd('Module Relay 4 Kênh 5V', 42000)">
-            <span class="material-symbols-outlined text-[17px]">add_shopping_cart</span>
-            <span>Thêm giỏ</span>
-          </button>
-        </div>
-      </article>
+      <!-- Loading Skeleton initially -->
+      <div class="col-span-full py-16 text-center text-slate-500 font-mono text-sm">
+        Đang nạp danh mục linh kiện từ Target Server...
+      </div>
     </div>
     <!-- Assurance Highlights -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-10 border-t border-slate-200/80 text-slate-600">
@@ -534,8 +262,8 @@
             Email</label>
           <div class="relative">
             <input
-              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-[14px] text-slate-900 placeholder:text-slate-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all"
-              id="modal-username" placeholder="name@domain.vn" required="" type="text" value="customer@electroshop.vn">
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-[14px] text-slate-900 placeholder:text-slate-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-mono"
+              id="modal-username" placeholder="admin hoặc customer@electroshop.vn" required="" type="text" value="admin">
             <span class="material-symbols-outlined text-slate-600 text-[18px] absolute right-3.5 top-3">person</span>
           </div>
         </div>
@@ -547,7 +275,7 @@
           <div class="relative">
             <input
               class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-[14px] text-slate-900 placeholder:text-slate-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all font-mono"
-              id="modal-password" placeholder="••••••••••••" required="" type="password" value="EmbeddedSecure2025!">
+              id="modal-password" placeholder="••••••••••••" required="" type="password" value="adminPassword2026!">
             <span class="material-symbols-outlined text-slate-600 text-[18px] absolute right-3.5 top-3">key</span>
           </div>
         </div>
@@ -557,7 +285,7 @@
               type="checkbox">
             <span class="text-[13px] text-slate-600">Ghi nhớ đăng nhập</span>
           </label>
-          <span class="text-[11px] font-mono text-slate-600">Cookie Plaintext</span>
+          <span class="text-[11px] font-mono text-emerald-600 font-semibold">JWT 30 Ngày</span>
         </div>
         <div class="pt-2 space-y-2">
           <button
@@ -567,19 +295,140 @@
             <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
           </button>
           <button
-            class="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[12px] font-mono font-medium transition-all text-center"
+            class="w-full py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[12px] font-mono font-medium transition-all text-center flex items-center justify-center gap-1.5"
             onclick="prefillSqlPayload()" type="button">
-            🧪 Thử nghiệm SQLi Auth Bypass: ' OR 1=1 --
+            <span>🧪 Điền payload SQLi Bypass: admin' --</span>
           </button>
         </div>
       </form>
-      <div class="mt-6 pt-5 border-t border-slate-100 text-center text-[12px] text-slate-600">
-        Chưa có tài khoản kỹ thuật? <a class="font-semibold text-slate-900 hover:underline" href="#">Đăng ký mới</a>
+      <div class="mt-5 pt-4 border-t border-slate-100">
+        <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Tài khoản thử nghiệm nhanh:</p>
+        <div class="grid grid-cols-2 gap-2 text-[12px]">
+          <button type="button" onclick="prefillUser('admin', 'adminPassword2026!')" class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-left transition-colors cursor-pointer">
+            <span class="font-bold text-slate-800 block">👑 Admin</span>
+            <span class="text-[10px] text-slate-500 font-mono">adminPassword2026!</span>
+          </button>
+          <button type="button" onclick="prefillUser('alice', 'aliceSecretPassword')" class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-left transition-colors cursor-pointer">
+            <span class="font-bold text-slate-800 block">👤 Alice</span>
+            <span class="text-[10px] text-slate-500 font-mono">aliceSecretPassword</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
+
   <!-- ==================================================== -->
-  <!-- 5. DISCREET CYBER LAB CONTROL (FAB & DRAWER) -->
+  <!-- 5. SHOPPING CART SLIDE-OVER DRAWER -->
+  <!-- ==================================================== -->
+  <div
+    class="fixed inset-0 z-50 bg-slate-950/30 backdrop-blur-xs opacity-0 pointer-events-none transition-opacity duration-300"
+    id="cart-modal" onclick="closeCartModal()">
+    <div
+      class="fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-white text-slate-900 shadow-2xl border-l border-slate-200 transform translate-x-full transition-transform duration-300 ease-out flex flex-col justify-between"
+      id="cart-modal-card" onclick="event.stopPropagation()">
+      <!-- Cart Header -->
+      <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <span class="material-symbols-outlined text-slate-900 text-[22px]">shopping_bag</span>
+          <h3 class="text-[17px] font-bold text-slate-900 tracking-tight">Giỏ Hàng ElectroShop</h3>
+        </div>
+        <button
+          class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
+          onclick="closeCartModal()">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+      <!-- Cart Items List (Dynamic) -->
+      <div class="p-6 overflow-y-auto space-y-3 flex-1" id="cart-items-container">
+        <!-- Injected by app.js -->
+      </div>
+      <!-- Cart Footer & Checkout -->
+      <div class="p-6 border-t border-slate-100 bg-slate-50 space-y-3">
+        <div class="flex items-center justify-between text-[14px]">
+          <span class="text-slate-500">Tổng thanh toán:</span>
+          <span class="text-xl font-bold text-slate-900" id="cart-total-price">0 ₫</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button
+            class="py-2.5 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-[13px] font-medium transition-all cursor-pointer"
+            onclick="clearEntireCart()">
+            Xóa sạch giỏ
+          </button>
+          <button
+            class="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[13px] font-semibold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+            onclick="handleCheckout()">
+            <span class="material-symbols-outlined text-[16px]">lock</span>
+            <span>Thanh toán ngay</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================== -->
+  <!-- 6. TECHNICAL DOCUMENTS MODAL -->
+  <!-- ==================================================== -->
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-200"
+    id="documents-modal">
+    <div
+      class="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-100 p-7 sm:p-8 transform scale-95 transition-transform duration-200"
+      id="documents-modal-card">
+      <button
+        class="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors"
+        onclick="closeDocumentsModal()">
+        <span class="material-symbols-outlined text-[18px]">close</span>
+      </button>
+      <div class="space-y-1 mb-5">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-slate-900 text-[24px]">folder_open</span>
+          <h3 class="text-xl font-bold text-slate-900">Tài Liệu Kỹ Thuật &amp; Datasheets</h3>
+        </div>
+        <p class="text-[13px] text-slate-500">Tải sơ đồ chân vi điều khiển, mạch nguồn và tài liệu nghiên cứu R&amp;D</p>
+      </div>
+      <div class="space-y-2.5 max-h-[380px] overflow-y-auto pr-1" id="documents-list-container">
+        <!-- Populated dynamically by app.js -->
+      </div>
+      <div class="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+        <span>Endpoint: /api/documents/:id/download</span>
+        <button class="text-slate-700 hover:text-slate-900 underline cursor-pointer" onclick="closeDocumentsModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================== -->
+  <!-- 7. ORDERS HISTORY MODAL (JWT AUTH PROTECTED) -->
+  <!-- ==================================================== -->
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-200"
+    id="orders-modal">
+    <div
+      class="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-100 p-7 sm:p-8 transform scale-95 transition-transform duration-200"
+      id="orders-modal-card">
+      <button
+        class="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+        onclick="closeOrdersModal()">
+        <span class="material-symbols-outlined text-[18px]">close</span>
+      </button>
+      <div class="space-y-1 mb-5">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-slate-900 text-[24px]">receipt_long</span>
+          <h3 class="text-xl font-bold text-slate-900">Lịch Sử Đơn Hàng Đã Đặt</h3>
+        </div>
+        <p class="text-[13px] text-slate-500">Các hóa đơn linh kiện đã thanh toán thành công (Bảo vệ bởi JWT Token)</p>
+      </div>
+      <div class="space-y-3 max-h-[380px] overflow-y-auto pr-1" id="orders-list-container">
+        <!-- Injected dynamically by app.js -->
+      </div>
+      <div class="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+        <span>Endpoint: /api/cart/orders [JWT Protected]</span>
+        <button class="text-slate-700 hover:text-slate-900 underline cursor-pointer" onclick="closeOrdersModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================== -->
+  <!-- 7. CYBER LAB CONTROL (FAB & DRAWER) -->
   <!-- ==================================================== -->
   <!-- Floating Action Button (FAB) -->
   <aside aria-label="Lab Controls" class="fixed bottom-6 right-6 z-40">
@@ -595,13 +444,15 @@
         <span>Lab Control</span>
       </span>
       <span class="bg-slate-800 text-slate-300 text-[10px] font-mono px-2 py-0.5 rounded-full border border-slate-700"
-        id="fab-state-badge">200 OK</span>
+        id="fab-state-badge">L3: OFF</span>
     </button>
   </aside>
+
   <!-- Slide-Over Drawer Backdrop -->
   <div
     class="fixed inset-0 z-50 bg-slate-950/30 backdrop-blur-xs opacity-0 pointer-events-none transition-opacity duration-300"
     id="drawer-backdrop" onclick="closeLabDrawer()"></div>
+
   <!-- Slide-Over Drawer Sheet -->
   <aside aria-label="Bảng điều khiển Lab Mạng"
     class="fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-slate-900 text-slate-200 shadow-2xl border-l border-slate-800 transform translate-x-full transition-transform duration-300 ease-out flex flex-col justify-between"
@@ -615,7 +466,7 @@
         </div>
         <div>
           <h3 class="text-[15px] font-semibold text-white tracking-tight">Cyber Lab Testbed Control</h3>
-          <p class="text-[11px] font-mono text-slate-600">br-app-net // eth0 telemetry</p>
+          <p class="text-[11px] font-mono text-slate-500">br-app-net // eth0 telemetry</p>
         </div>
       </div>
       <button
@@ -626,93 +477,103 @@
     </div>
     <!-- Drawer Content Scrollable -->
     <div class="p-6 overflow-y-auto space-y-6 flex-1 text-[13px]">
-      <!-- Target Server Specs -->
+      <!-- Target Server Specs (Dynamic from /api/system/health) -->
       <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 font-mono space-y-2">
-        <div class="flex items-center justify-between text-[11px] text-slate-600">
+        <div class="flex items-center justify-between text-[11px] text-slate-500">
           <span>TARGET SERVER NODE</span>
-          <span class="text-emerald-400 flex items-center gap-1">
+          <span id="drawer-node-status" class="text-emerald-400 flex items-center gap-1">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Online
           </span>
         </div>
-        <p class="text-white font-semibold text-[13px]">http://172.20.0.20:8080</p>
-        <div class="text-[11px] text-slate-600 pt-1 border-t border-slate-800/80 flex items-center justify-between">
-          <span>Protocol: HTTP/1.1 Plaintext</span>
-          <span>RTT: 1.1ms</span>
+        <p class="text-white font-semibold text-[13px]" id="drawer-api-base">http://localhost:8000/api</p>
+        <div class="text-[11px] text-slate-500 pt-1 border-t border-slate-800/80 flex items-center justify-between">
+          <span>Protocol: HTTP/1.1 REST</span>
+          <span id="drawer-rtt-ms">RTT: 1ms</span>
         </div>
       </div>
-      <!-- Lab Scenario State Injection -->
+
+      <!-- L3 DEFENSE TOGGLES (Real backend integration) -->
       <div class="space-y-3">
-        <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-600">Tiêm trạng thái mạng
-          (Simulation States):</label>
-        <div class="grid grid-cols-1 gap-2">
-          <!-- Button 1: Normal -->
+        <div class="flex items-center justify-between">
+          <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400">KHIÊN BẢO VỆ TẦNG L3 (DEFENSE-IN-DEPTH):</label>
+        </div>
+        <button
+          id="defense-master-toggle-btn"
+          class="w-full p-3 rounded-xl border flex items-center justify-between transition-all bg-rose-950/40 border-rose-500/50 text-rose-300 hover:bg-rose-950/60"
+          onclick="toggleMasterDefense()">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
+            <span class="font-semibold text-[13px]">KHIÊN L3: ĐANG TẮT (VULNERABLE)</span>
+          </div>
+          <span class="material-symbols-outlined text-[18px]">shield_with_heart</span>
+        </button>
+        <!-- Sub-shield indicators -->
+        <div class="flex flex-wrap gap-2 pt-1">
+          <div id="defense-flag-sqli" class="px-2.5 py-1 rounded-lg font-mono text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer bg-slate-800 text-slate-400 border border-slate-700" onclick="toggleSubShield('anti_sqli')">
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Anti-SQLi: OFF
+          </div>
+          <div id="defense-flag-rate" class="px-2.5 py-1 rounded-lg font-mono text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer bg-slate-800 text-slate-400 border border-slate-700" onclick="toggleSubShield('rate_limit')">
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Rate Limit: OFF
+          </div>
+          <div id="defense-flag-sanit" class="px-2.5 py-1 rounded-lg font-mono text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer bg-slate-800 text-slate-400 border border-slate-700" onclick="toggleSubShield('input_sanitization')">
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Sanitize: OFF
+          </div>
+        </div>
+      </div>
+
+      <!-- REAL ATTACK TEST SCENARIOS -->
+      <div class="space-y-2.5">
+        <label class="block text-[11px] font-mono uppercase tracking-wider text-slate-400">KÍCH HOẠT KỊCH BẢN THỰC NGHIỆM:</label>
+        <div class="grid grid-cols-2 gap-2">
           <button
-            class="lab-toggle-btn w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all bg-emerald-950/30 border-emerald-500/40 text-emerald-300"
-            id="state-btn-normal" onclick="setLabState('normal')">
-            <div>
-              <div class="font-semibold font-mono text-[13px] flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span>200 OK (Bình thường)</span>
-              </div>
-              <p class="text-[11px] text-slate-600 mt-0.5">HTTP/1.1 thông suốt, không có gói tin rớt.</p>
+            class="p-2.5 rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-950/40 text-slate-300 text-left hover:bg-slate-800/50 transition-all font-mono text-xs"
+            onclick="runAttackScenario('sqli')">
+            <div class="font-semibold text-rose-300 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[15px]">database</span>
+              <span>1. Test SQLi</span>
             </div>
-            <span class="material-symbols-outlined text-[18px] text-emerald-400">check_circle</span>
+            <p class="text-[10px] text-slate-500 mt-0.5">Bypass login payload</p>
           </button>
-          <!-- Button 2: SYN Flood -->
           <button
-            class="lab-toggle-btn w-full p-3 rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-950/40 text-slate-300 text-left flex items-center justify-between transition-all"
-            id="state-btn-syn" onclick="setLabState('syn')">
-            <div>
-              <div class="font-semibold font-mono text-[13px] flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-rose-400"></span>
-                <span>SYN Flood (504 Timeout)</span>
-              </div>
-              <p class="text-[11px] text-slate-600 mt-0.5">Nghẽn socket TCP backlog (1024/1024).</p>
+            class="p-2.5 rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-950/40 text-slate-300 text-left hover:bg-slate-800/50 transition-all font-mono text-xs"
+            onclick="runAttackScenario('dos')">
+            <div class="font-semibold text-amber-300 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[15px]">bolt</span>
+              <span>2. Test DoS</span>
             </div>
-            <span class="material-symbols-outlined text-[18px] text-slate-600">error</span>
+            <p class="text-[10px] text-slate-500 mt-0.5">Bắn 15 request CPU nặng</p>
           </button>
-          <!-- Button 3: TCP RST -->
           <button
-            class="lab-toggle-btn w-full p-3 rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-950/40 text-slate-300 text-left flex items-center justify-between transition-all"
-            id="state-btn-rst" onclick="setLabState('rst')">
-            <div>
-              <div class="font-semibold font-mono text-[13px] flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                <span>TCP RST Injection</span>
-              </div>
-              <p class="text-[11px] text-slate-600 mt-0.5">Giả mạo cờ RST ép đóng kết nối ngay lập tức.</p>
+            class="p-2.5 rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-950/40 text-slate-300 text-left hover:bg-slate-800/50 transition-all font-mono text-xs"
+            onclick="runAttackScenario('path_traversal')">
+            <div class="font-semibold text-cyan-300 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[15px]">folder_special</span>
+              <span>3. Traversal</span>
             </div>
-            <span class="material-symbols-outlined text-[18px] text-slate-600">link_off</span>
+            <p class="text-[10px] text-slate-500 mt-0.5">Đọc lậu /etc/passwd</p>
           </button>
-          <!-- Button 4: ARP Spoof -->
           <button
-            class="lab-toggle-btn w-full p-3 rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-950/40 text-slate-300 text-left flex items-center justify-between transition-all"
-            id="state-btn-arp" onclick="setLabState('arp')">
-            <div>
-              <div class="font-semibold font-mono text-[13px] flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-violet-400"></span>
-                <span>ARP Spoofing Active</span>
-              </div>
-              <p class="text-[11px] text-slate-600 mt-0.5">Man-in-the-Middle đọc trộm gói Plaintext.</p>
+            class="p-2.5 rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-950/40 text-slate-300 text-left hover:bg-slate-800/50 transition-all font-mono text-xs"
+            onclick="runAttackScenario('blueprint')">
+            <div class="font-semibold text-violet-300 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[15px]">file_open</span>
+              <span>4. Blueprint</span>
             </div>
-            <span class="material-symbols-outlined text-[18px] text-slate-600">radar</span>
+            <p class="text-[10px] text-slate-500 mt-0.5">Rò rỉ tài liệu tuyệt mật</p>
           </button>
         </div>
       </div>
-      <!-- Live Packet Inspector Log -->
+
+      <!-- Live Packet Inspector Wire Log -->
       <div class="space-y-2">
-        <div class="flex items-center justify-between text-[11px] font-mono text-slate-600">
+        <div class="flex items-center justify-between text-[11px] font-mono text-slate-500">
           <span>LIVE HTTP WIRE LOG</span>
-          <span class="text-slate-500">Wireshark: tcp.port == 8080</span>
+          <span class="text-emerald-400">REST API Telemetry</span>
         </div>
         <div
-          class="bg-black/70 p-3.5 rounded-xl border border-slate-800 font-mono text-[11px] leading-relaxed text-slate-300 space-y-1"
+          class="bg-black/80 p-3.5 rounded-xl border border-slate-800 font-mono text-[11px] leading-relaxed text-slate-300 space-y-1 max-h-56 overflow-y-auto"
           id="drawer-wire-box">
-          <p class="text-emerald-400">&gt; GET /api/v1/products HTTP/1.1</p>
-          <p class="text-slate-500">Host: 172.20.0.20:8080</p>
-          <p class="text-slate-500">Status: 200 OK (Payload: 6 records, RTT: 1.1ms)</p>
-          <p class="text-slate-600 text-[10px] mt-1 pt-1 border-t border-slate-800">Ready for POST /api/v1/auth/login
-            sniff demonstration.</p>
+          <p class="text-emerald-400">&gt; Target Server API ready at http://localhost:8000/api</p>
         </div>
       </div>
     </div>
@@ -723,8 +584,9 @@
       <button class="text-slate-300 hover:text-white underline" onclick="closeLabDrawer()">Đóng bảng</button>
     </div>
   </aside>
+
   <!-- ==================================================== -->
-  <!-- 6. CLEAN & QUIET FOOTER -->
+  <!-- 8. CLEAN & QUIET FOOTER -->
   <!-- ==================================================== -->
   <footer class="mt-auto border-t border-slate-200/80 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -746,13 +608,10 @@
         <div class="space-y-2.5 text-[13px]">
           <h5 class="font-semibold text-slate-900">Danh Mục Sản Phẩm</h5>
           <ul class="space-y-1.5 text-slate-600">
-            <li><a class="hover:text-slate-900 transition-colors" href="#product-grid">Vi điều khiển &amp; Bo mạch</a>
-            </li>
-            <li><a class="hover:text-slate-900 transition-colors" href="#product-grid">Cảm biến nhiệt độ, khoảng
-                cách</a></li>
-            <li><a class="hover:text-slate-900 transition-colors" href="#product-grid">Mạch hạ áp &amp; Module nguồn</a>
-            </li>
-            <li><a class="hover:text-slate-900 transition-colors" href="#product-grid">Module Relay bảo vệ</a></li>
+            <li><a class="hover:text-slate-900 transition-colors" href="#product-grid" onclick="filterItems('vi-dieu-khien', null)">Vi điều khiển &amp; Bo mạch</a></li>
+            <li><a class="hover:text-slate-900 transition-colors" href="#product-grid" onclick="filterItems('cam-bien', null)">Cảm biến nhiệt độ, khoảng cách</a></li>
+            <li><a class="hover:text-slate-900 transition-colors" href="#product-grid" onclick="filterItems('module-nguon', null)">Mạch hạ áp &amp; Module nguồn</a></li>
+            <li><a class="hover:text-slate-900 transition-colors" href="#" onclick="openDocumentsModal(); return false;">Datasheets Kỹ thuật</a></li>
           </ul>
         </div>
         <!-- Policies & Service -->
@@ -780,12 +639,12 @@
         <div class="flex items-center gap-6">
           <a class="hover:text-slate-900 transition-colors" href="#">Bảo mật thông tin</a>
           <a class="hover:text-slate-900 transition-colors" href="#">Điều khoản dịch vụ</a>
-          <a class="text-brand-600 hover:text-brand-700 font-medium" href="#"
-            onclick="openLabDrawer(); return false;">Lab Testbed Specs</a>
+          <a class="text-brand-600 hover:text-brand-700 font-medium cursor-pointer" onclick="openLabDrawer(); return false;">Lab Testbed Specs</a>
         </div>
       </div>
     </div>
   </footer>
+
   <!-- Quick Floating Notification Toast -->
   <div
     class="fixed top-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 transform -translate-y-20 opacity-0 pointer-events-none transition-all duration-300"
@@ -794,13 +653,12 @@
       <span class="material-symbols-outlined text-[18px]">check</span>
     </div>
     <div>
-      <p class="text-[13px] font-semibold text-white" id="toast-title">Đã thêm vào giỏ</p>
-      <p class="text-[11px] text-slate-300" id="toast-subtitle">Arduino Uno R4 WiFi (x1)</p>
+      <p class="text-[13px] font-semibold text-white" id="toast-title">Thông báo</p>
+      <p class="text-[11px] text-slate-300" id="toast-subtitle">Mô tả thông báo</p>
     </div>
   </div>
-  <!-- ==================================================== -->
+
   <!-- JAVASCRIPT CONTROLLERS -->
-  <!-- ==================================================== -->
   <script src="app.js"></script>
 </body>
 
