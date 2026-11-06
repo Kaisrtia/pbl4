@@ -9,7 +9,8 @@
 const state = {
   logs: [],
   maxLogs: 300,
-  defenseL3Active: false,
+  defenseL3Active: null,
+  attackEvents: [],
   autoScroll: true,
   filterTag: 'ALL',
   searchQuery: '',
@@ -23,6 +24,7 @@ const state = {
 // 1. INITIALIZATION & SOCKET.IO SETUP
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
+  updateDefenseUI(null);
   initSocket();
   initCanvas();
   initEventListeners();
@@ -46,6 +48,7 @@ function initSocket() {
   state.socket.on('disconnect', () => {
     led.className = 'pulse-led disconnected';
     statusText.textContent = 'DISCONNECTED';
+    updateDefenseUI(null);
     document.getElementById('rtt-value').textContent = '-- ms';
   });
 
@@ -56,8 +59,12 @@ function initSocket() {
       renderTable();
       updateBufferCount();
     }
-    if (typeof data.defense_l3_state === 'boolean') {
-      updateDefenseUI(data.defense_l3_state);
+    updateDefenseUI(data.defense_l3_state);
+    state.attackEvents = data.attack_events || [];
+    renderAttackEvents();
+    for (const [node, ip] of Object.entries(data.nodes || {})) {
+      const element = document.querySelector(`#node-${node === 'target' ? 'server' : node === 'attacker' ? 'hacker' : node} .node-ip`);
+      if (element) element.textContent = ip;
     }
     if (data.metrics) {
       updateMetricsUI(data.metrics);
@@ -70,7 +77,7 @@ function initSocket() {
     handleIncomingTelemetry(log);
 
     if (metrics) updateMetricsUI(metrics);
-    if (typeof defense_l3_state === 'boolean') updateDefenseUI(defense_l3_state);
+    updateDefenseUI(defense_l3_state);
   });
 
   // Nhận sự kiện đồng bộ khi khiên phòng thủ thay đổi
@@ -78,9 +85,20 @@ function initSocket() {
     updateDefenseUI(payload.defense_l3_state);
   });
 
+  state.socket.on('ATTACK_EVENT', (event) => {
+    if (!state.attackEvents.some(item => item.event_id === event.event_id)) state.attackEvents.push(event);
+    state.attackEvents = state.attackEvents.slice(-300);
+    renderAttackEvents();
+  });
+  state.socket.on('DEFENSE_ERROR', payload => {
+    document.getElementById('defense-error').textContent = payload.message;
+  });
+
   // Nhận sự kiện xóa rỗng bộ đệm
   state.socket.on('GOD_VIEW_RESET', () => {
     state.logs = [];
+    state.attackEvents = [];
+    renderAttackEvents();
     renderTable();
     updateBufferCount();
     clearParticles();
@@ -158,6 +176,17 @@ function updateDefenseUI(isActive) {
   const shieldBadge = document.getElementById('shield-badge-indicator');
   const btnText = document.getElementById('defense-btn-text');
 
+  if (typeof isActive !== 'boolean') {
+    pill.textContent = 'UNKNOWN';
+    pill.className = 'pill-inactive';
+    btn.className = 'cyber-btn btn-defense-toggle';
+    btnText.textContent = 'CHECK TARGET STATE';
+    shieldAura.classList.add('inactive');
+    shieldBadge.textContent = 'SHIELD: UNKNOWN';
+    shieldBadge.className = 'badge badge-shield inactive';
+    return;
+  }
+  document.getElementById('defense-error').textContent = '';
   if (isActive) {
     pill.textContent = 'ACTIVE';
     pill.className = 'pill-active';
@@ -553,13 +582,13 @@ function createTableRow(log) {
 
   tr.innerHTML = `
     <td>${timeStr}</td>
-    <td><span class="method-badge method-${log.method}">${log.method}</span></td>
-    <td title="${log.endpoint}"><strong>${log.endpoint}</strong></td>
-    <td><span class="status-badge ${statusClass}">${log.status_code}</span></td>
-    <td>${log.response_time} ms</td>
-    <td><code>${log.client_ip}</code></td>
-    <td><span class="tag-badge tag-${tag}">${tag}</span></td>
-    <td>${log.defense_action || (state.defenseL3Active ? 'sanitized' : 'allowed')}</td>
+    <td><span class="method-badge method-${escapeHtml(log.method)}">${escapeHtml(log.method)}</span></td>
+    <td title="${escapeHtml(log.endpoint)}"><strong>${escapeHtml(log.endpoint)}</strong></td>
+    <td><span class="status-badge ${statusClass}">${escapeHtml(log.status_code)}</span></td>
+    <td>${escapeHtml(log.response_time)} ms</td>
+    <td><code>${escapeHtml(log.client_ip)}</code></td>
+    <td><span class="tag-badge tag-${escapeHtml(tag)}">${escapeHtml(tag)}</span></td>
+    <td>${escapeHtml(log.defense_action || 'unknown')}</td>
     <td title="${escapeHtml(payloadStr)}">${truncate(escapeHtml(payloadStr), 25)}</td>
   `;
 
@@ -652,15 +681,41 @@ function initEventListeners() {
 }
 
 async function toggleDefense() {
+  const button = document.getElementById('btn-toggle-defense');
+  button.disabled = true;
   try {
-    const res = await fetch('/api/defense/toggle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+    const unknown = typeof state.defenseL3Active !== 'boolean';
+    const res = await fetch(unknown ? '/api/defense/status' : '/api/defense/toggle', unknown ? {} : {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: !state.defenseL3Active }),
+    });
     const data = await res.json();
-    if (typeof data.defense_l3_app === 'boolean') {
-      updateDefenseUI(data.defense_l3_app);
-    }
-  } catch (e) {
-    // Dự phòng qua socket nếu HTTP lỗi
-    if (state.socket) state.socket.emit('TOGGLE_DEFENSE');
+    if (!res.ok || typeof data.defense_l3_app !== 'boolean') throw new Error(data.message || 'Target chưa xác nhận trạng thái.');
+    updateDefenseUI(data.defense_l3_app);
+  } catch (error) {
+    updateDefenseUI(null);
+    document.getElementById('defense-error').textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function renderAttackEvents() {
+  const container = document.getElementById('attack-events');
+  container.replaceChildren();
+  if (!state.attackEvents.length) {
+    container.textContent = 'Chưa nhận sự kiện Attacker. Chạy kịch bản từ Attacker Lab để xem dữ liệu thật.';
+    return;
+  }
+  for (const event of state.attackEvents.slice(-50).reverse()) {
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    const step = event.payload.state || event.payload.stage || event.payload.type || event.event_type;
+    summary.textContent = `${event.timestamp} | ${event.scenario} | ${step} | run ${event.run_id}`;
+    const evidence = document.createElement('pre');
+    evidence.textContent = JSON.stringify(event, null, 2);
+    details.append(summary, evidence);
+    container.append(details);
   }
 }
 
@@ -736,6 +791,8 @@ async function simulateTraffic(type) {
   }
 
   if (logPayload) {
+    logPayload.metadata = { source: 'demo', synthetic: true };
+    logPayload.endpoint = '[DEMO] ' + logPayload.endpoint;
     try {
       await fetch('/api/telemetry', {
         method: 'POST',
@@ -756,6 +813,5 @@ function truncate(str, max) {
 }
 
 function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

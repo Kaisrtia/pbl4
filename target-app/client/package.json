@@ -1,0 +1,13 @@
+{
+  "name": "electroshop-client",
+  "private": true,
+  "scripts": {
+    "build": "tailwindcss -i ./tailwind.css -o ./assets/ui.css --minify && node build-assets.mjs"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17",
+    "@tailwindcss/forms": "0.5.10",
+    "@tailwindcss/container-queries": "0.1.1",
+    "@fontsource/material-symbols-outlined": "5.3.9"
+  }
+}

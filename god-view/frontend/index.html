@@ -149,9 +149,10 @@
             </div>
           </div>
 
+          <p id="defense-error" role="status" aria-live="polite"></p>
           <!-- TCP Socket Meters -->
           <div class="sockets-box">
-            <div class="box-title">TCP SOCKET CONNECTIONS</div>
+            <div class="box-title">TCP METRICS · SIMULATED</div>
             <div class="socket-grid">
               <div class="socket-metric">
                 <div class="metric-top">
@@ -187,7 +188,7 @@
 
           <!-- Quick Test Traffic Generator (For Easy Live Demo) -->
           <div class="demo-tools-box">
-            <div class="box-title">QUICK TEST TRAFFIC (DEMO)</div>
+            <div class="box-title">SYNTHETIC LOGS · NO TARGET REQUEST</div>
             <div class="demo-btn-group">
               <button id="btn-demo-ping" class="btn-micro btn-micro-green">Ping Check</button>
               <button id="btn-demo-user" class="btn-micro btn-micro-cyan">Normal Login</button>
@@ -204,7 +205,7 @@
     <section class="card packet-stream-card">
       <div class="card-header">
         <div class="card-title">
-          <span class="neon-icon">📡</span> REAL-TIME PACKET CAPTURE & TELEMETRY LOGS
+          <span class="neon-icon">📡</span> HTTP TELEMETRY LOGS
           <span id="table-record-count" class="badge badge-normal">0 entries</span>
         </div>
 
@@ -259,6 +260,10 @@
       </div>
     </section>
 
+    <section class="card attack-events-card">
+      <div class="card-header"><div class="card-title">ATTACKER · REAL RUN EVENTS</div></div>
+      <div id="attack-events" aria-live="polite">Chưa nhận sự kiện Attacker.</div>
+    </section>
   </main>
 
   <!-- Modal for inspecting full telemetry JSON payload -->

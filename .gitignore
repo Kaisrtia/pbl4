@@ -62,3 +62,9 @@ Thumbs.db
 # Attacker runtime evidence and local SSH fixtures
 attacker/.data/
 attacker/tests/.runtime/
+integration/.artifacts/
+
+# ElectroShop reproducible frontend assets
+target-app/client/assets/ui.css
+target-app/client/assets/icons.woff2
+target-app/client/assets/icons-LICENSE.txt

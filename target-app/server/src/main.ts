@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import fs from 'fs';
 import path from 'path';
@@ -6,7 +7,8 @@ import { AppModule } from './app.module';
 import { envConfig } from './config/env.config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.useStaticAssets(path.resolve(process.env.TARGET_CLIENT_DIR || '../client'));
 
   // 1. Cấu hình CORS từ biến môi trường (mặc định '*' hoặc danh sách domain phân tách bằng dấu phẩy)
   const corsOrigin = envConfig.corsOrigin.includes(',')

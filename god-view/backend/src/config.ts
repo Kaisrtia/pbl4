@@ -2,11 +2,11 @@ import path from 'path';
 import dotenv from 'dotenv';
 
 // Đọc file .env từ thư mục gốc hoặc local
-const rootEnvPath = path.resolve(__dirname, '../../../../.env');
-const localEnvPath = path.resolve(__dirname, '../../.env');
+const rootEnvPath = path.resolve(process.cwd(), '../../.env');
+const localEnvPath = path.resolve(process.cwd(), '.env');
 
-dotenv.config({ path: rootEnvPath });
 dotenv.config({ path: localEnvPath });
+dotenv.config({ path: rootEnvPath });
 
 export const config = {
   // Cổng server God-View (ưu tiên cổng 4000 theo yêu cầu)
@@ -21,5 +21,11 @@ export const config = {
   maxBufferSize: 300,
 
   // Đường dẫn tới thư mục frontend tĩnh
-  clientDir: path.resolve(__dirname, '../../frontend'),
+  clientDir: process.env.GODVIEW_FRONTEND_DIR || path.resolve(process.cwd(), '../frontend'),
+  attackSchema: process.env.ATTACK_EVENT_SCHEMA || path.resolve(process.cwd(), '../../shared/schemas/attacker-event.schema.json'),
+  nodes: {
+    client: process.env.CLIENT_IP || '172.20.0.10',
+    target: process.env.SERVER_IP || '172.20.0.20',
+    attacker: process.env.HACKER_IP || '172.20.0.66',
+  },
 };

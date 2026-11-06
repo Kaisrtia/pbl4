@@ -1,6 +1,6 @@
 # Kiểm chứng attacker — 29/10/2026
 
-Thực hiện trên nhánh `codex/attacker-docker-scenarios`, lab test riêng,
+Thực hiện trong lab test riêng,
 không sử dụng Target/God-View của partner. Các lệnh tái hiện nằm trong
 [attacker README](../../attacker/README.md).
 

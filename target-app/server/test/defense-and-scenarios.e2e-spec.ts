@@ -347,6 +347,22 @@ describe('Target System E2E: Defense Engine & Lab Scenarios', () => {
     expect(cartRes.body.data.total_items).toBe(0);
   });
 
+  it('checkout only purchases the visible session cart and preserves another session of the same user', async () => {
+    dbService.query('INSERT INTO cart_items (user_id, session_id, product_id, quantity) VALUES (?, ?, ?, ?)', [1, 'other-browser', 2, 3]);
+    await request(app.getHttpServer()).post('/api/cart')
+      .set('x-session-id', 'checkout-browser').send({ productId: 1, quantity: 1 }).expect(201);
+    const result = await request(app.getHttpServer()).post('/api/cart/checkout')
+      .set('x-session-id', 'checkout-browser').set('Authorization', `Bearer ${adminJwtToken}`)
+      .send({ shippingAddress: 'Session isolation regression' }).expect(201);
+    expect(result.body.order.total_items).toBe(1);
+    expect(result.body.order.items).toHaveLength(1);
+    expect(result.body.order.items[0].product_id).toBe(1);
+    const other = await request(app.getHttpServer()).get('/api/cart').set('x-session-id', 'other-browser').expect(200);
+    expect(other.body.data.total_items).toBe(3);
+    const current = await request(app.getHttpServer()).get('/api/cart').set('x-session-id', 'checkout-browser').expect(200);
+    expect(current.body.data.total_items).toBe(0);
+  });
+
   it('25. GET /api/cart/orders - 200 OK returns order history for logged-in user', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/cart/orders')
