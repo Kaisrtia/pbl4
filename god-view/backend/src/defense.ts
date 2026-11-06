@@ -2,6 +2,14 @@
 export class TargetDefense {
   state: boolean | null = null;
   constructor(private readonly targetUrl: string) {}
+  private pending: Promise<unknown> = Promise.resolve();
+
+  // Serialize reads and writes so a slow poll cannot overwrite a newer toggle.
+  private enqueue(endpoint: string, body?: unknown): Promise<boolean> {
+    const next = this.pending.then(() => this.request(endpoint, body));
+    this.pending = next.catch(() => undefined);
+    return next;
+  }
 
   private async request(endpoint: string, body?: unknown): Promise<boolean> {
     try {
@@ -23,10 +31,10 @@ export class TargetDefense {
     }
   }
 
-  read() { return this.request('status'); }
+  read() { return this.enqueue('status'); }
 
   change(enabled?: boolean) {
-    return enabled === undefined ? this.request('toggle', {}) : this.request('set', {
+    return enabled === undefined ? this.enqueue('toggle', {}) : this.enqueue('set', {
       l3_master: enabled, anti_sqli: enabled, rate_limit: enabled, input_sanitization: enabled,
     });
   }

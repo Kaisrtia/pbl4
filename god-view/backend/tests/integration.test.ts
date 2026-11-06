@@ -86,6 +86,25 @@ test('hub integration contracts', { timeout: 15000 }, async (t) => {
     master = true; // A change made directly at Target is reflected on the next read.
     assert.equal((await api('/api/defense/status')).data.defense_l3_app, true);
   });
+  await t.test('direct Target changes and outage reach connected dashboards without a reload', async () => {
+    async function awaitState(expected: boolean | null, mutate: () => void) {
+      const received = new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => { socket.off('DEFENSE_TOGGLED', listener); reject(new Error('No automatic defense update')); }, 4500);
+        const listener = (payload: any) => {
+          if (payload.defense_l3_state !== expected) return;
+          clearTimeout(timer);
+          socket.off('DEFENSE_TOGGLED', listener);
+          resolve();
+        };
+        socket.on('DEFENSE_TOGGLED', listener);
+      });
+      mutate();
+      await received;
+    }
+    await awaitState(false, () => { master = false; });
+    await awaitState(null, () => { offline = true; });
+    await awaitState(true, () => { offline = false; master = true; });
+  });
   await t.test('offline or invalid Target response never reports a successful local toggle', async () => {
     offline = true;
     const result = await api('/api/defense/toggle', {});

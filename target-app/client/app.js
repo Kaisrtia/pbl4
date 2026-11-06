@@ -3,7 +3,7 @@
 // Project: PBL4 - DevSecOps & Plaintext Network Defense System
 // ==============================================================================
 
-const API_BASE = window.API_BASE_URL || 'http://localhost:8000/api';
+const API_BASE = window.API_BASE_URL || '/api';
 
 // Product Image Mappings (High-resolution assets)
 const PRODUCT_IMAGES = {
@@ -27,7 +27,7 @@ let appState = {
   currentSearch: '',
   currentSort: '',
   cart: { total_items: 0, total_price: 0, items: [] },
-  defense: { l3_master: false, anti_sqli: false, rate_limit: false, input_sanitization: false },
+  defense: {},
   currentUser: null,
   serverStatus: { online: false, rttMs: null },
   activeLabSimState: 'normal', // 'normal', 'syn', 'rst', 'arp'
@@ -38,8 +38,8 @@ let appState = {
 // ------------------------------------------------------------------------------
 function getSessionId() {
   let sid = localStorage.getItem('es_session_id');
-  if (!sid) {
-    sid = 'demo-guest-session-pbl4';
+  if (!sid || sid === 'demo-guest-session-pbl4') {
+    sid = 'guest-' + Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
     localStorage.setItem('es_session_id', sid);
   }
   return sid;
@@ -77,7 +77,7 @@ async function apiFetch(endpoint, options = {}) {
   let isError = false;
 
   try {
-    const res = await fetch(url, { ...options, headers });
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000), ...options, headers });
     status = res.status;
     const duration = Math.round(performance.now() - startTime);
 
@@ -110,6 +110,9 @@ async function apiFetch(endpoint, options = {}) {
 /**
  * Appends formatted HTTP packets to the Lab Drawer Wire Log
  */
+function escapeText(value) {
+  return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+}
 function logWirePacket(method, endpoint, status, durationMs, reqBody, resData) {
   const wireBox = document.getElementById('drawer-wire-box');
   if (!wireBox) return;
@@ -130,12 +133,12 @@ function logWirePacket(method, endpoint, status, durationMs, reqBody, resData) {
 
   entry.innerHTML = `
     <div class="flex items-center justify-between">
-      <span class="${statusColor} font-semibold">${method} ${cleanEndpoint}</span>
+      <span class="${statusColor} font-semibold">${escapeText(method)} ${escapeText(cleanEndpoint)}</span>
       <span class="text-slate-500 text-[10px]">${durationMs}ms [${now}]</span>
     </div>
     <div class="text-slate-400 text-[10px] flex items-center justify-between mt-0.5">
       <span>Status: <strong class="${statusColor}">${status}</strong></span>
-      <span class="truncate max-w-[180px] text-slate-500">${preview}</span>
+      <span class="truncate max-w-[180px] text-slate-500">${escapeText(preview)}</span>
     </div>
   `;
 
@@ -153,11 +156,11 @@ async function fetchCategories() {
   const res = await apiFetch('/products/categories');
   if (!res.ok || !res.data) return;
 
-  const categories = res.data.data || [];
+  const categories = res.data.data?.categories || [];
   const container = document.getElementById('filter-container');
   if (!container) return;
 
-  const totalCount = categories.reduce((sum, c) => sum + (c.product_count || 0), 0);
+  const totalCount = res.data.data?.total_products ?? categories.reduce((sum, c) => sum + (c.count || 0), 0);
 
   let html = `
     <button
@@ -173,7 +176,7 @@ async function fetchCategories() {
       <button
         class="category-pill ${isActive ? 'active-pill bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'} px-4 py-1.5 rounded-full text-[13px] font-medium hover:text-slate-900 hover:bg-slate-200 transition-all whitespace-nowrap"
         onclick="filterItems('${cat.slug}', this)">
-        ${cat.name} (${cat.product_count || 0})
+        ${cat.name} (${cat.count || 0})
       </button>
     `;
   });
@@ -254,7 +257,7 @@ async function fetchProducts() {
           <div class="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 mb-5 flex items-center justify-center">
             <img alt="${prod.name}"
               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-              src="${imgSrc}">
+              src="${imgSrc}" onerror="this.onerror=null;this.src='/assets/product-placeholder.svg'">
             <div class="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-md border border-slate-200/50 text-[11px] font-medium text-slate-700 shadow-2xs">
               <span class="w-1.5 h-1.5 rounded-full ${prod.stock > 0 ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
               <span>${prod.stock > 0 ? `Sẵn hàng (${prod.stock})` : 'Tạm hết'}</span>
@@ -445,7 +448,7 @@ function renderCartModal() {
       return `
       <div class="flex items-center justify-between gap-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
         <div class="w-14 h-14 rounded-xl overflow-hidden bg-white border border-slate-200/60 shrink-0">
-          <img src="${imgSrc}" alt="${item.name}" class="w-full h-full object-cover">
+          <img src="${imgSrc}" onerror="this.onerror=null;this.src='/assets/product-placeholder.svg'" alt="${item.name}" class="w-full h-full object-cover">
         </div>
         <div class="flex-1 min-w-0">
           <h4 class="text-[13px] font-semibold text-slate-900 truncate">${item.name}</h4>
@@ -650,7 +653,7 @@ async function handleCheckout() {
 
     // Xóa sạch giỏ hàng trên UI
     appState.cart = { total_items: 0, total_price: 0, items: [] };
-    updateCartBadge();
+    updateCartBadge(0);
     renderCartModal();
     closeCartModal();
 
@@ -765,26 +768,42 @@ function closeOrdersModal() {
 // ------------------------------------------------------------------------------
 // 5. DEFENSE CONTROL (LAYER 3 MASTER & SHIELDS)
 // ------------------------------------------------------------------------------
+let defenseQueue = Promise.resolve();
+let defensePollPending = false;
+function defenseRequest(endpoint, options) {
+  const request = defenseQueue.then(() => apiFetch(endpoint, options));
+  defenseQueue = request.catch(() => undefined);
+  return request;
+}
 async function fetchDefenseStatus() {
-  const res = await apiFetch('/defense/status');
+  if (defensePollPending) return;
+  defensePollPending = true;
+  const res = await defenseRequest('/defense/status');
+  defensePollPending = false;
   if (res.ok && res.data && res.data.flags) {
     appState.defense = res.data.flags;
-    renderDefenseStatusUI();
+  } else {
+    appState.defense = {};
   }
+  renderDefenseStatusUI();
 }
 
 async function toggleMasterDefense() {
-  const res = await apiFetch('/defense/toggle', { method: 'POST', body: {} });
+  const res = await defenseRequest('/defense/toggle', { method: 'POST', body: {} });
   if (res.ok && res.data) {
     appState.defense = res.data.current_state;
     renderDefenseStatusUI();
     const msg = appState.defense.l3_master ? 'BẬT (SECURED)' : 'TẮT (VULNERABLE)';
     showToast('Đảo Khiên L3 Master', `Trạng thái hiện tại: ${msg}`);
+  } else {
+    appState.defense = {};
+    renderDefenseStatusUI();
+    showToast('Không đổi được khiên', 'Kiểm tra kết nối Target rồi thử lại.');
   }
 }
 
 async function toggleSubShield(flagKey) {
-  const res = await apiFetch('/defense/toggle', {
+  const res = await defenseRequest('/defense/toggle', {
     method: 'POST',
     body: { flag: flagKey },
   });
@@ -792,6 +811,9 @@ async function toggleSubShield(flagKey) {
     appState.defense = res.data.current_state;
     renderDefenseStatusUI();
     showToast(`Khiên [${flagKey}]`, `Đã đổi thành: ${appState.defense[flagKey] ? 'BẬT' : 'TẮT'}`);
+  } else {
+    appState.defense = {};
+    renderDefenseStatusUI();
   }
 }
 
@@ -803,6 +825,14 @@ function renderDefenseStatusUI() {
   const sanitPill = document.getElementById('defense-flag-sanit');
 
   const isMasterOn = appState.defense.l3_master;
+  if (typeof isMasterOn !== 'boolean') {
+    if (badge) badge.textContent = 'L3: CHƯA XÁC NHẬN';
+    if (masterBtn) masterBtn.textContent = 'Chưa kết nối được Target — thử lại';
+    for (const pill of [sqliPill, ratePill, sanitPill]) {
+      if (pill) pill.textContent = 'UNKNOWN';
+    }
+    return;
+  }
 
   if (badge) {
     badge.textContent = isMasterOn ? 'L3 ON (BẢO VỆ)' : 'L3 OFF (LỖ HỔNG)';
@@ -982,7 +1012,7 @@ async function checkSystemHealthAndPing() {
 
   if (res.ok) {
     appState.serverStatus.online = true;
-    appState.serverStatus.rttMs = res.data.latency_ms || Math.round(performance.now() % 100);
+    appState.serverStatus.rttMs = Date.now() - t0;
 
     if (nodeStatusElem) {
       nodeStatusElem.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Online`;
@@ -1111,4 +1141,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Periodic ping health check every 10s
   setInterval(checkSystemHealthAndPing, 10000);
+  setInterval(fetchDefenseStatus, 2000);
 });

@@ -1,3 +1,10 @@
+FROM node:26-bookworm-slim AS client
+WORKDIR /client
+COPY target-app/client/package*.json ./
+RUN npm ci --ignore-scripts
+COPY target-app/client ./
+RUN npm run build
+
 FROM node:26-bookworm-slim AS build
 WORKDIR /app/target-app/server
 COPY target-app/server/package*.json ./
@@ -15,5 +22,8 @@ WORKDIR /app
 COPY --from=build /app/target-app/server/dist ./dist
 COPY --from=build /app/target-app/server/node_modules ./node_modules
 COPY target-app/server/data/public ./data/public
+COPY --from=client /client/index.html /client/app.js /client/style.css ./client/
+COPY --from=client /client/assets ./client/assets
+ENV TARGET_CLIENT_DIR=/app/client
 COPY integration/target-entrypoint.py integration/target-health.py /integration/
 CMD ["python3", "/integration/target-entrypoint.py"]

@@ -207,8 +207,9 @@ export class CartService {
     sessionId: string = 'demo-guest-session-pbl4',
     shippingAddress: string = 'Hà Nội, Việt Nam',
   ) {
-    // 1. Lấy toàn bộ linh kiện trong giỏ hàng
-    const cart = this.getCart(sessionId, userId);
+    // Match the session-scoped cart displayed by GET /cart. JWT identifies
+    // the order owner; it must not pull unseen items from other sessions.
+    const cart = this.getCart(sessionId);
     if (!cart.items || cart.items.length === 0) {
       throw new BadRequestException(
         'Giỏ hàng của bạn đang trống! Vui lòng chọn linh kiện trước khi thanh toán.',
@@ -253,7 +254,7 @@ export class CartService {
     }
 
     // 5. Xóa sạch giỏ hàng sau khi hoàn tất thủ tục thanh toán
-    this.clearCart(sessionId, userId);
+    this.clearCart(sessionId);
 
     this.logger.log(
       `[CHECKOUT] User ID [${userId}] placed order [${orderCode}] (${cart.total_items} items, ${cart.total_price.toLocaleString('vi-VN')} VND)`,

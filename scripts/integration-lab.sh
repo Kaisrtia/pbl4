@@ -59,7 +59,7 @@ PY
 from pathlib import Path
 values = dict(line.split('=', 1) for line in Path('integration/.env.local').read_text().splitlines() if line and not line.startswith('#') and '=' in line)
 host = values.get('LAB_BIND_IP', '127.0.0.1')
-for name, key, fallback, suffix in [('God-View', 'LAB_GODVIEW_PORT', '14000', ''), ('Attacker', 'LAB_ATTACKER_PORT', '19090', ''), ('Target Swagger', 'LAB_TARGET_PORT', '18000', '/api/docs')]:
+for name, key, fallback, suffix in [('God-View', 'LAB_GODVIEW_PORT', '14000', ''), ('Attacker', 'LAB_ATTACKER_PORT', '19090', ''), ('ElectroShop', 'LAB_TARGET_PORT', '18000', ''), ('Target Swagger', 'LAB_TARGET_PORT', '18000', '/api/docs')]:
     print(f'{name}: http://{host}:{values.get(key, fallback)}{suffix}')
 PY
     ;;

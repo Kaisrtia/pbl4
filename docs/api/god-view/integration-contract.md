@@ -35,9 +35,11 @@ không đảo trạng thái local thay Target. Socket `TOGGLE_DEFENSE` dùng cù
 và gửi `DEFENSE_ERROR` cho bên gọi khi không xác nhận được. UI dùng explicit set,
 không tự retry toggle qua socket để tránh đảo hai lần.
 
-Khi browser kết nối hoặc gọi GET status, God-View đọc lại Target. Thay đổi trực tiếp
-trên Target không có push riêng; reload hoặc GET status để đồng bộ. Bản này chưa
-đồng bộ từng cờ con lên dashboard; hiển thị trạng thái master.
+God-View đọc Target khi browser kết nối, gọi GET status và tự poll mỗi 1 giây.
+Thay đổi trực tiếp qua ElectroShop/Swagger được phát `DEFENSE_TOGGLED` đến
+các dashboard đang kết nối; lỗi Target chuyển state về null. Các request đọc/ghi
+được xếp hàng để tránh poll chậm ghi đè toggle mới. ElectroShop đọc toàn bộ cờ
+mỗi 2 giây; dashboard God-View chỉ hiển thị master, chưa hiển thị từng cờ con.
 
 ### Phần vẫn là demo
 

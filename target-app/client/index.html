@@ -5,38 +5,7 @@
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>ElectroShop - Linh Kiện Phần Cứng &amp; Module Điện Tử</title>
-  <link href="https://fonts.googleapis.com" rel="preconnect">
-  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap"
-    rel="stylesheet">
-  <link
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
-    rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <script>
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-          },
-          colors: {
-            brand: {
-              50: '#f0f5ff',
-              100: '#e5edff',
-              600: '#1d4ed8',
-              700: '#1e40af',
-              800: '#1e3a8a',
-              900: '#0f172a'
-            }
-          }
-        }
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="assets/ui.css">
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -466,7 +435,7 @@
         </div>
         <div>
           <h3 class="text-[15px] font-semibold text-white tracking-tight">Cyber Lab Testbed Control</h3>
-          <p class="text-[11px] font-mono text-slate-500">br-app-net // eth0 telemetry</p>
+          <p class="text-[11px] font-mono text-slate-500">Target API // HTTP telemetry</p>
         </div>
       </div>
       <button
@@ -485,7 +454,7 @@
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Online
           </span>
         </div>
-        <p class="text-white font-semibold text-[13px]" id="drawer-api-base">http://localhost:8000/api</p>
+        <p class="text-white font-semibold text-[13px]" id="drawer-api-base">/api</p>
         <div class="text-[11px] text-slate-500 pt-1 border-t border-slate-800/80 flex items-center justify-between">
           <span>Protocol: HTTP/1.1 REST</span>
           <span id="drawer-rtt-ms">RTT: 1ms</span>
@@ -573,14 +542,14 @@
         <div
           class="bg-black/80 p-3.5 rounded-xl border border-slate-800 font-mono text-[11px] leading-relaxed text-slate-300 space-y-1 max-h-56 overflow-y-auto"
           id="drawer-wire-box">
-          <p class="text-emerald-400">&gt; Target Server API ready at http://localhost:8000/api</p>
+          <p class="text-emerald-400">&gt; Target Server API ready at /api</p>
         </div>
       </div>
     </div>
     <!-- Drawer Footer -->
     <div
       class="p-6 border-t border-slate-800 bg-slate-950/40 flex items-center justify-between text-[11px] font-mono text-slate-500">
-      <span>Subnet: 172.20.0.0/24</span>
+      <span>Môi trường: lab sandbox</span>
       <button class="text-slate-300 hover:text-white underline" onclick="closeLabDrawer()">Đóng bảng</button>
     </div>
   </aside>

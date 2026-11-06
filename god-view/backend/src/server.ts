@@ -169,6 +169,21 @@ function broadcastDefense() {
   return payload;
 }
 
+// Changes made in ElectroShop/Swagger must reach already connected dashboards.
+let defensePollBusy = false;
+const defensePoll = setInterval(async () => {
+  if (defensePollBusy) return;
+  defensePollBusy = true;
+  const previous = defense.state;
+  try { await defense.read(); } catch { /* null state is broadcast below */ }
+  finally {
+    if (previous !== defense.state) broadcastDefense();
+    defensePollBusy = false;
+  }
+}, 1000);
+defensePoll.unref();
+server.on('close', () => clearInterval(defensePoll));
+
 app.post('/api/defense/toggle', async (req: Request, res: Response) => {
   const { enabled } = req.body || {};
   if (enabled !== undefined && typeof enabled !== 'boolean') {

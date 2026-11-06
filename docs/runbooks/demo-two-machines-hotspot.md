@@ -10,7 +10,7 @@ máy B có thể dùng Windows, macOS hoặc Linux và chỉ cần trình duyệ
 |---|---|
 | Điện thoại | Phát Wi-Fi hotspot có mật khẩu cho hai máy |
 | Máy A — máy chủ lab | Chạy Docker: Client, Target, Attacker, God-View |
-| Máy B — máy trình diễn | Mở God-View, Attacker Lab và Swagger của máy A |
+| Máy B — máy trình diễn | Mở ElectroShop, God-View, Attacker Lab và Swagger của máy A |
 
 Hai máy vật lý chia sẻ giao diện qua Wi-Fi. Các node tấn công/mục tiêu vẫn nằm
 trong mạng Docker trên A, không chia Attacker sang B. Không đổi IP mục tiêu
@@ -90,11 +90,12 @@ Nó không đổi IP nội bộ các container. `up` áp dụng cấu hình và 
 healthy. Nếu chỉ chạy `lan` mà không chạy lại `up`, các cổng chưa đổi.
 
 Kết quả mong đợi của `status`: `godview`, `target`, `attacker`, `client` đều
-`healthy`. `urls` in ra ba địa chỉ, ví dụ:
+`healthy`. `urls` in ra bốn địa chỉ, ví dụ:
 
 ```text
 God-View: http://172.20.10.2:14000
 Attacker: http://172.20.10.2:19090
+ElectroShop: http://172.20.10.2:18000
 Target Swagger: http://172.20.10.2:18000/api/docs
 ```
 
@@ -109,8 +110,10 @@ Trên A:
 ./scripts/integration-lab.sh test
 ```
 
-Script chạy luồng Client → Target → God-View, kiểm tra L3 và S1–S4 với tham số
-nhỏ. Cuối log phải có `PASS: integration lab`. Đợi script kết thúc trước khi
+Script kiểm tra tài nguyên ElectroShop, danh mục, giỏ riêng hai phiên, JWT,
+checkout/lịch sử đơn; sau đó kiểm tra Client → Target → God-View, L3 và S1–S4
+với tham số nhỏ. Script tạo một đơn sandbox ghi địa chỉ `Integration verification (synthetic)`
+trong lịch sử Admin; không phát sinh thanh toán thật. Cuối log phải có `PASS: integration lab`. Đợi script kết thúc trước khi
 bấm chạy thủ công trên B; controller chỉ cho một run hoạt động tại một thời điểm.
 
 Trên B mở trình duyệt và thử lần lượt:
@@ -121,7 +124,7 @@ http://172.20.10.2:18000/api/system/health
 http://172.20.10.2:19090/health
 ```
 
-Cả ba phải trả JSON thành công. Sau đó mở ba tab giao diện từ lệnh `urls`.
+Cả ba phải trả JSON thành công. Sau đó mở các tab giao diện từ lệnh `urls`.
 God-View phải hiện `CONNECTED :14000`; bảng HTTP có
 `/api/system/ping?echo=integration-client`, IP Client `172.30.44.10`.
 
@@ -151,7 +154,26 @@ sát, người A có thể điều khiển Attacker trên trình duyệt A; B kh
 
 ## 7. Kịch bản trình diễn khoảng 10–15 phút
 
-### 7.1. Luồng bình thường — 1 phút
+### 7.1. ElectroShop và luồng bình thường — 3 phút
+
+1. Trên cả A và B mở `http://172.20.10.2:18000/`. Không mở file HTML trực tiếp,
+   không dùng `localhost:8000` trên B; giao diện dùng `/api` tại chính máy A.
+2. Chọn **Cảm biến (2)**, kiểm tra hai sản phẩm; chọn **Tất cả (6)** để trở lại.
+3. Trên B bấm **Thêm giỏ** một sản phẩm rồi mở biểu tượng giỏ ở đầu trang.
+   Kiểm tra tên, số lượng và tổng tiền. Có thể thử tăng/giảm số lượng.
+4. Trên A tải lại trang: giỏ A không được đổi theo B. Giỏ thuộc trình duyệt;
+   hai tab cùng trình duyệt/cùng địa chỉ dùng chung phiên, cửa sổ riêng tư có phiên riêng.
+5. Trên B bấm **Đăng nhập**, chọn nút tài khoản mẫu **Admin**, bấm **Đăng nhập**.
+   Tài khoản lab: `admin` / `adminPassword2026!`; hoặc `alice` / `aliceSecretPassword`.
+6. Mở giỏ, bấm **Thanh toán ngay**. Mong đợi thông báo thành công, mã `ORD-...`,
+   badge giỏ về **0** và lịch sử đơn tự mở. Đơn phải đúng món/số lượng vừa chọn.
+   Đây là checkout sandbox, không kết nối cổng thanh toán hoặc trừ tiền thật.
+7. Đóng lịch sử; bấm tên tài khoản → **Lịch sử đơn hàng** để xem lại.
+   Lịch sử thuộc tài khoản: hai máy đăng nhập cùng Admin sẽ thấy chung lịch sử,
+   dù giỏ của hai trình duyệt riêng biệt. Dùng Admin/Alice nếu muốn hai lịch sử riêng.
+8. CSS và biểu tượng đã nằm trong image Target. Ảnh sản phẩm cần Internet;
+   khi tải lỗi sẽ hiện hình ElectroShop thay thế. Build lần đầu vẫn cần Internet.
+
 
 - Mở God-View trên B, chỉ log ping thật từ Client đến Target.
 - Giải thích IP bốn node là IP Docker; B là máy quan sát/điều khiển qua Wi-Fi.
@@ -204,6 +226,14 @@ sát, người A có thể điều khiển Attacker trên trình duyệt A; B kh
 8. Có thể mở `GET /api/defense/status` trong Swagger để đối chiếu
    `flags.l3_master` với UI. Thiếu `defense_action` trong log thì UI ghi `unknown`;
    dùng response và trạng thái Target làm bằng chứng.
+
+**Kiểm tra đồng bộ hai giao diện:** mở ElectroShop trên B, bấm **Lab Control**.
+Bật/tắt master từ God-View trên A và chờ khoảng 2 giây: nhãn L3 trên B phải đổi.
+Đổi từ ElectroShop thì God-View tự cập nhật khoảng 1 giây, không cần reload.
+Tab nền có thể bị trình duyệt giảm nhịp cập nhật; đưa tab ra trước để kiểm tra.
+Nếu mất kết nối Target, trạng thái chuyển UNKNOWN/chưa xác nhận. Chỉ một người
+điều khiển khiên tại một thời điểm để tránh hai thao tác đảo trạng thái liên tiếp.
+Các nút test trong ElectroShop là bài thử ứng dụng, không thay thế S1–S4 của Attacker.
 
 L3 bảo vệ ứng dụng HTTP, không phải cơ chế chặn SSH/SYN/FD của S1–S4.
 

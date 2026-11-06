@@ -1,7 +1,7 @@
 # Lab tích hợp bốn node
 
 Bản đề xuất tích hợp cho nhánh `feature/integration-lab`, dựa trên `develop`
-`91d2cbf`. Dùng **backend Target thật**, God-View thật và Attacker S1–S4 hiện có.
+`9730163` (đã gồm PR #8 và #9). Dùng **backend Target thật**, God-View thật và Attacker S1–S4 hiện có.
 Client hiện là HTTP ping probe; chưa thay thế Client bot đăng nhập/tải file của Trung.
 
 Demo hai máy: xem [hướng dẫn hotspot điện thoại](demo-two-machines-hotspot.md).
@@ -27,7 +27,7 @@ trong file local. Mỗi thành viên chạy `init` trên máy mình.
 | Node | IP nội bộ mặc định | URL trên máy chạy Docker |
 |---|---|---|
 | Client | 172.30.44.10 | Không publish; gửi ping mỗi 3 giây |
-| Target | 172.30.44.20 | http://127.0.0.1:18000/api/docs |
+| Target | 172.30.44.20 | http://127.0.0.1:18000/; Swagger tại /api/docs |
 | Attacker | 172.30.44.66 | http://127.0.0.1:19090 |
 | God-View | 172.30.44.99 | http://127.0.0.1:14000 |
 
@@ -102,7 +102,25 @@ cd target-app/server
 DATABASE_PATH=:memory: GODVIEW_TELEMETRY_URL=http://127.0.0.1:1/api/telemetry npm run test:e2e
 ```
 
-Lint Target có lỗi tồn tại từ `91d2cbf` do cấu hình TypeScript/oxlint (`moduleResolution`
+Lint Target có lỗi tồn tại từ `9730163` (đã gồm PR #8 và #9) do cấu hình TypeScript/oxlint (`moduleResolution`
 và `baseUrl`); bản tích hợp không sửa cấu hình này. Chưa có agent kernel/OS,
 ARP/RST, phòng thủ L1/L2, hoặc kiểm thử hiệu quả phòng thủ mạng. Không dùng build
 thành công hoặc chỉ số mô phỏng làm bằng chứng nghiệm thu toàn bộ đồ án.
+
+## ElectroShop tích hợp
+
+Target phục vụ frontend và API cùng cổng 18000; Docker tự build Tailwind và
+đóng gói font biểu tượng. Chạy backend trực tiếp ngoài Docker cần build client trước:
+
+```bash
+npm ci --ignore-scripts --prefix target-app/client
+npm run build --prefix target-app/client
+cd target-app/server
+npm run start:dev
+```
+
+Mở cổng backend (mặc định 8000). `TARGET_CLIENT_DIR` cho phép đổi thư mục static;
+mặc định `../client` tính từ cwd server. Không dùng Live Server riêng cho demo LAN.
+Giỏ thuộc phiên trình duyệt, checkout chỉ dùng giỏ phiên đó; JWT xác định chủ đơn.
+Test tích hợp tạo đơn sandbox có địa chỉ `Integration verification (synthetic)`
+và giữ lại trong lịch sử để đối chiếu. Không xóa dữ liệu demo có sẵn.

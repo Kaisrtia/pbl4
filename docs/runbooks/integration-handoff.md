@@ -1,7 +1,7 @@
 # Gửi Nguyên và Trung review bản tích hợp
 
 Ngày kiểm tra: 06/11/2026. Nhánh local: `feature/integration-lab`, nền `develop`
-`91d2cbf`. Chưa merge vào nhánh chung.
+`9730163` (PR #8, #9). Chưa merge vào nhánh chung.
 
 ## Tin nhắn đề xuất gửi nhóm
 
@@ -13,7 +13,9 @@ Ngày kiểm tra: 06/11/2026. Nhánh local: `feature/integration-lab`, nền `de
 >
 > Nguyên review endpoint `/api/events/attack`, Socket `ATTACK_EVENT`, phần hiển thị
 > theo run_id và mapping API khiên. Trung review Docker wrapper Target, SSH sandbox
-> và Client ping probe. Mã nghiệp vụ Target và worker Attacker được giữ nguyên.
+> và Client ping probe. Trung review thêm frontend cùng origin, danh mục, phiên giỏ
+> và checkout chỉ mua đúng giỏ đang hiển thị. Nguyên review poll đồng bộ khiên
+> hai chiều với ElectroShop. Worker Attacker giữ nguyên.
 > Sau khi hai bạn chạy thử và chốt hợp đồng, mình sẽ đưa thay đổi qua PR để merge.
 
 ## Nội dung gửi
@@ -36,27 +38,32 @@ Nếu hai bạn đang dùng chung một máy, lab này có project name cố đ�
 |---|---|
 | Build Attacker, Target, God-View | Đạt cả local và Docker |
 | Attacker | 12 controller/API tests + 3 Python tests đạt |
-| Target | 1 unit test + 21 E2E tests đạt, E2E dùng DB riêng |
-| God-View | 4 nhóm kiểm tra hợp đồng + test bao ngoài đạt (Node báo 5 tests) |
+| Target | 1 unit test + 27 E2E tests đạt, E2E dùng DB riêng |
+| God-View | 5 nhóm kiểm tra hợp đồng + test bao ngoài đạt (Node báo 6 tests) |
 | Client → Target → God-View | Ping thật và IP Client đúng trong log |
 | L3 | Đặt true hai lần vẫn true; false tắt; traversal bị từ chối khi bật |
 | S1 | SSH lab thật, hoàn tất, nhận sự kiện tại God-View |
 | S2 | 5 SYN/giây trong 1 giây; có lần gửi thành công, nhận sự kiện |
 | S3 | Mở 32 FD trong tiến trình riêng, cleanup xác nhận |
 | S4 | Truyền mẫu thật, SHA-256 khớp receiver |
+| ElectroShop | Build CSS/icon tại Target; lọc danh mục, đăng nhập, checkout, badge 0 và lịch sử đã thử trên browser qua IP Wi-Fi A |
+| Giỏ hai phiên | Test xác nhận checkout không gom/xóa giỏ phiên khác cùng tài khoản |
+| Đồng bộ khiên | Test Socket.IO nhận thay đổi trực tiếp, offline và phục hồi; browser ElectroShop tự cập nhật không reload |
 | Target offline/response sai | Hub trả lỗi, không báo bật/tắt khiên thành công giả |
 | Browser | Kết nối Socket.IO, hiển thị run S4 COMPLETED và JSON byte/hash thật; không ghi nhận lỗi console |
 | Chế độ LAN | S1–S4 và L3 đạt qua IP Wi-Fi của A; cần thử health từ B để xác nhận hotspot |
 
-Các run kiểm chứng trên Target tích hợp:
+## Điều chỉnh kế hoạch sau bàn giao Trung
 
-```text
-S1 80b591b2-3e9c-41a8-9f80-6e05d4f306a4
-S2 b201c4ef-438a-4fb5-8d6f-3efbd192c618
-S3 34f2da38-bb9a-4c77-a4fe-d3e113ed1f5b
-S4 8dbcedc1-e73f-4b25-bdc1-d39076aa1e3a
-S4 kiểm tra UI sau build cuối: 4979832a-c17f-40c4-b99b-3d2045f19fd5
-```
+- Đã đưa ElectroShop + JWT/profile/checkout/order history từ develop vào nhánh demo.
+- Hoàn thiện demo ứng dụng trước: lọc danh mục → đăng nhập → giỏ riêng → checkout → lịch sử.
+- Demo khiên giữa ElectroShop và God-View đã có đồng bộ tự động; không cần reload thủ công.
+- Đã đóng gói CSS/icon trong Target, ảnh có fallback khi hotspot không có Internet.
+- Vẫn dùng bốn node trên máy A, máy B là trình duyệt. Chưa xác nhận kết nối vật lý từ B;
+  cả nhóm cần chạy bước health trên B trước buổi demo.
+- Sau nghiệm thu hai máy, review PR tích hợp vào develop; kế hoạch kernel/OS, L1/L2,
+  Client bot đầy đủ và các bài ARP/RST vẫn là công việc tiếp theo, chưa hoàn tất.
+- Tài liệu kế hoạch gốc `docs/plan.pdf` giữ nguyên; điều chỉnh triển khai ghi tại đây.
 
 ## Phần còn lại
 
