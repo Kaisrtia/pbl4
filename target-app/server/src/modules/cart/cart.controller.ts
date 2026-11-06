@@ -10,6 +10,9 @@ import {
   Headers,
   Req,
   ParseIntPipe,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,10 +21,12 @@ import {
   ApiQuery,
   ApiParam,
   ApiResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { CartService } from './cart.service';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('Cart')
 @Controller('cart')
@@ -177,5 +182,74 @@ export class CartController {
     const userId = req?.user?.sub;
     const result = this.cartService.clearCart(sessionId, userId);
     return result;
+  }
+
+  /**
+   * 6. POST /api/cart/checkout
+   * Thanh toán giỏ hàng (BẮT BUỘC ĐĂNG NHẬP - BẢO VỆ BỞI JWT GUARD)
+   */
+  @Post('checkout')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Thanh toán đơn hàng & Chuyển đổi giỏ hàng thành Order (Bắt buộc JWT)',
+    description:
+      'Chỉ người dùng đã đăng nhập có Token JWT hợp lệ mới được thực hiện thanh toán. Trả về mã 401 Unauthorized nếu chưa đăng nhập.',
+  })
+  @ApiHeader({ name: 'x-session-id', required: false })
+  @ApiResponse({
+    status: 201,
+    description: 'Thanh toán thành công, trả về mã đơn hàng và chi tiết đơn.',
+  })
+  @ApiResponse({
+    status: 401,
+    description:
+      'Chưa đăng nhập - Vui lòng gửi Header Authorization: Bearer <token>.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Giỏ hàng đang trống, không thể thanh toán.',
+  })
+  checkout(
+    @Req() req: any,
+    @Headers('x-session-id') headerSession?: string,
+    @Query('session_id') querySession?: string,
+    @Body() body?: { shippingAddress?: string },
+  ) {
+    const sessionId = this.resolveSession(headerSession, querySession);
+    const userId = req.user.sub;
+    const shippingAddress = body?.shippingAddress || 'Hà Nội, Việt Nam';
+    return this.cartService.checkout(userId, sessionId, shippingAddress);
+  }
+
+  /**
+   * 7. GET /api/cart/orders
+   * Lấy lịch sử đơn hàng của người dùng hiện tại (BẮT BUỘC ĐĂNG NHẬP - BẢO VỆ BỞI JWT GUARD)
+   */
+  @Get('orders')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Lấy danh sách lịch sử đơn hàng của tài khoản đang đăng nhập (Bắt buộc JWT)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lấy lịch sử đơn hàng thành công.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Chưa đăng nhập hoặc Token JWT không hợp lệ.',
+  })
+  getOrders(@Req() req: any) {
+    const userId = req.user.sub;
+    const orders = this.cartService.getOrders(userId);
+    return {
+      status: 'success',
+      total: orders.length,
+      data: orders,
+    };
   }
 }

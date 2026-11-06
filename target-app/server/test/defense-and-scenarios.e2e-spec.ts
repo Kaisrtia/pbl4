@@ -28,10 +28,12 @@ describe('Target System E2E: Defense Engine & Lab Scenarios', () => {
     defenseService = moduleFixture.get<IDefenseService>(DEFENSE_SERVICE_TOKEN);
     dbService = moduleFixture.get<DatabaseService>(DatabaseService);
     dbService.resetCart();
+    dbService.resetOrders();
   });
 
   afterAll(async () => {
     dbService.resetCart();
+    dbService.resetOrders();
     await app.close();
   });
 
@@ -289,5 +291,71 @@ describe('Target System E2E: Defense Engine & Lab Scenarios', () => {
     expect(fileContent).toContain(
       'FLAG{PBL4_PATH_TRAVERSAL_AND_CONFIDENTIAL_DOC_LEAKED}',
     );
+  });
+
+  it('21. GET /api/auth/profile - 401 Unauthorized when missing JWT token', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/auth/profile')
+      .expect(401);
+
+    expect(res.body.message).toContain('Authorization');
+  });
+
+  it('22. GET /api/auth/profile - 200 OK with authenticated user profile when JWT provided', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/auth/profile')
+      .set('Authorization', `Bearer ${adminJwtToken}`)
+      .expect(200);
+
+    expect(res.body.status).toBe('success');
+    expect(res.body.user).toBeDefined();
+    expect(res.body.user.username).toBe('admin');
+    expect(res.body.user.role).toBe('admin');
+  });
+
+  it('23. POST /api/cart/checkout - 401 Unauthorized when missing JWT token', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/cart/checkout')
+      .send({ shippingAddress: 'Test Address' })
+      .expect(401);
+
+    expect(res.body.message).toContain('Authorization');
+  });
+
+  it('24. POST /api/cart/checkout - 201 Created and empties cart when valid JWT provided', async () => {
+    // Đảm bảo có ít nhất 1 sản phẩm trong giỏ trước khi thanh toán
+    await request(app.getHttpServer())
+      .post('/api/cart')
+      .send({ productId: 1, quantity: 2 });
+
+    const res = await request(app.getHttpServer())
+      .post('/api/cart/checkout')
+      .set('Authorization', `Bearer ${adminJwtToken}`)
+      .send({ shippingAddress: '123 ĐH Bách Khoa, Đà Nẵng' })
+      .expect(201);
+
+    expect(res.body.status).toBe('success');
+    expect(res.body.order).toBeDefined();
+    expect(res.body.order.order_code).toMatch(/^ORD-/);
+    expect(res.body.order.status).toBe('COMPLETED');
+    expect(res.body.order.items.length).toBeGreaterThan(0);
+
+    // Kiểm tra giỏ hàng đã được xóa sạch sau khi thanh toán thành công
+    const cartRes = await request(app.getHttpServer())
+      .get('/api/cart')
+      .expect(200);
+    expect(cartRes.body.data.total_items).toBe(0);
+  });
+
+  it('25. GET /api/cart/orders - 200 OK returns order history for logged-in user', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/cart/orders')
+      .set('Authorization', `Bearer ${adminJwtToken}`)
+      .expect(200);
+
+    expect(res.body.status).toBe('success');
+    expect(res.body.total).toBeGreaterThanOrEqual(1);
+    expect(res.body.data[0].order_code).toMatch(/^ORD-/);
+    expect(Array.isArray(res.body.data[0].items)).toBe(true);
   });
 });
