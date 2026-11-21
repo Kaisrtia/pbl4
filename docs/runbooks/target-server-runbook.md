@@ -1,7 +1,8 @@
 # Kịch Bản Vận Hành & Thực Nghiệm Máy Chủ Mục Tiêu (Target Server Runbook)
 
 > **Người thực hiện:** Hoàng Trung (TV3) — *Target App & L7 Defense Testbed*  
-> **Mục đích:** Hướng dẫn từng bước cách khởi chạy, kiểm thử tự động và thực nghiệm demo các kịch bản tấn công/phòng thủ L7 trước hội đồng chấm đồ án PBL4.
+> **Tài liệu tham chiếu:** [docs/plan.pdf](../../plan.pdf) (Task W1-T3, W2-T3, W4-T3, W5-T3, W6-T3)  
+> **Mục đích:** Hướng dẫn từng bước cách khởi chạy, kiểm thử tự động và thực nghiệm demo các kịch bản tấn công/phòng thủ L7 & OS trước hội đồng chấm đồ án PBL4.
 
 ---
 
@@ -11,15 +12,15 @@
    - Node.js version $\ge 22.x$ (khuyến nghị Node.js 26 có sẵn `node:sqlite`).
    - Công cụ gửi yêu cầu: Trình duyệt web, cURL, hoặc giao diện Swagger UI.
 2. **Di chuyển vào thư mục máy chủ:**
-   ```powershell
+   ```bash
    cd target-app/server
    ```
 3. **Thiết lập biến môi trường:**
-   ```powershell
+   ```bash
    cp .env.example .env
    ```
 4. **Cài đặt các gói thư viện:**
-   ```powershell
+   ```bash
    npm install
    ```
 
@@ -27,7 +28,7 @@
 
 ## 2. Khởi chạy máy chủ Target Server
 
-```powershell
+```bash
 # Chạy chế độ phát triển
 npm run start:dev
 ```
@@ -43,11 +44,11 @@ npm run start:dev
 ## 3. Cách 1: Kiểm thử tự động bằng Vitest (Dành cho nghiệm thu code)
 
 Chỉ cần chạy một lệnh duy nhất:
-```powershell
+```bash
 npm run test:e2e
 ```
-- Hệ thống sẽ tự động khởi động server trong RAM và duyệt qua **toàn bộ 20 kịch bản kiểm thử**.
-- Kết quả mong đợi: `20 passed (100% xanh)`.
+- Hệ thống sẽ tự động khởi động server trong RAM và duyệt qua **toàn bộ 26 kịch bản kiểm thử E2E**.
+- Kết quả mong đợi: `26 passed (100% xanh)`.
 
 ---
 
@@ -56,13 +57,13 @@ npm run test:e2e
 ### Kịch bản A: Khai thác SQL Injection Bypass & Kích hoạt Phòng thủ
 
 #### Bước 1: Đảm bảo Khiên L3 đang TẮT
-```powershell
-curl -X POST http://localhost:8000/api/defense/set -H "Content-Type: application/json" -d "{\"l3_master\": false, \"anti_sqli\": false}"
+```bash
+curl -X POST http://localhost:8000/api/defense/set -H "Content-Type: application/json" -d '{"l3_master": false, "anti_sqli": false}'
 ```
 
 #### Bước 2: Bắn payload SQL Injection để đăng nhập lậu không cần mật khẩu
-```powershell
-curl -X POST http://localhost:8000/api/auth/login -H "Content-Type: application/json" -d "{\"username\": \"admin' --\", \"password\": \"mat_khau_bat_ky\"}"
+```bash
+curl -X POST http://localhost:8000/api/auth/login -H "Content-Type: application/json" -d '{"username": "admin'\'' --", "password": "mat_khau_bat_ky"}'
 ```
 - **Kết quả quan sát:**
   - Trả về mã **HTTP 200 OK**.
@@ -70,14 +71,14 @@ curl -X POST http://localhost:8000/api/auth/login -H "Content-Type: application/
     `"⚠️ [CẢNH BÁO AN NINH] Đăng nhập thành công qua lỗ hổng SQL Injection (Khiên L3 đang tắt)!"`
 
 #### Bước 3: Gạt công tắc BẬT Khiên L3 (Nút "Lab Control")
-```powershell
-curl -X POST http://localhost:8000/api/defense/toggle -H "Content-Type: application/json" -d "{}"
+```bash
+curl -X POST http://localhost:8000/api/defense/toggle -H "Content-Type: application/json" -d '{}'
 ```
 - **Kết quả quan sát:** `current_state.anti_sqli = true`.
 
 #### Bước 4: Bắn lại đúng payload SQL Injection trên
-```powershell
-curl -X POST http://localhost:8000/api/auth/login -H "Content-Type: application/json" -d "{\"username\": \"admin' --\", \"password\": \"mat_khau_bat_ky\"}"
+```bash
+curl -X POST http://localhost:8000/api/auth/login -H "Content-Type: application/json" -d '{"username": "admin'\'' --", "password": "mat_khau_bat_ky"}'
 ```
 - **Kết quả quan sát:**
   - Server lập tức trả về mã **HTTP 401 Unauthorized**.
@@ -88,16 +89,16 @@ curl -X POST http://localhost:8000/api/auth/login -H "Content-Type: application/
 ### Kịch bản B: Tấn công L7 DoS & Khiên Giới hạn Tần suất (Rate Limiting)
 
 #### Bước 1: Đảm bảo Khiên Rate Limit đang BẬT
-```powershell
-curl -X POST http://localhost:8000/api/defense/set -H "Content-Type: application/json" -d "{\"l3_master\": true, \"rate_limit\": true}"
+```bash
+curl -X POST http://localhost:8000/api/defense/set -H "Content-Type: application/json" -d '{"l3_master": true, "rate_limit": true}'
 ```
 
 #### Bước 2: Gửi dồn dập các request tính toán nặng CPU
-Chạy vòng lặp PowerShell bắn liên tục 15 request trong 2 giây:
-```powershell
-1..15 | ForEach-Object {
-    curl.exe -s -o /dev/null -w "%{http_code}`n" "http://localhost:8000/api/reports/analytics?iterations=50000"
-}
+Chạy vòng lặp bắn liên tục 15 request trong 2 giây:
+```bash
+for i in {1..15}; do
+  curl -s -o /dev/null -w "%{http_code}\n" "http://localhost:8000/api/reports/analytics?iterations=50000"
+done
 ```
 - **Kết quả quan sát:**
   - 10 request đầu tiên trả về mã **200 OK**.
@@ -109,14 +110,14 @@ Chạy vòng lặp PowerShell bắn liên tục 15 request trong 2 giây:
 ### Kịch bản C: Tấn công Leo thang thư mục (Path Traversal)
 
 #### Bước 1: Khiên L3 TẮT $\rightarrow$ Đọc trộm file
-```powershell
-curl -X POST http://localhost:8000/api/defense/set -H "Content-Type: application/json" -d "{\"l3_master\": false, \"input_sanitization\": false}"
+```bash
+curl -X POST http://localhost:8000/api/defense/set -H "Content-Type: application/json" -d '{"l3_master": false, "input_sanitization": false}'
 curl "http://localhost:8000/api/files/download?name=sample_report.txt"
 ```
 
 #### Bước 2: Bắn payload Path Traversal khi Khiên L3 BẬT
-```powershell
-curl -X POST http://localhost:8000/api/defense/set -H "Content-Type: application/json" -d "{\"l3_master\": true, \"input_sanitization\": true}"
+```bash
+curl -X POST http://localhost:8000/api/defense/set -H "Content-Type: application/json" -d '{"l3_master": true, "input_sanitization": true}'
 curl -i "http://localhost:8000/api/files/download?name=../../etc/passwd"
 ```
 - **Kết quả quan sát:**
@@ -128,14 +129,14 @@ curl -i "http://localhost:8000/api/files/download?name=../../etc/passwd"
 ### Kịch bản D: Tải Tài Liệu Tuyệt Mật (Blueprint Exfiltration)
 
 #### Bước 1: Khiên BẬT
-```powershell
+```bash
 curl -i "http://localhost:8000/api/documents/5/download"
 ```
 - **Kết quả:** Trả về mã **HTTP 403 Forbidden** (`L3_CONFIDENTIAL_POLICY_ACTIVE`).
 
 #### Bước 2: Khiên TẮT
-```powershell
-curl -X POST http://localhost:8000/api/defense/set -H "Content-Type: application/json" -d "{\"l3_master\": false, \"input_sanitization\": false}"
+```bash
+curl -X POST http://localhost:8000/api/defense/set -H "Content-Type: application/json" -d '{"l3_master": false, "input_sanitization": false}'
 curl "http://localhost:8000/api/documents/5/download"
 ```
 - **Kết quả:** Tải thành công file Blueprint bảo mật chứa Flag:
@@ -143,11 +144,32 @@ curl "http://localhost:8000/api/documents/5/download"
 
 ---
 
+### Kịch bản E: Khai thác OS Command Injection & Phòng thủ Sanitization (W4-T3)
+
+#### Bước 1: Khiên L3 TẮT $\rightarrow$ Nối lệnh Shell đọc file hệ thống
+```bash
+curl -X POST http://localhost:8000/api/defense/set -H "Content-Type: application/json" -d '{"l3_master": false, "input_sanitization": false}'
+curl "http://localhost:8000/api/system/network-ping?host=127.0.0.1%3B%20id"
+```
+- **Kết quả:** Server thực thi lệnh `id` và trả về thông tin `uid=1000(lab) gid=1000(lab)`, minh chứng lỗ hổng Command Injection cho phép leo quyền tạo Reverse Shell.
+
+#### Bước 2: Khiên L3 BẬT $\rightarrow$ Chặn ký tự điều hướng Shell
+```bash
+curl -X POST http://localhost:8000/api/defense/set -H "Content-Type: application/json" -d '{"l3_master": true, "input_sanitization": true}'
+curl -i "http://localhost:8000/api/system/network-ping?host=127.0.0.1%3B%20id"
+```
+- **Kết quả:** Server trả về mã **HTTP 400 Bad Request** kèm cờ `shield: "L3_COMMAND_INJECTION_BLOCKED"`. Ký tự `;` bị phát hiện và ngăn chặn lập tức!
+
+---
+
 ## 5. Làm sạch môi trường sau Thực nghiệm (Reset Lab)
 
 Để khôi phục trạng thái giỏ hàng và cơ sở dữ liệu về mặc định ban đầu:
-```powershell
-# Xóa file sqlite cũ để hệ thống tự động khởi tạo và seed lại dữ liệu sạch
+```bash
+# Cách 1: Chạy script reset tự động từ thư mục gốc
+./scripts/reset-lab.sh
+
+# Cách 2: Thao tác thủ công nếu chạy dev local
 rm ./data/devsec.sqlite*
 ```
 Sau đó khởi động lại server, database sẽ tự động được tạo mới với đầy đủ 4 tài khoản, 3 danh mục, 6 linh kiện và 2 món giỏ hàng mẫu.
