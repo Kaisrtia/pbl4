@@ -181,12 +181,42 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
           'Guest Observer',
           'guest@devsec.pbl4',
         ],
+        [
+          'engineer_user',
+          'pass123',
+          'user',
+          'Embedded Systems Engineer',
+          'engineer@devsec.pbl4',
+        ],
       ];
 
       for (const user of seedUsers) {
         insert.run(...user);
       }
       this.logger.log('Default users successfully seeded.');
+    }
+
+    // Đảm bảo tài khoản engineer_user phục vụ Client Bot (W3-T3) luôn tồn tại
+    try {
+      const checkUser = this.db.prepare(
+        'SELECT id FROM users WHERE username = ?',
+      );
+      if (!checkUser.get('engineer_user')) {
+        const insertUser = this.db.prepare(`
+          INSERT INTO users (username, password, role, full_name, email)
+          VALUES (?, ?, ?, ?, ?)
+        `);
+        insertUser.run(
+          'engineer_user',
+          'pass123',
+          'user',
+          'Embedded Systems Engineer',
+          'engineer@devsec.pbl4',
+        );
+        this.logger.log('Seeded engineer_user account for W3-T3 Client Bot.');
+      }
+    } catch {
+      // Bỏ qua nếu bảng chưa sẵn sàng
     }
   }
 
