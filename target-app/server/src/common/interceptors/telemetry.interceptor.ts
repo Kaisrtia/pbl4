@@ -78,6 +78,14 @@ export class TelemetryInterceptor implements NestInterceptor {
     ) {
       attackTag = 'PATH_TRAVERSAL';
       isSuspicious = true;
+    } else if (
+      endpoint.includes('/system/network-ping') &&
+      [';', '|', '&', '`', '$', '(', ')', '>', '<'].some(
+        (char) => queryStr.includes(char) || endpoint.includes(char),
+      )
+    ) {
+      attackTag = 'COMMAND_INJECTION';
+      isSuspicious = true;
     } else if (statusCode === 429) {
       attackTag = 'RATE_LIMIT_BLOCKED';
       isSuspicious = true;

@@ -1,14 +1,29 @@
-import { Controller, Get, Query, Req, Inject } from '@nestjs/common';
-import type { Request } from 'express';
+import {
+  Controller,
+  Get,
+  Query,
+  Req,
+  Res,
+  Inject,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import {
   DEFENSE_SERVICE_TOKEN,
   IDefenseService,
 } from '../defense/defense.constants';
 
+const execAsync = promisify(exec);
+
 @ApiTags('System')
 @Controller('system')
 export class SystemController {
+  private readonly logger = new Logger(SystemController.name);
+
   constructor(
     @Inject(DEFENSE_SERVICE_TOKEN)
     private readonly defenseService: IDefenseService,
@@ -59,6 +74,106 @@ export class SystemController {
       client_ip: String(clientIp).replace('::ffff:', ''),
       echo: echoMsg,
       latency_ms: estimatedLatencyMs,
+    };
+  }
+
+  @Get('network-ping')
+  @ApiOperation({
+    summary: 'Kiểm tra kết nối mạng (Mô phỏng lỗ hổng OS Command Injection)',
+    description:
+      'Khi Khiên L3 BẬT: Chặn các ký tự điều hướng shell `;`, `|`, `&`, `$`, backticks (mã lỗi 400 Bad Request). Khi Khiên L3 TẮT: Nối chuỗi thực thi trực tiếp qua Shell (VULNERABLE), phục vụ kịch bản leo quyền Reverse Shell.',
+  })
+  @ApiQuery({
+    name: 'host',
+    required: true,
+    example: '127.0.0.1',
+    description:
+      'Địa chỉ IP hoặc Hostname cần ping (Thử payload `127.0.0.1; id` để test Command Injection)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Thực thi kiểm tra mạng thành công (kèm output shell)',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Bị Khiên Input Sanitization chặn đứng do phát hiện ký tự Shell nguy hiểm',
+  })
+  async networkPing(
+    @Query('host') host: string,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    if (!host) {
+      throw new BadRequestException('Vui lòng truyền tham số ?host=<target>');
+    }
+
+    const shellDangerousChars = [
+      ';',
+      '|',
+      '&',
+      '`',
+      '$',
+      '(',
+      ')',
+      '>',
+      '<',
+      '\n',
+    ];
+    const isProtected = this.defenseService.isSanitizationEnabled();
+    const isInjectionDetected = shellDangerousChars.some((char) =>
+      host.includes(char),
+    );
+
+    // Khi Khiên L3 BẬT: Bộ lọc phát hiện các ký tự điều hướng shell nguy hiểm và chặn lại
+    if (isProtected && isInjectionDetected) {
+      this.logger.warn(
+        `[SYSTEM] Command Injection attack BLOCKED by L3 Shield for host payload: [${host}]`,
+      );
+      throw new BadRequestException({
+        statusCode: 400,
+        message:
+          'L3 Sanitization Shield: Phát hiện ký tự điều hướng lệnh Shell nguy hiểm!',
+        shield: 'L3_COMMAND_INJECTION_BLOCKED',
+      });
+    }
+
+    // Khi Khiên L3 TẮT (hoặc input an toàn): Thực thi trực tiếp qua shell
+    if (!isProtected && isInjectionDetected) {
+      this.logger.warn(
+        `[SYSTEM] Command Injection EXPLOITED (L3 Shield OFF) for host payload: [${host}]`,
+      );
+      res?.setHeader(
+        'X-Security-Warning',
+        'Command-Injection-Bypassed-Shield-Off',
+      );
+    }
+
+    let stdout = '';
+    let stderr = '';
+
+    try {
+      const result = await execAsync(`ping -c 1 ${host}`, { timeout: 10000 });
+      stdout = result.stdout || '';
+      stderr = result.stderr || '';
+    } catch (err: any) {
+      stdout = err.stdout ? String(err.stdout) : '';
+      stderr = err.stderr ? String(err.stderr) : err.message || '';
+    }
+
+    return {
+      status: 'success',
+      message: isInjectionDetected
+        ? '⚠️ [CẢNH BÁO AN NINH] Lệnh hệ điều hành đã được thực thi qua lỗ hổng Command Injection (Khiên L3 đang tắt)!'
+        : 'Thực thi kiểm tra kết nối mạng thành công',
+      host,
+      command: `ping -c 1 ${host}`,
+      output: (stdout || stderr || '').trim(),
+      stdout: stdout.trim(),
+      stderr: stderr.trim(),
+      defense_mode: isProtected
+        ? 'SECURED_SANITIZED'
+        : 'VULNERABLE_DIRECT_EXEC',
+      command_injection_bypassed: isInjectionDetected,
     };
   }
 

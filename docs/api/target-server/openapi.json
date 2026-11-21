@@ -305,6 +305,36 @@
         ]
       }
     },
+    "/api/system/network-ping": {
+      "get": {
+        "description": "Khi Khiên L3 BẬT: Chặn các ký tự điều hướng shell `;`, `|`, `&`, `$`, backticks (mã lỗi 400 Bad Request). Khi Khiên L3 TẮT: Nối chuỗi thực thi trực tiếp qua Shell (VULNERABLE), phục vụ kịch bản leo quyền Reverse Shell.",
+        "operationId": "SystemController_networkPing",
+        "parameters": [
+          {
+            "name": "host",
+            "required": true,
+            "in": "query",
+            "description": "Địa chỉ IP hoặc Hostname cần ping (Thử payload `127.0.0.1; id` để test Command Injection)",
+            "schema": {
+              "example": "127.0.0.1",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thực thi kiểm tra mạng thành công (kèm output shell)"
+          },
+          "400": {
+            "description": "Bị Khiên Input Sanitization chặn đứng do phát hiện ký tự Shell nguy hiểm"
+          }
+        },
+        "summary": "Kiểm tra kết nối mạng (Mô phỏng lỗ hổng OS Command Injection)",
+        "tags": [
+          "System"
+        ]
+      }
+    },
     "/api/system/health": {
       "get": {
         "operationId": "SystemController_health",
