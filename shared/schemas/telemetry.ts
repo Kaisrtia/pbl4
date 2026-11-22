@@ -16,6 +16,9 @@ export type AttackType =
   | 'BRUTE_FORCE'
   | 'PATH_TRAVERSAL'
   | 'COMMAND_INJECTION'
+  | 'REVERSE_SHELL'
+  | 'FD_EXHAUSTION'
+  | 'FORK_BOMB'
   | 'SQL_INJECTION'
   | 'HEAVY_DOS'
   | 'SYN_FLOOD'
@@ -191,6 +194,93 @@ export interface NetworkAttackState {
   sniffed_packets: SniffedPacket[];
   rst_injection: RstInjectionStatus;
   syn_history: number[];
+  last_updated: string;
+}
+
+// ==========================================
+// W4-T1: OS & Application L7 Telemetry Schemas
+// ==========================================
+
+/**
+ * Một nút tiến trình trong Cây tiến trình (`pstree`) của Target Server
+ */
+export interface ProcessTreeNode {
+  pid: number;
+  name: string;
+  cmd: string;
+  user: string;
+  suspicious?: boolean;
+  children?: ProcessTreeNode[];
+}
+
+/**
+ * Trạng thái kết nối Reverse Shell ngược từ Target Server về Hacker
+ */
+export interface ReverseShellStatus {
+  active: boolean;
+  spawned_at: string | null;
+  shell_cmd: string | null;
+  server_ip: string;
+  hacker_ip: string;
+  hacker_port: number;
+  pid: number | null;
+}
+
+/**
+ * Trạng thái đồng hồ đo File Descriptors (`lsof`) & Tài nguyên HĐH
+ */
+export interface FileDescriptorStatus {
+  open_fds: number;
+  max_fds: number;
+  peak_fds: number;
+  status: 'NORMAL' | 'WARNING' | 'EXHAUSTED';
+  suspicious_files: string[];
+  process_count: number;
+}
+
+/**
+ * Một mục cảnh báo tấn công Tầng Ứng dụng L7 (SQLi, Brute-force, Command Injection, Path Traversal, Heavy DoS)
+ */
+export interface L7SecurityAlert {
+  id: string;
+  timestamp: string;
+  category:
+    | 'SQL_INJECTION'
+    | 'BRUTE_FORCE'
+    | 'COMMAND_INJECTION'
+    | 'PATH_TRAVERSAL'
+    | 'HEAVY_DOS';
+  severity: 'HIGH' | 'CRITICAL';
+  client_ip: string;
+  endpoint: string;
+  payload_preview: string;
+  status_code: number;
+  blocked: boolean;
+  attempts_count?: number;
+  rate_rps?: number;
+}
+
+/**
+ * Bộ đếm thống kê các đòn tấn công L7
+ */
+export interface L7AttackCounters {
+  sqli_count: number;
+  brute_force_count: number;
+  cmd_injection_count: number;
+  path_traversal_count: number;
+  heavy_dos_count: number;
+}
+
+/**
+ * Tổng hợp trạng thái giám sát HĐH & Tầng Ứng dụng L7 trên God-View (Task W4-T1)
+ */
+export interface OsAndL7AttackState {
+  pstree: ProcessTreeNode[];
+  suspicious_processes: string[];
+  reverse_shell: ReverseShellStatus;
+  fd_metrics: FileDescriptorStatus;
+  l7_alerts: L7SecurityAlert[];
+  l7_counters: L7AttackCounters;
   last_updated: string;
 }
 

