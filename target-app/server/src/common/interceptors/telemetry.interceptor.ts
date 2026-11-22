@@ -52,6 +52,7 @@ export class TelemetryInterceptor implements NestInterceptor {
     // Xác định dấu hiệu tấn công sơ bộ
     let attackTag: string | undefined = undefined;
     let isSuspicious = false;
+    let defenseAction: string = 'allowed';
 
     const bodyStr = JSON.stringify(req.body || {});
     const queryStr = JSON.stringify(req.query || {});
@@ -64,12 +65,21 @@ export class TelemetryInterceptor implements NestInterceptor {
     ) {
       attackTag = 'SQL_INJECTION';
       isSuspicious = true;
+      defenseAction = statusCode === 429 ? 'rate_limited' : statusCode >= 400 ? 'sanitized' : 'allowed';
+    } else if (
+      endpoint.includes('/auth/login') &&
+      (statusCode === 401 || statusCode === 429)
+    ) {
+      attackTag = 'BRUTE_FORCE';
+      isSuspicious = true;
+      defenseAction = statusCode === 429 ? 'rate_limited' : 'monitored';
     } else if (
       endpoint.includes('/reports/') &&
       (queryStr.includes('iterations') || bodyStr.includes('iterations'))
     ) {
       attackTag = 'HEAVY_DOS';
       isSuspicious = true;
+      defenseAction = statusCode === 429 ? 'rate_limited' : 'allowed';
     } else if (
       endpoint.includes('/files/download') &&
       (queryStr.includes('..') ||
@@ -78,6 +88,7 @@ export class TelemetryInterceptor implements NestInterceptor {
     ) {
       attackTag = 'PATH_TRAVERSAL';
       isSuspicious = true;
+      defenseAction = statusCode >= 400 ? 'blocked' : 'allowed';
     } else if (
       endpoint.includes('/system/network-ping') &&
       [';', '|', '&', '`', '$', '(', ')', '>', '<'].some(
@@ -86,9 +97,11 @@ export class TelemetryInterceptor implements NestInterceptor {
     ) {
       attackTag = 'COMMAND_INJECTION';
       isSuspicious = true;
+      defenseAction = statusCode >= 400 ? 'blocked' : 'allowed';
     } else if (statusCode === 429) {
-      attackTag = 'RATE_LIMIT_BLOCKED';
+      attackTag = 'BRUTE_FORCE';
       isSuspicious = true;
+      defenseAction = 'rate_limited';
     }
 
     const payload = {
@@ -105,6 +118,7 @@ export class TelemetryInterceptor implements NestInterceptor {
       },
       is_suspicious: isSuspicious,
       attack_tag: attackTag,
+      defense_action: defenseAction,
     };
 
     // Bắn telemetry về trạm trung chuyển God-View không chặn request

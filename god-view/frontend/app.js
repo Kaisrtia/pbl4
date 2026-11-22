@@ -1310,7 +1310,12 @@ function spawnShieldDeflection(x, y, customColor = '#00f0ff', customText = '🛡
 function triggerServerCompromisedVisual() {
   const server = document.getElementById('node-server');
   server.classList.add('compromised');
-  setTimeout(() => server.classList.remove('compromised'), 400);
+  setTimeout(() => {
+    const revActive = Boolean(state.osL7State && state.osL7State.reverse_shell && state.osL7State.reverse_shell.active);
+    if (!revActive) {
+      server.classList.remove('compromised');
+    }
+  }, 400);
 }
 
 function updateAndDrawSparks() {
@@ -1325,11 +1330,13 @@ function updateAndDrawSparks() {
       continue;
     }
 
+    const col = s.color || '#00f0ff';
     ctx.save();
+    ctx.globalAlpha = Math.max(0, s.alpha);
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(0, 240, 255, ${s.alpha})`;
-    ctx.shadowColor = '#00f0ff';
+    ctx.fillStyle = col;
+    ctx.shadowColor = col;
     ctx.shadowBlur = 8;
     ctx.fill();
     ctx.restore();
@@ -1347,10 +1354,12 @@ function updateAndDrawFloatingLabels() {
       continue;
     }
 
+    const col = l.color || '#00f0ff';
     ctx.save();
+    ctx.globalAlpha = Math.max(0, l.alpha);
     ctx.font = 'bold 11px Orbitron';
-    ctx.fillStyle = `rgba(0, 240, 255, ${l.alpha})`;
-    ctx.shadowColor = '#00f0ff';
+    ctx.fillStyle = col;
+    ctx.shadowColor = col;
     ctx.shadowBlur = 8;
     ctx.fillText(l.text, l.x, l.y);
     ctx.restore();
@@ -1553,8 +1562,31 @@ async function restoreCleanOs() {
   } catch {
     updateOsL7StateUI({
       ...state.osL7State,
-      reverse_shell: { ...state.osL7State.reverse_shell, active: false },
-      fd_metrics: { ...state.osL7State.fd_metrics, open_fds: 42, status: 'NORMAL', suspicious_files: [] },
+      pstree: [
+        {
+          pid: 1,
+          name: 'python3',
+          cmd: 'python3 /app/target-entrypoint.py',
+          user: 'root',
+          suspicious: false,
+          children: [
+            { pid: 18, name: 'sshd', cmd: '/usr/sbin/sshd -D -e', user: 'root', suspicious: false },
+            {
+              pid: 24,
+              name: 'node',
+              cmd: 'node dist/main.js (Target Server :8000)',
+              user: 'node',
+              suspicious: false,
+              children: [
+                { pid: 31, name: 'sqlite3-worker', cmd: 'sqlite3 /data/target.sqlite', user: 'node', suspicious: false },
+              ],
+            },
+          ],
+        },
+      ],
+      suspicious_processes: [],
+      reverse_shell: { ...state.osL7State.reverse_shell, active: false, shell_cmd: null, pid: null },
+      fd_metrics: { ...state.osL7State.fd_metrics, open_fds: 42, peak_fds: 42, status: 'NORMAL', suspicious_files: [], process_count: 4 },
     });
   }
 }
@@ -1786,12 +1818,12 @@ async function simulateTraffic(type) {
     logPayload = {
       timestamp: new Date().toISOString(),
       method: 'GET',
-      endpoint: '/api/files/download?file=../../../../etc/passwd',
+      endpoint: '/api/files/download?name=../../../../etc/passwd',
       status_code: state.defenseL3Active ? 400 : 200,
       response_time: Math.floor(Math.random() * 20) + 7,
       client_ip: '172.20.0.66',
       payload_summary: {
-        query: { file: '../../../../etc/passwd' },
+        query: { name: '../../../../etc/passwd' },
         target_file: '/etc/passwd',
         detected_patterns: ['DOT_DOT_SLASH_PATH_TRAVERSAL'],
       },

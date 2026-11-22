@@ -435,11 +435,13 @@ function updateOsAndL7FromLog(log: TelemetryLog) {
     }
   } else if (tag === 'PATH_TRAVERSAL') {
     osL7State.l7_counters.path_traversal_count += 1;
-    const targetFile = typeof query.file === 'string'
-      ? query.file
-      : typeof summary.target_file === 'string'
-        ? summary.target_file
-        : '../../../../etc/passwd';
+    const targetFile = typeof query.name === 'string'
+      ? query.name
+      : typeof query.file === 'string'
+        ? query.file
+        : typeof summary.target_file === 'string'
+          ? summary.target_file
+          : '../../../../etc/passwd';
     const blocked = log.status_code >= 400 || log.defense_action === 'blocked' || log.defense_action === 'sanitized';
     appendL7Alert({
       timestamp: ts,
@@ -877,7 +879,7 @@ app.post('/api/telemetry/os', (req: Request, res: Response) => {
     osL7State.fd_metrics = {
       open_fds: 42,
       max_fds: 1024,
-      peak_fds: osL7State.fd_metrics.peak_fds,
+      peak_fds: 42,
       status: 'NORMAL',
       suspicious_files: [],
       process_count: 4,
@@ -1031,14 +1033,34 @@ app.post('/api/events/attack', (req: Request, res: Response) => {
   } else if (event.scenario === 'S3') {
     // Đồng bộ đồng hồ File Descriptors (lsof) khi nhận sự kiện kịch bản S3 (FD Exhaustion)
     const p = event.payload as Record<string, unknown>;
+    const measurements = typeof p.measurements === 'object' && p.measurements !== null
+      ? (p.measurements as Record<string, unknown>)
+      : {};
+    const resultObj = typeof p.result === 'object' && p.result !== null
+      ? (p.result as Record<string, unknown>)
+      : {};
+    const resultMeasurements = typeof resultObj.measurements === 'object' && resultObj.measurements !== null
+      ? (resultObj.measurements as Record<string, unknown>)
+      : {};
+
     if (p.state === 'STARTING' || p.state === 'RUNNING' || p.type === 'progress' || p.state === 'COMPLETED') {
-      const opened = typeof p.opened_count === 'number'
-        ? p.opened_count
-        : typeof p.max_fds === 'number'
-          ? p.max_fds
-          : 920;
-      const limitVal = typeof p.soft_limit === 'number' ? p.soft_limit : osL7State.fd_metrics.max_fds;
-      updateFdMetrics(Math.max(opened, Math.round(limitVal * 0.9)), limitVal, '/tmp/pbl4_fd_exhaust_*');
+      const opened = typeof resultMeasurements.opened_fds === 'number'
+        ? resultMeasurements.opened_fds
+        : typeof measurements.requested_fds === 'number'
+          ? measurements.requested_fds
+          : typeof p.opened_count === 'number'
+            ? p.opened_count
+            : typeof p.max_fds === 'number'
+              ? p.max_fds
+              : 920;
+      const limitVal = typeof resultMeasurements.soft_limit === 'number'
+        ? resultMeasurements.soft_limit
+        : typeof p.soft_limit === 'number'
+          ? p.soft_limit
+          : osL7State.fd_metrics.max_fds;
+      const hitEmfile = Boolean(resultMeasurements.hit_emfile);
+      const effectiveOpen = hitEmfile ? limitVal : Math.max(opened, Math.round(limitVal * 0.9));
+      updateFdMetrics(effectiveOpen, limitVal, '/tmp/pbl4_fd_exhaust_*');
       io.emit('OS_L7_STATE_UPDATE', { os_l7_state: osL7State, metrics: socketMetrics });
     }
   }
