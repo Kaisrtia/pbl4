@@ -15,13 +15,15 @@ COPY shared /app/shared
 RUN npm run build && npm prune --omit=dev --ignore-scripts
 
 FROM node:26-bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends python3 openssh-server \
+RUN apt-get update && apt-get install -y --no-install-recommends python3 openssh-server iptables iproute2 procps \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m -s /bin/sh lab && passwd -d lab && mkdir -p /run/sshd
 WORKDIR /app
 COPY --from=build /app/target-app/server/dist ./dist
 COPY --from=build /app/target-app/server/node_modules ./node_modules
 COPY target-app/server/data/public ./data/public
+COPY target-app/defense/*.sh ./defense/
+RUN chmod +x ./defense/*.sh
 COPY --from=client /client/index.html /client/app.js /client/style.css ./client/
 COPY --from=client /client/assets ./client/assets
 ENV TARGET_CLIENT_DIR=/app/client

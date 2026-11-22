@@ -7,7 +7,7 @@ export interface AttackEvent {
   source_node: 'ATTACKER';
   source_ip: string;
   target_ip: string;
-  scenario: 'S1' | 'S2' | 'S3' | 'S4';
+  scenario: 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6';
   event_type: 'RUN_STATE' | 'WORKER_EVENT';
   execution_mode: 'real';
   payload: Record<string, unknown>;

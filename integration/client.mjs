@@ -1,6 +1,7 @@
 // Client Bot Traffic Generator for Integration Lab (Task W3-T3 - PBL4)
 // Phụ trách: Hoàng Trung (TV3) - Target App & Tấn công L7
 import { writeFileSync, renameSync } from 'node:fs';
+import { failedProbe } from './client-probe.mjs';
 
 const base = (process.env.TARGET_APP_URL || 'http://target:8000').replace(/\/+$/, '');
 const interval = Math.max(1000, Number(process.env.CLIENT_INTERVAL_MS || 3000));
@@ -50,7 +51,7 @@ async function req(path, options = {}) {
 while (!stopped) {
   iteration++;
   const cycleStart = performance.now();
-  let probeResult = { ok: false, status_code: 500, timestamp: new Date().toISOString(), latency_ms: 0 };
+  let probeResult;
 
   try {
     // 1. Duyệt sản phẩm
@@ -75,19 +76,14 @@ while (!stopped) {
     probeResult = {
       ok: pingRes.ok,
       status_code: pingRes.status,
+      status_source: 'http',
       timestamp: new Date().toISOString(),
       latency_ms: Math.round(pingRes.latency * 100) / 100,
       authenticated: accessToken !== null,
       iteration,
     };
   } catch (error) {
-    probeResult = {
-      ok: false,
-      status_code: 503,
-      error: error.message,
-      timestamp: new Date().toISOString(),
-      latency_ms: performance.now() - cycleStart,
-    };
+    probeResult = failedProbe(error, iteration, performance.now() - cycleStart);
   }
 
   // Cập nhật atomic file probe cho Docker Healthcheck

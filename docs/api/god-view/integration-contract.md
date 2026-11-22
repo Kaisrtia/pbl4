@@ -19,6 +19,44 @@
   kết luận `COMPLETED` có nghĩa là vượt qua phòng thủ; xem `payload.result`
   trong sự kiện và kết quả API run của Attacker.
 
+### Thông báo cho TV1 về sự kiện S5 và S6
+
+Schema sự kiện `1.0` bổ sung `S5` và `S6` vào trường `scenario`. Bản God-View
+đang chạy cần nạp schema mới để tiếp nhận hai giá trị này. Các consumer có
+danh sách scenario cố định cũng cần cập nhật. Thay đổi này áp dụng cho đường
+nhận sự kiện. API khởi chạy của controller hiện hỗ trợ S1–S4.
+
+| Bằng chứng nhận được | Cách đọc trên God-View |
+|---|---|
+| S5 có số lần gửi repair và `cleanup_pending: true` | Giữ trạng thái chờ xác minh. Việc xác nhận khôi phục cần bản ghi ARP thực tế từ cả client và server trước và sau lần chạy, đối chiếu IP–MAC của peer ở mỗi đầu. Thiếu bản ghi ở một đầu thì kết quả vẫn chưa xác minh. |
+| S6 có `matching_client_acks_seen: 0` và `outcome: "INCONCLUSIVE"` | Worker chưa ghi nhận ACK phù hợp trong cửa sổ quan sát. |
+| S6 có `outcome: "OBSERVED"` và `rst_send_calls_succeeded` dương | Worker ghi nhận thao tác gửi. Để xác nhận tác động cần bằng chứng reset từ socket phía client trong cùng lần chạy. |
+
+Client trong Compose tích hợp đánh dấu HTTP status của ping bằng
+`status_source: "http"`. Khi có exception, probe ghi `status_source: "client"`,
+mã 503 cục bộ và lý do thuộc danh sách cố định. `ECONNRESET` ghi nhận lỗi
+reset mà runtime trả về. `TIMEOUT`, `SOCKET_ERROR` và `CLIENT_ERROR` để ngỏ
+nguyên nhân. Đối chiếu timestamp trong log client với cửa sổ của run.
+Probe chỉ có số chu kỳ `iteration`, chưa gắn với `run_id`. Ngay cả khi hai
+mốc thời gian khớp, bằng chứng này vẫn chưa xác định nguồn gây reset.
+
+Để kiểm tra cache ở hai đầu, chạy từ thư mục gốc khi lab đang hoạt động.
+Lệnh đầu lưu mốc trước thử nghiệm. Lệnh thứ hai đọc lại cả hai cache sau
+thử nghiệm và đối chiếu với mốc đã lưu.
+
+```sh
+python3 integration/arp_cache.py > /tmp/pbl4-arp-before.json
+python3 integration/arp_cache.py --baseline /tmp/pbl4-arp-before.json
+```
+
+Công cụ chỉ đọc metadata của Docker và bảng ARP trong hai container.
+`BOTH_MATCH_BASELINE` cho biết ở cả hai lần đọc, mỗi peer có ánh xạ hoàn
+chỉnh khớp MAC do Docker cung cấp. Kết quả mô tả hai thời điểm lấy mẫu.
+Nếu mốc ban đầu hợp lệ và một ánh xạ sau đó sai, kết quả là `MISMATCH`.
+Thiếu bằng chứng để đối chiếu cho kết quả `INCONCLUSIVE`. Công cụ xuất
+JSON riêng để lưu cùng hồ sơ run. Cờ `cleanup_pending` trong sự kiện gốc
+vẫn ghi nhận đánh giá của worker.
+
 ### Trạng thái khiên L3
 
 Target là nguồn xác nhận trạng thái. God-View giữ API phía frontend:

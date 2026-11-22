@@ -13,7 +13,7 @@
     "source_node": { "const": "ATTACKER" },
     "source_ip": { "type": "string" },
     "target_ip": { "type": "string" },
-    "scenario": { "enum": ["S1", "S2", "S3", "S4"] },
+    "scenario": { "enum": ["S1", "S2", "S3", "S4", "S5", "S6"] },
     "event_type": { "enum": ["RUN_STATE", "WORKER_EVENT"] },
     "execution_mode": { "const": "real" },
     "payload": { "type": "object" }

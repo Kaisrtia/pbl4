@@ -26,11 +26,13 @@ services:
     init: true
     environment:
       PORT: 8000
+      CLIENT_IP: ${LAB_CLIENT_IP:-172.30.44.10}
       SERVER_IP: ${LAB_TARGET_IP:-172.30.44.20}
       DATABASE_PATH: /data/target.sqlite
       JWT_SECRET: ${LAB_JWT_SECRET:?Run ./scripts/integration-lab.sh init first}
       GODVIEW_TELEMETRY_URL: http://godview:4000/api/telemetry
       DEFENSE_L3_ENABLED: "false"
+    cap_add: [NET_ADMIN]
     volumes: ["credentials:/secrets", "target-data:/data"]
     ports: ["${LAB_BIND_IP:-127.0.0.1}:${LAB_TARGET_PORT:-18000}:8000"]
     networks: { lab: { ipv4_address: "${LAB_TARGET_IP:-172.30.44.20}" } }
@@ -68,7 +70,9 @@ services:
     environment:
       TARGET_APP_URL: http://target:8000
       CLIENT_INTERVAL_MS: 3000
-    volumes: ["./integration/client.mjs:/integration/client.mjs:ro"]
+    volumes:
+      - ./integration/client.mjs:/integration/client.mjs:ro
+      - ./integration/client-probe.mjs:/integration/client-probe.mjs:ro
     networks: { lab: { ipv4_address: "${LAB_CLIENT_IP:-172.30.44.10}" } }
     depends_on: { target: { condition: service_healthy } }
     healthcheck:

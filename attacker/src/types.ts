@@ -1,4 +1,4 @@
-export type Scenario = 'S1' | 'S2' | 'S3' | 'S4';
+export type Scenario = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6';
 export type State = 'STARTING' | 'RUNNING' | 'STOPPING' | 'COMPLETED' | 'STOPPED' | 'FAILED';
 export type Outcome = 'OBSERVED' | 'BLOCKED' | 'INCONCLUSIVE';
 export interface WorkerResult {
