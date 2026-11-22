@@ -138,6 +138,63 @@ export interface TelemetryStreamMessage<T = TelemetryLog> {
 }
 
 // ==========================================
+// W3-T1: L2/L4 Network & Host Telemetry Schemas
+// ==========================================
+
+/**
+ * Một dòng trong bảng ARP Cache (/proc/net/arp)
+ */
+export interface ArpCacheEntry {
+  ip: string;
+  mac: string;
+  expected_mac?: string;
+  iface: string;
+  role: 'CLIENT' | 'TARGET_SERVER' | 'HACKER' | 'GATEWAY' | (string & {});
+  spoofed: boolean;
+  updated_at: string;
+}
+
+/**
+ * Gói tin nhạy cảm (mật khẩu / token) bị bắt lén khi MitM ARP Spoofing đang kích hoạt
+ */
+export interface SniffedPacket {
+  id: string;
+  timestamp: string;
+  src_ip: string;
+  dst_ip: string;
+  method: string;
+  endpoint: string;
+  username?: string;
+  password?: string;
+  token_preview?: string;
+  raw_preview: string;
+}
+
+/**
+ * Trạng thái đòn tấn công tiêm gói TCP RST (RST Injection)
+ */
+export interface RstInjectionStatus {
+  active: boolean;
+  disrupted_sessions: number;
+  last_rst_at: string | null;
+  last_seq_num: number | null;
+  victim_ip: string;
+  target_ip: string;
+}
+
+/**
+ * Tổng hợp trạng thái tấn công mạng L2/L4 trên God-View (Task W3-T1)
+ */
+export interface NetworkAttackState {
+  mitm_active: boolean;
+  arp_table: ArpCacheEntry[];
+  sniffed_packets: SniffedPacket[];
+  rst_injection: RstInjectionStatus;
+  syn_history: number[];
+  last_updated: string;
+}
+
+// ==========================================
 // Type Guards (Kiểm tra kiểu lúc runtime)
 // ==========================================
 

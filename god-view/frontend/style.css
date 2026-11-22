@@ -439,7 +439,7 @@ body.cyber-theme {
 }
 
 .client-node {
-  top: 45%;
+  top: 28%;
   left: 6%;
   transform: translateY(-50%);
   border-color: rgba(0, 255, 102, 0.4);
@@ -450,9 +450,9 @@ body.cyber-theme {
 }
 
 .server-node {
-  top: 45%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 28%;
+  right: 6%;
+  transform: translateY(-50%);
   border-color: rgba(0, 240, 255, 0.6);
   background: rgba(8, 20, 38, 0.95);
   width: 220px;
@@ -463,10 +463,15 @@ body.cyber-theme {
 }
 
 .hacker-node {
-  top: 45%;
-  right: 6%;
-  transform: translateY(-50%);
+  bottom: 10%;
+  left: 50%;
+  transform: translateX(-50%);
   border-color: rgba(255, 0, 60, 0.4);
+}
+
+.hacker-node.mitm-active {
+  border-color: var(--neon-orange) !important;
+  box-shadow: 0 0 28px rgba(255, 153, 0, 0.75) !important;
 }
 
 .hacker-node .node-role {
@@ -700,6 +705,271 @@ body.cyber-theme {
 .btn-micro-cyan { border-color: var(--neon-cyan); color: var(--neon-cyan); }
 .btn-micro-red { border-color: var(--neon-red); color: var(--neon-red); }
 .btn-micro-orange { border-color: var(--neon-orange); color: var(--neon-orange); }
+.btn-micro-yellow { border-color: var(--neon-yellow); color: var(--neon-yellow); }
+.btn-micro-purple { border-color: var(--neon-purple); color: #d896ff; }
+
+.badge-mitm {
+  background: rgba(255, 153, 0, 0.2);
+  border: 1px solid var(--neon-orange);
+  color: var(--neon-orange);
+  animation: pulse-danger 1.2s infinite;
+}
+
+.badge-rst {
+  background: rgba(255, 0, 60, 0.25);
+  border: 1px solid var(--neon-red);
+  color: #fff;
+  animation: pulse-danger 0.8s infinite;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ==============================================================================
+   W3-T1: L2/L4 NETWORK ATTACK MONITOR GRID (ARP CACHE, MITM SNIFFER, SYN CHART)
+   ============================================================================== */
+.w3-network-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1.15fr 1fr;
+  gap: 16px;
+}
+
+.w3-card {
+  height: 255px;
+  display: flex;
+  flex-direction: column;
+}
+
+.w3-card.card-alert-red {
+  border-color: var(--neon-red);
+  box-shadow: 0 0 22px rgba(255, 0, 60, 0.35);
+}
+
+.w3-card-body {
+  padding: 10px 14px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ARP Cache Table */
+.arp-alert-box {
+  background: rgba(255, 0, 60, 0.18);
+  border: 1px solid var(--neon-red);
+  color: #ffd1dc;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  animation: pulse-danger 1.2s infinite;
+}
+
+.arp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.arp-table th {
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 10px;
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+}
+
+.arp-table td {
+  padding: 8px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.arp-table tr.arp-row-spoofed {
+  background: rgba(255, 0, 60, 0.22);
+  color: #fff;
+  border-left: 3px solid var(--neon-red);
+  animation: pulse-danger 1.1s infinite;
+}
+
+.arp-table tr.arp-row-spoofed .mac-cell {
+  color: #ff3366;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(255, 0, 60, 0.8);
+}
+
+.mac-expected {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+/* MitM Credential Sniffer Window */
+.sniffer-window {
+  background: rgba(3, 7, 14, 0.85);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 10px 12px;
+}
+
+.sniffer-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  margin: auto 0;
+  padding: 16px;
+  line-height: 1.5;
+}
+
+.sniffer-entry {
+  background: rgba(255, 153, 0, 0.1);
+  border-left: 3px solid var(--neon-orange);
+  border-top: 1px solid rgba(255, 153, 0, 0.25);
+  border-right: 1px solid rgba(255, 153, 0, 0.25);
+  border-bottom: 1px solid rgba(255, 153, 0, 0.25);
+  padding: 7px 10px;
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sniffer-entry-top {
+  display: flex;
+  justify-content: space-between;
+  color: var(--neon-orange);
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.sniffer-creds {
+  color: #fff;
+  background: rgba(255, 0, 60, 0.18);
+  padding: 3px 6px;
+  border-radius: 2px;
+  border: 1px dashed rgba(255, 0, 60, 0.5);
+}
+
+.sniffer-creds code {
+  color: var(--neon-yellow);
+  font-weight: 700;
+}
+
+.sniffer-token {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* SYN_RECV Vertical Bar Chart & RST Box */
+.syn-rst-body {
+  justify-content: space-between;
+}
+
+.syn-chart-header {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.syn-chart-header strong {
+  color: var(--neon-cyan);
+}
+
+.syn-bar-chart {
+  height: 98px;
+  background: rgba(4, 8, 16, 0.8);
+  border: 1px solid rgba(0, 240, 255, 0.18);
+  border-radius: 4px;
+  padding: 8px 10px 4px;
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.syn-bar-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 2px;
+}
+
+.syn-bar-fill {
+  width: 100%;
+  min-height: 3px;
+  background: var(--neon-cyan);
+  border-radius: 2px 2px 0 0;
+  transition: height 0.3s ease, background-color 0.3s ease;
+  box-shadow: 0 0 6px rgba(0, 240, 255, 0.4);
+}
+
+.syn-bar-fill.syn-warn {
+  background: var(--neon-orange);
+  box-shadow: 0 0 8px rgba(255, 153, 0, 0.6);
+}
+
+.syn-bar-fill.syn-critical {
+  background: var(--neon-red);
+  box-shadow: 0 0 12px rgba(255, 0, 60, 0.9);
+}
+
+.syn-bar-val {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.rst-status-box {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 4px;
+  padding: 7px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rst-status-box.rst-alert {
+  border-color: var(--neon-red);
+  background: rgba(255, 0, 60, 0.14);
+}
+
+.rst-status-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rst-title {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.rst-metrics-row {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+}
+
+.rst-metrics-row strong,
+.rst-metrics-row code {
+  color: var(--neon-yellow);
+}
 
 /* ==============================================================================
    PACKET CAPTURE STREAM TABLE
@@ -832,6 +1102,8 @@ body.cyber-theme {
 .tag-SQL_INJECTION { background: rgba(255, 0, 60, 0.25); color: #ff3366; font-weight: 700; border: 1px solid var(--neon-red); }
 .tag-HEAVY_DOS { background: rgba(255, 153, 0, 0.25); color: #ffaa00; font-weight: 700; border: 1px solid var(--neon-orange); }
 .tag-SYN_FLOOD { background: rgba(157, 78, 221, 0.25); color: #cc66ff; font-weight: 700; border: 1px solid var(--neon-purple); }
+.tag-ARP_SPOOF { background: rgba(255, 215, 0, 0.2); color: var(--neon-yellow); font-weight: 700; border: 1px solid var(--neon-yellow); }
+.tag-RST_INJECTION { background: rgba(255, 0, 60, 0.3); color: #ff6688; font-weight: 700; border: 1px solid var(--neon-red); }
 
 /* ==============================================================================
    MODAL INSPECTOR
