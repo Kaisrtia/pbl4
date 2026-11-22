@@ -70,7 +70,9 @@ services:
     environment:
       TARGET_APP_URL: http://target:8000
       CLIENT_INTERVAL_MS: 3000
-    volumes: ["./integration/client.mjs:/integration/client.mjs:ro"]
+    volumes:
+      - ./integration/client.mjs:/integration/client.mjs:ro
+      - ./integration/client-probe.mjs:/integration/client-probe.mjs:ro
     networks: { lab: { ipv4_address: "${LAB_CLIENT_IP:-172.30.44.10}" } }
     depends_on: { target: { condition: service_healthy } }
     healthcheck:

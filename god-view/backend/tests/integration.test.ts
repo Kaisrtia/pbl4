@@ -55,6 +55,25 @@ test('hub integration contracts', { timeout: 15000 }, async (t) => {
     scenario: 'S4', event_type: 'RUN_STATE', execution_mode: 'real', payload: { state: 'COMPLETED' },
   };
 
+  await t.test('S5 and S6 worker evidence survives broadcast and history', async () => {
+    const results = [
+      { scenario: 'S5', outcome: 'OBSERVED', cleanup_pending: true,
+        measurements: { arp_repair_send_calls_succeeded: 6, arp_restoration_verified: false } },
+      { scenario: 'S6', outcome: 'INCONCLUSIVE', cleanup_pending: false,
+        measurements: { matching_client_acks_seen: 0, rst_send_calls_succeeded: 0, client_reset_verified: false } },
+      { scenario: 'S6', outcome: 'OBSERVED', cleanup_pending: false,
+        measurements: { matching_client_acks_seen: 1, rst_send_calls_succeeded: 1, client_reset_verified: false } },
+    ];
+    for (const { scenario, ...result } of results) {
+      const run_id = `test-${scenario}-${result.outcome}`;
+      const evidence = { ...event, run_id, scenario, event_id: run_id + '-result', event_type: 'WORKER_EVENT',
+        payload: { run_id, type: 'result', result: { ...result, summary: 'Test fixture' } } };
+      const delivered = once(socket, 'ATTACK_EVENT');
+      assert.equal((await api('/api/events/attack', evidence)).status, 200);
+      assert.deepEqual((await delivered)[0], evidence);
+      assert.deepEqual((await api('/api/events/attack?run_id=' + run_id)).data.events, [evidence]);
+    }
+  });
   await t.test('real HTTP logs still work and metrics are labelled simulated', async () => {
     const log = { endpoint: '/api/system/ping', status_code: 200, method: 'GET', response_time: 1, client_ip: '172.30.44.10', payload_summary: {} };
     assert.equal((await api('/api/telemetry', log)).status, 200);
