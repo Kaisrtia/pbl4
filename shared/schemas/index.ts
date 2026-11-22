@@ -5,3 +5,4 @@
 
 export * from './telemetry';
 export * from './shop-api';
+export * from './attack-event';

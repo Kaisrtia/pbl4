@@ -72,6 +72,8 @@
           <div class="card-badges">
             <span class="badge badge-normal">NORMAL (GREEN)</span>
             <span class="badge badge-attack">ATTACK (RED)</span>
+            <span id="mitm-badge-indicator" class="badge badge-mitm hidden">⚠️ MITM: REROUTED VIA HACKER</span>
+            <span id="rst-badge-indicator" class="badge badge-rst hidden">⚡ TCP RST: SESSION BROKEN</span>
             <span id="shield-badge-indicator" class="badge badge-shield">SHIELD: ACTIVE</span>
           </div>
         </div>
@@ -188,18 +190,108 @@
 
           <!-- Quick Test Traffic Generator (For Easy Live Demo) -->
           <div class="demo-tools-box">
-            <div class="box-title">SYNTHETIC LOGS · NO TARGET REQUEST</div>
+            <div class="box-title">SYNTHETIC LOGS · L2 / L4 / L7 DEMO</div>
             <div class="demo-btn-group">
               <button id="btn-demo-ping" class="btn-micro btn-micro-green">Ping Check</button>
               <button id="btn-demo-user" class="btn-micro btn-micro-cyan">Normal Login</button>
+              <button id="btn-demo-arp" class="btn-micro btn-micro-yellow" title="Giả mạo MAC & Bẻ đường truyền MitM">ARP Spoof (MitM)</button>
+              <button id="btn-demo-syn" class="btn-micro btn-micro-purple" title="Bão gói tin TCP SYN làm vọt biểu đồ SYN_RECV">SYN Flood (L4)</button>
+              <button id="btn-demo-rst" class="btn-micro btn-micro-red" title="Tiêm cờ TCP RST ngắt phiên Client-Server">TCP RST Inject</button>
               <button id="btn-demo-sqli" class="btn-micro btn-micro-red">SQLi Attack</button>
               <button id="btn-demo-dos" class="btn-micro btn-micro-orange">Heavy DoS</button>
+              <button id="btn-demo-clean-arp" class="btn-micro btn-micro-green" title="Khôi phục bảng ARP sạch">Restore Clean ARP</button>
             </div>
           </div>
         </div>
       </aside>
 
     </div>
+
+    <!-- MIDDLE ROW (TASK W3-T1): L2/L4 NETWORK ATTACK VISUALIZATION (ARP CACHE, MITM SNIFFER, SYN_RECV BAR CHART & RST) -->
+    <section class="w3-network-grid" aria-label="L2/L4 Network Attack Monitors">
+      <!-- 1. BẢNG ARP CACHE (/proc/net/arp) -->
+      <div class="card w3-card" id="arp-cache-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="neon-icon">🖧</span> ARP CACHE TABLE <small>(/proc/net/arp)</small>
+          </div>
+          <div class="card-badges">
+            <span id="arp-status-badge" class="badge badge-normal">ARP: VERIFIED</span>
+          </div>
+        </div>
+        <div class="w3-card-body">
+          <div id="arp-poison-alert" class="arp-alert-box hidden">
+            ⚠️ <strong>MAC SPOOFING DETECTED!</strong> IP Server &amp; Client bị ánh xạ trùng về MAC của Hacker (<code id="spoofed-mac-value">02:42:ac:14:00:42</code>).
+          </div>
+          <table class="arp-table" id="arp-cache-table">
+            <thead>
+              <tr>
+                <th>NODE</th>
+                <th>IP ADDRESS</th>
+                <th>HWADDR (MAC)</th>
+                <th>IFACE</th>
+                <th>STATUS</th>
+              </tr>
+            </thead>
+            <tbody id="arp-table-body">
+              <!-- Populated by app.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2. CỬA SỐ SNIFFING BẮT MẬT KHẨU & TOKEN (MITM CREDENTIAL SNIFFER) -->
+      <div class="card w3-card" id="mitm-sniffer-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="neon-icon">🕵️</span> MITM SNIFFER <small>(CREDENTIAL &amp; TOKEN CAPTURE)</small>
+          </div>
+          <div class="card-badges">
+            <span id="sniffer-count-badge" class="badge badge-shield">0 captured</span>
+            <span id="sniffer-status-badge" class="badge badge-shield inactive">STANDBY</span>
+          </div>
+        </div>
+        <div class="w3-card-body sniffer-window" id="mitm-sniffer-list" aria-live="polite">
+          <div class="sniffer-empty">
+            Chưa có gói tin bị bắt lén. Khi <strong>ARP Spoofing (MitM)</strong> kích hoạt, luồng đăng nhập của Client đi vòng qua Hacker sẽ bị bóc tách mật khẩu tại đây.
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. BIỂU ĐỒ CỘT SYN_RECV & GIÁM SÁT TCP RST INJECTION -->
+      <div class="card w3-card" id="syn-rst-card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="neon-icon">📊</span> <code>SYN_RECV</code> BACKLOG &amp; TCP RST
+          </div>
+          <div class="card-badges">
+            <span id="syn-backlog-badge" class="badge badge-normal">BACKLOG: STABLE</span>
+          </div>
+        </div>
+        <div class="w3-card-body syn-rst-body">
+          <div class="syn-chart-header">
+            <span>HALF-OPEN QUEUE (<code>SYN_RECV</code>): <strong id="syn-chart-current">0</strong> / 250</span>
+            <span>PEAK: <strong id="syn-chart-peak">0</strong></span>
+          </div>
+          <!-- Vertical Bar Chart for SYN_RECV -->
+          <div class="syn-bar-chart" id="syn-bar-chart" role="img" aria-label="Biểu đồ cột SYN_RECV theo thời gian thực">
+            <!-- 16 vertical bars rendered dynamically -->
+          </div>
+          <!-- TCP RST Injection Status Box -->
+          <div class="rst-status-box" id="rst-status-box">
+            <div class="rst-status-top">
+              <span class="rst-title">⚡ TCP RST INJECTION MONITOR</span>
+              <span id="rst-state-pill" class="badge badge-normal">SESSION: INTACT</span>
+            </div>
+            <div class="rst-metrics-row">
+              <span>Disrupted: <strong id="rst-disrupted-count">0</strong></span>
+              <span>Last SEQ#: <code id="rst-last-seq">--</code></span>
+              <span>Time: <code id="rst-last-time">--:--:--</code></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- BOTTOM ROW: PACKET CAPTURE STREAM (TERMINAL LOG TABLE) -->
     <section class="card packet-stream-card">
@@ -218,9 +310,11 @@
             <select id="log-filter-tag">
               <option value="ALL">ALL TRAFFIC</option>
               <option value="NORMAL">NORMAL ONLY</option>
+              <option value="ARP_SPOOF">ARP SPOOF (MitM)</option>
+              <option value="SYN_FLOOD">SYN FLOOD (L4)</option>
+              <option value="RST_INJECTION">TCP RST INJECTION</option>
               <option value="SQL_INJECTION">SQL INJECTION</option>
               <option value="HEAVY_DOS">HEAVY DoS</option>
-              <option value="SYN_FLOOD">SYN FLOOD</option>
               <option value="ATTACK_ONLY">ALL ATTACKS</option>
             </select>
           </div>
