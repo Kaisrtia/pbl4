@@ -722,6 +722,14 @@ body.cyber-theme {
   animation: pulse-danger 0.8s infinite;
 }
 
+.badge-revshell {
+  background: rgba(255, 0, 95, 0.28);
+  border: 1px solid #ff005f;
+  color: #ffb3d1;
+  box-shadow: 0 0 14px rgba(255, 0, 95, 0.65);
+  animation: pulse-danger 0.9s infinite;
+}
+
 .hidden {
   display: none !important;
 }
@@ -972,6 +980,370 @@ body.cyber-theme {
 }
 
 /* ==============================================================================
+   W4-T1: OS & L7 ATTACK MONITOR GRID (PSTREE, LSOF FD GAUGE, SQLI / BRUTE-FORCE)
+   ============================================================================== */
+.w4-os-l7-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr 1.15fr;
+  gap: 16px;
+}
+
+.w4-card {
+  height: 270px;
+  display: flex;
+  flex-direction: column;
+}
+
+.w4-card.card-alert-red {
+  border-color: var(--neon-red);
+  box-shadow: 0 0 24px rgba(255, 0, 60, 0.42);
+}
+
+.w4-card-body {
+  padding: 10px 14px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 1. OS Process Tree (pstree) */
+.revshell-alert-box {
+  background: rgba(255, 0, 60, 0.2);
+  border: 1px solid var(--neon-red);
+  color: #ffd6e0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  animation: pulse-danger 0.95s infinite;
+}
+
+.revshell-alert-box code {
+  color: var(--neon-yellow);
+  font-weight: 700;
+}
+
+.pstree-container {
+  background: rgba(4, 8, 16, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.16);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.pstree-branch {
+  list-style: none;
+  padding-left: 16px;
+  margin: 3px 0;
+  border-left: 1px dashed rgba(0, 240, 255, 0.3);
+}
+
+.pstree-root {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.pstree-item {
+  margin: 4px 0;
+}
+
+.pstree-node-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: rgba(0, 240, 255, 0.06);
+  border: 1px solid rgba(0, 240, 255, 0.18);
+  color: var(--text-main);
+}
+
+.pstree-pid {
+  color: var(--neon-cyan);
+  font-weight: 700;
+  font-size: 10.5px;
+}
+
+.pstree-user {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.pstree-cmd {
+  color: #fff;
+}
+
+/* Nhấp nháy đỏ khi mọc ra /bin/sh hoặc nc */
+.pstree-node-malicious {
+  background: rgba(255, 0, 60, 0.25) !important;
+  border: 1px solid var(--neon-red) !important;
+  color: #fff !important;
+  box-shadow: 0 0 14px rgba(255, 0, 60, 0.65);
+  animation: pulse-malicious-proc 0.75s infinite alternate;
+}
+
+.pstree-node-malicious .pstree-pid,
+.pstree-node-malicious .pstree-cmd {
+  color: #ffccd5 !important;
+  font-weight: 700;
+  text-shadow: 0 0 8px var(--neon-red);
+}
+
+@keyframes pulse-malicious-proc {
+  0% {
+    background: rgba(255, 0, 60, 0.18);
+    box-shadow: 0 0 6px rgba(255, 0, 60, 0.4);
+    transform: translateX(0);
+  }
+  100% {
+    background: rgba(255, 0, 60, 0.42);
+    box-shadow: 0 0 18px rgba(255, 0, 60, 0.95);
+    transform: translateX(2px);
+  }
+}
+
+/* 2. File Descriptors Gauge (lsof) */
+.fd-gauge-body {
+  justify-content: space-between;
+}
+
+.fd-gauge-layout {
+  display: grid;
+  grid-template-columns: 145px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.fd-radial-wrapper {
+  position: relative;
+  width: 140px;
+  height: 92px;
+  margin: 0 auto;
+}
+
+.fd-radial-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.fd-arc-bg {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.fd-arc-fill {
+  stroke: var(--neon-green);
+  filter: drop-shadow(0 0 6px var(--neon-green));
+  transition: stroke-dashoffset 0.4s ease, stroke 0.3s ease;
+}
+
+.fd-arc-fill.fd-warn {
+  stroke: var(--neon-orange);
+  filter: drop-shadow(0 0 8px var(--neon-orange));
+}
+
+.fd-arc-fill.fd-critical {
+  stroke: var(--neon-red);
+  filter: drop-shadow(0 0 12px var(--neon-red));
+}
+
+.fd-gauge-center {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+.fd-gauge-pct {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.fd-gauge-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.fd-stats-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(0, 240, 255, 0.14);
+  padding: 8px 10px;
+  border-radius: 4px;
+}
+
+.fd-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fd-stat-label {
+  color: var(--text-muted);
+}
+
+.fd-stat-val {
+  color: var(--neon-cyan);
+}
+
+.fd-bar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fd-linear-bar {
+  height: 8px;
+}
+
+.fd-files-box {
+  background: rgba(4, 8, 16, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.16);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.fd-files-label {
+  color: var(--neon-yellow);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#fd-files-list {
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 3. L7 Security Alerts (SQLi / Brute-force / Command Injection / Path Traversal) */
+.l7-alerts-body {
+  gap: 8px;
+}
+
+.l7-counters-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.l7-counter-pill {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 3px;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-mono);
+}
+
+.l7-cnt-label {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.l7-counter-pill strong {
+  font-size: 14px;
+  color: #fff;
+}
+
+.pill-sqli { border-color: rgba(255, 0, 60, 0.45); }
+.pill-sqli strong { color: #ff3366; }
+.pill-bf { border-color: rgba(255, 153, 0, 0.45); }
+.pill-bf strong { color: var(--neon-orange); }
+.pill-cmd { border-color: rgba(157, 78, 221, 0.5); }
+.pill-cmd strong { color: #d896ff; }
+.pill-path { border-color: rgba(255, 215, 0, 0.45); }
+.pill-path strong { color: var(--neon-yellow); }
+
+.l7-alerts-list {
+  flex: 1;
+  overflow-y: auto;
+  background: rgba(3, 7, 14, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.14);
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.l7-alert-item {
+  background: rgba(255, 0, 60, 0.12);
+  border-left: 3px solid var(--neon-red);
+  border-top: 1px solid rgba(255, 0, 60, 0.25);
+  border-right: 1px solid rgba(255, 0, 60, 0.25);
+  border-bottom: 1px solid rgba(255, 0, 60, 0.25);
+  padding: 6px 8px;
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.l7-alert-item.alert-blocked {
+  background: rgba(0, 240, 255, 0.08);
+  border-left-color: var(--neon-cyan);
+  border-color: rgba(0, 240, 255, 0.25);
+}
+
+.l7-alert-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10.5px;
+}
+
+.l7-alert-cat {
+  font-weight: 700;
+  color: #ff4d6d;
+}
+
+.l7-alert-item.alert-blocked .l7-alert-cat {
+  color: var(--neon-cyan);
+}
+
+.l7-alert-payload {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 6px;
+  border-radius: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.l7-alert-payload code {
+  color: var(--neon-yellow);
+}
+
+/* ==============================================================================
    PACKET CAPTURE STREAM TABLE
    ============================================================================== */
 .packet-stream-card {
@@ -1104,6 +1476,10 @@ body.cyber-theme {
 .tag-SYN_FLOOD { background: rgba(157, 78, 221, 0.25); color: #cc66ff; font-weight: 700; border: 1px solid var(--neon-purple); }
 .tag-ARP_SPOOF { background: rgba(255, 215, 0, 0.2); color: var(--neon-yellow); font-weight: 700; border: 1px solid var(--neon-yellow); }
 .tag-RST_INJECTION { background: rgba(255, 0, 60, 0.3); color: #ff6688; font-weight: 700; border: 1px solid var(--neon-red); }
+.tag-BRUTE_FORCE { background: rgba(255, 153, 0, 0.25); color: #ffb703; font-weight: 700; border: 1px solid var(--neon-orange); }
+.tag-COMMAND_INJECTION, .tag-REVERSE_SHELL { background: rgba(255, 0, 95, 0.3); color: #ff80b5; font-weight: 700; border: 1px solid #ff005f; }
+.tag-PATH_TRAVERSAL { background: rgba(255, 215, 0, 0.25); color: #ffe066; font-weight: 700; border: 1px solid var(--neon-yellow); }
+.tag-FD_EXHAUSTION, .tag-FORK_BOMB { background: rgba(157, 78, 221, 0.3); color: #e0aaff; font-weight: 700; border: 1px solid var(--neon-purple); }
 
 /* ==============================================================================
    MODAL INSPECTOR

