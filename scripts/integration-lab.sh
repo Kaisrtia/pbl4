@@ -66,7 +66,12 @@ PY
   up) "${compose[@]}" up --build -d --wait --wait-timeout 120 ;;
   down) "${compose[@]}" down ;;
   status) "${compose[@]}" ps ;;
+  telemetry-test)
+    "${compose[@]}" up --build -d --wait --wait-timeout 120 godview target client
+    "${compose[@]}" exec -T client python3 - client < integration/check_host_sample.py
+    "${compose[@]}" exec -T target python3 - target-server < integration/check_host_sample.py
+    ;;
   logs) "${compose[@]}" logs --tail 80 ;;
   test) node --env-file=integration/.env.local integration/verify.mjs ;;
-  *) echo 'Usage: ./scripts/integration-lab.sh {init|lan <Wi-Fi IPv4>|local|urls|up|down|status|logs|test}' >&2; exit 2 ;;
+  *) echo 'Usage: ./scripts/integration-lab.sh {init|lan <Wi-Fi IPv4>|local|urls|up|down|status|logs|test|telemetry-test}' >&2; exit 2 ;;
 esac

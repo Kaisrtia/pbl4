@@ -81,6 +81,65 @@ không sửa API nghiệp vụ của Trung.
 
 ## Kiểm thử module
 
+### W2-T2 · Kiểm tra mẫu từ Client và Target
+
+Compose khởi chạy một agent Python trong mỗi container `client` và `target`.
+Sau mỗi lần lấy mẫu, agent gửi JSON tới `POST /api/telemetry/host` của God-View
+rồi chờ 5 giây. Khi hub trả HTTP 200, agent thay thế file mẫu gần nhất trong
+container. Nếu hub tạm ngừng, file giữ timestamp cũ và agent thử lại ở chu kỳ sau.
+
+Nghiệm thu trên Docker dùng cgroup v2, chạy từ thư mục gốc. Bài kiểm tra bật
+ba service và đợi **hai mẫu mới** được God-View tiếp nhận cho từng node.
+
+```bash
+./scripts/integration-lab.sh init
+./scripts/integration-lab.sh telemetry-test
+```
+
+Để xem chi tiết mẫu sau khi hai dòng `PASS` xuất hiện:
+
+```bash
+lab=(docker compose --env-file integration/.env.local -f compose.integration.yaml)
+for service in client target; do
+  "${lab[@]}" exec -T "$service" python3 -c 'import json; s=json.load(open("/tmp/pbl4-host-telemetry.json")); print(s["node"], s["ip"], s["timestamp"], s["metrics"])'
+done
+```
+
+Cả `client` và `target-server` cần có timestamp tăng giữa hai lần đọc và IP
+khớp cấu hình lab. Kiểm tra từng mẫu riêng vì hub hiện dùng chung trạng thái
+hiển thị cho cả hai node và chưa hiển thị CPU/RAM. Có thể đối chiếu trực tiếp
+với `"${lab[@]}" exec -T target cat /proc/net/arp` trong cùng cửa sổ lấy mẫu.
+
+| Trường | Cách đọc |
+|---|---|
+| `tcp_syn_recv`, `tcp_established`, `tcp_time_wait` | Số socket ở từng trạng thái trong namespace mạng của node, bao gồm IPv6 khi có. |
+| `cpu_percent`, `ram_used_mb` | Mức dùng cgroup v2 của container. CPU tính từ hai lần đọc liên tiếp, 100% tương ứng một lõi. RAM dùng đơn vị MiB. Trường thiếu khi nguồn đo chưa sẵn sàng. |
+| `open_fds`, `fd_pid`, `max_fds` | Số FD, PID và giới hạn mềm của tiến trình có nhiều FD đọc được nhất. `visible_fds_total` là tổng số FD đọc được trong namespace. |
+| `pstree` | Quan hệ PID/PPID, tên tiến trình và UID. Trường `cmd` chỉ chứa tên tiến trình để tương thích với UI. |
+| `arp_neighbors` | Các ánh xạ Ethernet đã phân giải trong cache. Nếu đã biết MAC thật từ nguồn độc lập, đặt `LAB_CLIENT_MAC` hoặc `LAB_TARGET_MAC` trong cấu hình lab. Agent phía đối diện sẽ bổ sung `arp_table` với kết quả so khớp khi có entry của peer. Cần cập nhật MAC tham chiếu nếu Docker tạo lại endpoint. |
+
+Test ngoại tuyến của agent:
+
+```bash
+python3 -m unittest discover -v -s integration -p 'test_host_agent.py'
+```
+
+#### Biên bản nghiệm thu Docker ngày 24/11/2026
+
+Lệnh `telemetry-test` kết thúc với mã 0. God-View trả HTTP 200 cho hai mẫu
+mới liên tiếp từ mỗi node. Thời điểm mẫu cuối dưới đây dùng UTC.
+
+```text
+PASS client 172.30.44.10: two acknowledged samples, latest 2026-11-24T03:42:36.462467+00:00
+PASS target-server 172.30.44.20: two acknowledged samples, latest 2026-11-24T03:42:42.878923+00:00
+```
+
+Bài kiểm tra đối chiếu danh tính node, thời điểm, số socket TCP, CPU/RAM,
+FD, cây tiến trình và định dạng danh sách ARP. Việc xác minh MAC của peer
+hoặc hiệu lực khiên L1/L2 cần phép đo riêng.
+
+### Các module khác
+
 ```bash
 npm --prefix god-view/backend ci
 npm --prefix god-view/backend run build
@@ -103,9 +162,8 @@ DATABASE_PATH=:memory: GODVIEW_TELEMETRY_URL=http://127.0.0.1:1/api/telemetry np
 ```
 
 Lint Target có lỗi tồn tại từ `9730163` (đã gồm PR #8 và #9) do cấu hình TypeScript/oxlint (`moduleResolution`
-và `baseUrl`); bản tích hợp không sửa cấu hình này. Chưa có agent kernel/OS,
-ARP/RST, phòng thủ L1/L2, hoặc kiểm thử hiệu quả phòng thủ mạng. Không dùng build
-thành công hoặc chỉ số mô phỏng làm bằng chứng nghiệm thu toàn bộ đồ án.
+và `baseUrl`); bản tích hợp không sửa cấu hình này. Việc nghiệm thu hiệu quả
+phòng thủ mạng cần bằng chứng runtime riêng.
 
 ## ElectroShop tích hợp
 

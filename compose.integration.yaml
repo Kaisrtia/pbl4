@@ -24,16 +24,22 @@ services:
       context: .
       dockerfile: integration/target.Dockerfile
     init: true
+    command: ["/bin/sh", "-c", "python3 /integration/host_agent.py target-server & exec python3 /integration/target-entrypoint.py"]
+    cgroup: private
     environment:
       PORT: 8000
       CLIENT_IP: ${LAB_CLIENT_IP:-172.30.44.10}
       SERVER_IP: ${LAB_TARGET_IP:-172.30.44.20}
+      HOST_AGENT_PEER_MAC: ${LAB_CLIENT_MAC:-}
       DATABASE_PATH: /data/target.sqlite
       JWT_SECRET: ${LAB_JWT_SECRET:?Run ./scripts/integration-lab.sh init first}
       GODVIEW_TELEMETRY_URL: http://godview:4000/api/telemetry
       DEFENSE_L3_ENABLED: "false"
     cap_add: [NET_ADMIN]
-    volumes: ["credentials:/secrets", "target-data:/data"]
+    volumes:
+      - credentials:/secrets
+      - target-data:/data
+      - ./integration/host_agent.py:/integration/host_agent.py:ro
     ports: ["${LAB_BIND_IP:-127.0.0.1}:${LAB_TARGET_PORT:-18000}:8000"]
     networks: { lab: { ipv4_address: "${LAB_TARGET_IP:-172.30.44.20}" } }
     depends_on: { godview: { condition: service_healthy } }
@@ -64,15 +70,22 @@ services:
       interval: 3s
       retries: 30
   client:
-    image: node:26-bookworm-slim
+    build:
+      context: .
+      dockerfile: integration/client.Dockerfile
     init: true
-    command: [node, /integration/client.mjs]
+    cgroup: private
+    command: ["/bin/sh", "-c", "python3 /integration/host_agent.py client & exec node /integration/client.mjs"]
     environment:
       TARGET_APP_URL: http://target:8000
       CLIENT_INTERVAL_MS: 3000
+      CLIENT_IP: ${LAB_CLIENT_IP:-172.30.44.10}
+      SERVER_IP: ${LAB_TARGET_IP:-172.30.44.20}
+      HOST_AGENT_PEER_MAC: ${LAB_TARGET_MAC:-}
     volumes:
       - ./integration/client.mjs:/integration/client.mjs:ro
       - ./integration/client-probe.mjs:/integration/client-probe.mjs:ro
+      - ./integration/host_agent.py:/integration/host_agent.py:ro
     networks: { lab: { ipv4_address: "${LAB_CLIENT_IP:-172.30.44.10}" } }
     depends_on: { target: { condition: service_healthy } }
     healthcheck:
