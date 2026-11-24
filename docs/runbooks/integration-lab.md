@@ -217,3 +217,12 @@ một điều kiện của khiên được chọn. Kiểm tra này chỉ đọc 
 healthy. Nó in thời gian thực tế và `PASS` hoặc `MISSED` cho mục tiêu 3 giây.
 Thời gian dựng container và chu kỳ healthcheck được tính vào phép đo. Không có
 cam kết đạt 3 giây bằng cách tạo lại container.
+
+Lưu mẫu bằng `./scripts/integration-lab.sh defense-status > before.json` khi
+lab đang ở cấu hình gốc và lấy `after.json` bằng cùng lệnh sau reset. Chạy
+`python3 integration/compare_defense.py before.json after.json` để so sánh
+rule SYN, ARP permanent phía Target, sysctl, cgroup, UID và giới hạn FD.
+`MATCH` (mã 0) chỉ xác nhận các cấu hình đã đo. `MISMATCH` (1) liệt kê
+giá trị trước/sau. `INCONCLUSIVE` (2) báo mẫu thiếu hoặc khác cặp IP.
+Mẫu cũ thiếu `lab_endpoints` cần lấy lại. PID mới và cache ARP động hết hạn
+là bình thường. Thời gian reset được đánh giá riêng.

@@ -24,6 +24,7 @@ def read_status():
         except FileNotFoundError:
             continue
     return {
+        'lab_endpoints': {'client': os.environ['CLIENT_IP'], 'target': os.environ['SERVER_IP']},
         'client_neighbor': json.loads(subprocess.check_output(
             ['ip', '-j', 'neigh', 'show', 'to', os.environ['CLIENT_IP']], text=True)),
         'syn_filter_rules': [rule for rule in chain.stdout.splitlines() if 'SYN_FLOOD_LIMIT' in rule],
