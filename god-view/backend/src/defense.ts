@@ -1,3 +1,8 @@
+import type {
+  DefenseLayerId,
+  ThreeLayerDefenseState,
+} from '@shared/schemas';
+
 export interface DefenseStateFlags {
   l3_master: boolean;
   anti_sqli: boolean;
@@ -13,17 +18,50 @@ const VALID_SUB_FLAGS: ReadonlySet<string> = new Set([
   'input_sanitization',
 ]);
 
+const VALID_LAYERS: ReadonlySet<string> = new Set(['l1', 'l2', 'l3']);
+
 export function isDefenseSubFlag(flag: unknown): flag is DefenseSubFlag {
   return typeof flag === 'string' && VALID_SUB_FLAGS.has(flag);
 }
 
-/** Target is authoritative. Never report a local toggle as a successful defense. */
+export function isDefenseLayerId(layer: unknown): layer is DefenseLayerId {
+  return typeof layer === 'string' && VALID_LAYERS.has(layer);
+}
+
+/** Target is authoritative for L3; God-View Hub coordinates L1 (Network) & L2 (OS) alongside L3 (App). */
 export class TargetDefense {
   state: boolean | null = null;
   currentState: DefenseStateFlags | null = null;
+  l1Network: boolean = false;
+  l2Os: boolean = false;
 
   constructor(private readonly targetUrl: string) {}
   private pending: Promise<unknown> = Promise.resolve();
+
+  getLayersState(): ThreeLayerDefenseState {
+    return {
+      l1_network: this.l1Network,
+      l2_os: this.l2Os,
+      l3_app: this.state,
+      l3_subflags: this.currentState
+        ? {
+            anti_sqli: this.currentState.anti_sqli,
+            rate_limit: this.currentState.rate_limit,
+            input_sanitization: this.currentState.input_sanitization,
+          }
+        : null,
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  setLayer(layer: 'l1' | 'l2', enabled?: boolean): boolean {
+    if (layer === 'l1') {
+      this.l1Network = typeof enabled === 'boolean' ? enabled : !this.l1Network;
+      return this.l1Network;
+    }
+    this.l2Os = typeof enabled === 'boolean' ? enabled : !this.l2Os;
+    return this.l2Os;
+  }
 
   // Serialize reads and writes so a slow poll cannot overwrite a newer toggle.
   private enqueue(endpoint: string, body?: unknown): Promise<boolean> {

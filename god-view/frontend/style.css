@@ -512,49 +512,94 @@ body.cyber-theme {
   color: var(--text-muted);
 }
 
-/* Holographic Shield Aura */
+/* Holographic 3-Layer Shield Auras (Task W5-T1) */
+.shield-ring,
 .shield-aura {
   position: absolute;
-  top: -16px; left: -16px;
-  right: -16px; bottom: -16px;
-  border: 2px solid var(--neon-cyan);
   border-radius: 12px;
   pointer-events: none;
-  box-shadow: 0 0 25px rgba(0, 240, 255, 0.5), inset 0 0 20px rgba(0, 240, 255, 0.2);
   transition: all 0.4s ease;
+}
+
+/* Inner Ring 3: L3 Application Shield (Green) */
+.shield-aura {
+  top: -12px; left: -12px;
+  right: -12px; bottom: -12px;
+  border: 2px solid var(--neon-green);
+  border-radius: 10px;
+  box-shadow: 0 0 22px rgba(0, 255, 102, 0.55), inset 0 0 18px rgba(0, 255, 102, 0.18);
   animation: pulse-shield 2.5s infinite;
 }
 
+/* Middle Ring 2: L2 OS & Kernel Shield (Amber/Yellow) */
+.shield-ring-l2 {
+  top: -26px; left: -26px;
+  right: -26px; bottom: -26px;
+  border: 2px dashed var(--neon-yellow);
+  border-radius: 14px;
+  box-shadow: 0 0 22px rgba(255, 215, 0, 0.45), inset 0 0 14px rgba(255, 215, 0, 0.12);
+  animation: pulse-shield 2.8s infinite;
+}
+
+/* Outer Ring 1: L1 Network Shield (Cyan) */
+.shield-ring-l1 {
+  top: -40px; left: -40px;
+  right: -40px; bottom: -40px;
+  border: 2px solid var(--neon-cyan);
+  border-radius: 18px;
+  box-shadow: 0 0 26px rgba(0, 240, 255, 0.55), inset 0 0 16px rgba(0, 240, 255, 0.14);
+  animation: pulse-shield 3.1s infinite;
+}
+
+.shield-ring.inactive,
 .shield-aura.inactive {
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.08);
   box-shadow: none;
   animation: none;
   opacity: 0.15;
 }
 
 @keyframes pulse-shield {
-  0%, 100% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.03); box-shadow: 0 0 35px rgba(0, 240, 255, 0.8); }
+  0%, 100% { opacity: 0.82; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
 }
 
 .shield-label {
   position: absolute;
-  top: -10px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--bg-dark);
   color: var(--neon-cyan);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 700;
   padding: 1px 6px;
   border: 1px solid var(--neon-cyan);
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   border-radius: 2px;
+  white-space: nowrap;
+}
+
+.shield-label-l1 {
+  top: -9px;
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+}
+
+.shield-label-l2 {
+  bottom: -9px;
+  color: var(--neon-yellow);
+  border-color: var(--neon-yellow);
+}
+
+.shield-label-l3 {
+  top: -9px;
+  color: var(--neon-green);
+  border-color: var(--neon-green);
 }
 
 /* ==============================================================================
-   SIDE PANEL
+   SIDE PANEL & W5-T1 3-LAYER SHIELD CONTROL PANEL
    ============================================================================== */
 .side-panel-card {
   height: 380px;
@@ -563,10 +608,10 @@ body.cyber-theme {
 }
 
 .side-panel-content {
-  padding: 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   overflow-y: auto;
   flex: 1;
 }
@@ -575,7 +620,158 @@ body.cyber-theme {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(0, 240, 255, 0.15);
   border-radius: 4px;
-  padding: 10px 12px;
+  padding: 9px 11px;
+}
+
+.shield-funnel-box {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.shield-layer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgba(8, 15, 28, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.25s ease;
+}
+
+.shield-layer-row.layer-l1.layer-active {
+  border-color: var(--neon-cyan);
+  background: rgba(0, 240, 255, 0.08);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+}
+
+.shield-layer-row.layer-l2.layer-active {
+  border-color: var(--neon-yellow);
+  background: rgba(255, 215, 0, 0.08);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.2);
+}
+
+.shield-layer-row.layer-l3.layer-active {
+  border-color: var(--neon-green);
+  background: rgba(0, 255, 102, 0.08);
+  box-shadow: 0 0 12px rgba(0, 255, 102, 0.2);
+}
+
+.shield-layer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.shield-layer-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.shield-layer-name {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.layer-l1 .shield-layer-name { color: var(--neon-cyan); }
+.layer-l2 .shield-layer-name { color: var(--neon-yellow); }
+.layer-l3 .shield-layer-name { color: var(--neon-green); }
+
+.shield-layer-tech {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shield-layer-tech code {
+  color: #cbd5e1;
+}
+
+.btn-layer-toggle {
+  min-width: 82px;
+  padding: 5px 8px;
+  font-size: 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.btn-layer-l1 {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  background: rgba(0, 240, 255, 0.1);
+}
+.btn-layer-l1.active,
+.btn-layer-l1:hover {
+  background: var(--neon-cyan);
+  color: #000;
+  box-shadow: 0 0 12px var(--neon-cyan);
+}
+
+.btn-layer-l2 {
+  border-color: var(--neon-yellow);
+  color: var(--neon-yellow);
+  background: rgba(255, 215, 0, 0.1);
+}
+.btn-layer-l2.active,
+.btn-layer-l2:hover {
+  background: var(--neon-yellow);
+  color: #000;
+  box-shadow: 0 0 12px var(--neon-yellow);
+}
+
+.btn-layer-l3 {
+  border-color: var(--neon-green);
+  color: var(--neon-green);
+  background: rgba(0, 255, 102, 0.1);
+}
+.btn-layer-l3.active,
+.btn-layer-l3:hover {
+  background: var(--neon-green);
+  color: #000;
+  box-shadow: 0 0 12px var(--neon-green);
+}
+
+.l3-subflags-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.subflag-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.subflag-chip:hover {
+  border-color: var(--neon-green);
+  color: #fff;
+}
+
+.subflag-chip.subflag-on {
+  background: rgba(0, 255, 102, 0.14);
+  border-color: var(--neon-green);
+  color: var(--neon-green);
 }
 
 .control-header {

