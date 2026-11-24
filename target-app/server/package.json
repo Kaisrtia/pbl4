@@ -18,7 +18,9 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.mts"
+    "test:e2e": "vitest run --config ./vitest.config.e2e.mts",
+    "attack:l7": "node ../../scripts/attack-l7.mjs",
+    "attack:l7:compare": "node ../../scripts/attack-l7.mjs --compare"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
