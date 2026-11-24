@@ -95,18 +95,7 @@ PY
   reset-network-os)
     # A fresh namespace drops lab processes, neighbour entries and firewall rules.
     # Keep named volumes, including SQLite and credentials, and leave the hub running.
-    python3 - "${compose[@]}" <<'PY'
-import subprocess
-import sys
-import time
-
-start = time.monotonic()
-subprocess.run([*sys.argv[1:], "up", "-d", "--no-deps", "--force-recreate",
-                "--wait", "--wait-timeout", "120", "target", "client"], check=True)
-elapsed = time.monotonic() - start
-print(f"Network/OS reset to Compose baseline, services healthy in {elapsed:.3f}s")
-print(f"W6 three-second deadline: {'PASS' if elapsed <= 3 else 'MISSED'}")
-PY
+    python3 integration/reset_network_os.py "${compose[@]}"
     ;;
   telemetry-test)
     "${compose[@]}" up --build -d --wait --wait-timeout 120 godview target client
