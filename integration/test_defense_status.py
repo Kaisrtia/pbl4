@@ -22,7 +22,7 @@ class RuntimeShields(unittest.TestCase):
     @patch('defense_status.pwd.getpwnam', return_value=SimpleNamespace(pw_uid=33, pw_shell='/usr/sbin/nologin'))
     def test_l2_checks_actual_limits_and_requires_app(self, account):
         status = {'tcp_syncookies': 1, 'cgroup': {'cpu.max': '100000 100000', 'memory.max': '536870912',
-                  'pids.max': '128'}, 'node_processes': [{'effective_uid': 33, 'nofile': ['1024', '2048']}]}
+                  'pids.max': '128'}, 'node_processes': [{'effective_uid': 33, 'nofile': ['1024', '1024']}]}
         self.assertTrue(all(defense_status.verify(status, 'l2', {}).values()))
         status['cgroup']['cpu.max'] = 'max 100000'
         status['node_processes'] = []

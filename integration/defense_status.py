@@ -14,7 +14,7 @@ def read_status():
     apps = []
     for pid in proc.glob('[0-9]*'):
         try:
-            if (pid / 'comm').read_text().strip() != 'node':
+            if (pid / 'comm').read_text().strip() not in ('node', 'node-MainThread'):
                 continue
             status = (pid / 'status').read_text().splitlines()
             limits = (pid / 'limits').read_text().splitlines()
@@ -68,7 +68,7 @@ def verify(status, mode, env):
                       pids=cgroup.get('pids.max') == '128',
                       service_user=bool(apps) and account.pw_shell.endswith('/nologin')
                       and all(p['effective_uid'] == account.pw_uid for p in apps),
-                      nofile=bool(apps) and all(p['nofile'] == ['1024', '2048'] for p in apps))
+                      nofile=bool(apps) and all(p['nofile'] == ['1024', '1024'] for p in apps))
     return checks
 
 

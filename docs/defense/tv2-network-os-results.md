@@ -34,8 +34,22 @@ chạy tiến trình vẫn do UID, quyền filesystem và các giới hạn kern
 | W2 | Hai agent đã chạy trong lab và God-View trả HTTP 200 cho cả hai. | Hub chưa lưu lịch sử kernel tách biệt theo node. |
 | W3 | S2 có biên bản gửi và nhận sự kiện; schema S5/S6 đã được tích hợp. | Chưa có bằng chứng backlog đầy hoặc phiên TCP bị ngắt bởi worker. |
 | W4 | Biên bản S3 ghi nhận một tiến trình mở 32 FD và cleanup. S1 có kết quả SSH. Test procfs trên Linux xác nhận PID con, UID, tăng đúng 8 FD và PID biến mất sau khi thoát. | Các phép đo này chỉ bao phủ một phần đầu ra OS. |
-| W5 | Kiểm thử cấu hình bao phủ bốn tổ hợp khiên trên subnet tùy chỉnh. | Đã có bài kiểm tra tuần tự cả ba chế độ bật. Chưa có kết quả chạy trên Docker cho các chế độ mới. |
-| W6 | Reset tái tạo namespace Client/Target và đo đến lúc cả hai healthy. | Đã có phép so cấu hình Target trước/sau reset. Docker daemon chưa chạy trong lần kiểm tra này nên chưa có số đo xác nhận hạn 3 giây. |
+| W5 | Hai lượt Docker độc lập đi từ cấu hình gốc qua L1, L2 và cả hai. Mỗi lượt đạt 4/4, 6/6 và 10/10 phép kiểm tra tương ứng. | Đã đo cấu hình có hiệu lực trên Target. Hiệu quả dưới tải chưa được đo. |
+| W6 | Cấu hình Target khớp mẫu ban đầu sau cả hai lần reset. Client và Target đều healthy. | Hai lần mất 4,233 s và 4,211 s, đều vượt hạn 3 s. |
 
 [Biên bản S1–S4](../runbooks/integration-handoff.md#kết-quả-đã-kiểm-chứng) ·
 [Thao tác khiên và reset](../runbooks/integration-lab.md#tv2--quan-sát-bật-khiên-và-reset-mạnghđh)
+
+## Phép đo W5/W6 ngày 24/11/2026
+
+Chạy `python3 integration/check_shield_cycle.py` trên Docker Engine 29.10.0,
+Compose 5.8.0, mỗi lượt dùng project và volume tạm riêng. Baseline được lấy
+trước khi bật khiên. Với L2, Node 26 ban đầu có giới hạn FD thực tế 2048/2048
+khi Compose đặt 1024/2048. Đặt cả hai giới hạn ở 1024 cho kết quả 1024/1024
+qua procfs. Mẫu L1 xác nhận ARP permanent đúng MAC Client trên Target và các
+rule SYN. Phép so sau reset bao gồm cả UID và giới hạn FD.
+
+Trong lượt 4,233 s, sự kiện Docker cho thấy riêng giai đoạn từ tín hiệu dừng
+đến khi Client dừng mất khoảng 1,59 s. Client-bot hiện kiểm tra cờ dừng sau
+khi hết thời gian chờ giữa hai lượt. Đề xuất Trung (TV3) cho phép ngắt thời
+gian chờ khi nhận SIGTERM, rồi TV2 đo lại cùng điều kiện.

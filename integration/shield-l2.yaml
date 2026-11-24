@@ -10,4 +10,4 @@ services:
     ulimits:
       nofile:
         soft: 1024
-        hard: 2048
+        hard: 1024

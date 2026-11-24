@@ -193,7 +193,7 @@ trạng thái phòng thủ. Dùng Ctrl-b rồi d để rời màn hình. Các kh
 |---|---|
 | `defense-status` | Đọc entry ARP của Client tại Target, rule SYN trong INPUT và chain riêng, sysctl, giới hạn cgroup, UID và giới hạn FD của tiến trình Node. |
 | `shields l1` | Compose gán MAC cố định cho Client và truyền cùng MAC vào Target. Target đặt entry ARP permanent và cài bộ lọc SYN theo cổng dịch vụ khi khởi động. |
-| `shields l2` | Docker đặt SYN cookies, giới hạn 1 CPU, RAM 512 MiB, 128 PID và nofile 1024/2048. Web app chạy với UID www-data, shell nologin; SSH lab dùng tài khoản riêng. |
+| `shields l2` | Docker đặt SYN cookies, giới hạn 1 CPU, RAM 512 MiB, 128 PID và nofile 1024 cho cả giới hạn mềm và cứng. Web app chạy với UID www-data, shell nologin; SSH lab dùng tài khoản riêng. |
 | `shields both` | Áp dụng cả hai lớp. |
 | `shields off` | Trở về cấu hình Compose cơ sở. Các giá trị mặc định của kernel, kể cả SYN cookies, có thể vốn đã bật. |
 | `reset-network-os` | Tạo lại riêng Target và Client theo cấu hình cơ sở, đóng tiến trình và phiên kết nối cũ, tạo namespace mạng mới. Cần God-View đang chạy và image đã build. |
