@@ -285,6 +285,32 @@ export interface OsAndL7AttackState {
 }
 
 // ==========================================
+// W5-T1: 3-Layer Defense Funnel Schemas (Khiên Mạng L1 - Khiên HĐH L2 - Khiên Ứng dụng L3/L7)
+// ==========================================
+
+export type DefenseLayerId = 'l1' | 'l2' | 'l3';
+
+export interface L3SubFlagsState {
+  anti_sqli: boolean;
+  rate_limit: boolean;
+  input_sanitization: boolean;
+}
+
+/**
+ * Trạng thái tổng hợp của 3 Lớp Khiên Chắn trên God-View (Task W5-T1)
+ * - l1_network: Khiên Mạng (L2/L4) — Static ARP chống giả mạo MAC & iptables giới hạn SYN/RST
+ * - l2_os: Khiên Hệ điều hành & Nhân (OS/Kernel) — tcp_syncookies=1, ulimit -n, cgroups, user nologin
+ * - l3_app: Khiên Ứng dụng (L7) — Prepared Statements, Token Bucket Rate Limiting, Input Sanitization
+ */
+export interface ThreeLayerDefenseState {
+  l1_network: boolean;
+  l2_os: boolean;
+  l3_app: boolean | null;
+  l3_subflags: L3SubFlagsState | null;
+  updated_at: string;
+}
+
+// ==========================================
 // Type Guards (Kiểm tra kiểu lúc runtime)
 // ==========================================
 

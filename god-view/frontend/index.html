@@ -75,7 +75,9 @@
             <span id="mitm-badge-indicator" class="badge badge-mitm hidden">⚠️ MITM: REROUTED VIA HACKER</span>
             <span id="rst-badge-indicator" class="badge badge-rst hidden">⚡ TCP RST: SESSION BROKEN</span>
             <span id="revshell-badge-indicator" class="badge badge-revshell hidden">🐚 REVERSE SHELL: SERVER &rarr; HACKER (:4444)</span>
-            <span id="shield-badge-indicator" class="badge badge-shield">SHIELD: ACTIVE</span>
+            <span id="shield-l1-badge" class="badge badge-shield inactive" title="Khiên Mạng L1 (Static ARP & iptables)">L1 NET: OFF</span>
+            <span id="shield-l2-badge" class="badge badge-shield inactive" title="Khiên HĐH L2 (Syncookies, ulimit & nologin)">L2 OS: OFF</span>
+            <span id="shield-badge-indicator" class="badge badge-shield inactive" title="Khiên Ứng dụng L3/L7 (SQLi, Rate Limit, Sanitizer)">L3 APP: UNKNOWN</span>
           </div>
         </div>
 
@@ -96,12 +98,20 @@
               </div>
             </div>
 
-            <!-- Node 2: Target Server (Protected) -->
+            <!-- Node 2: Target Server (Protected by 3-Layer Defense Funnel W5-T1) -->
             <div class="topo-node server-node" id="node-server">
-              <!-- Holographic Shield Visual -->
-              <div class="shield-aura" id="shield-aura">
+              <!-- Outer Ring 1: L1 Network Shield (Static ARP + iptables) -->
+              <div class="shield-ring shield-ring-l1 inactive" id="shield-aura-l1">
+                <div class="shield-label shield-label-l1">L1: NETWORK SHIELD</div>
+              </div>
+              <!-- Middle Ring 2: L2 OS & Kernel Shield (syncookies + ulimit/cgroups + nologin) -->
+              <div class="shield-ring shield-ring-l2 inactive" id="shield-aura-l2">
+                <div class="shield-label shield-label-l2">L2: OS &amp; KERNEL SHIELD</div>
+              </div>
+              <!-- Inner Ring 3: L3 Application Shield (Prepared SQL + Rate Limit + Sanitizer) -->
+              <div class="shield-aura shield-ring-l3 inactive" id="shield-aura">
                 <div class="shield-energy-grid"></div>
-                <div class="shield-label">DEFENSE SHIELD</div>
+                <div class="shield-label shield-label-l3">L3: APP SHIELD (L7)</div>
               </div>
               <div class="node-icon">🛡️</div>
               <div class="node-content">
@@ -126,28 +136,77 @@
         </div>
       </section>
 
-      <!-- SIDE PANEL: DEFENSE CONTROLS & TCP SOCKET METRICS -->
+      <!-- SIDE PANEL: 3-LAYER SHIELD CONTROL PANEL (W5-T1) & TCP SOCKET METRICS -->
       <aside class="card side-panel-card">
         <div class="card-header">
           <div class="card-title">
-            <span class="neon-icon">⚙️</span> FIREWALL & SYSTEM TELEMETRY
+            <span class="neon-icon">🛡️</span> 3-LAYER DEFENSE FUNNEL (W5-T1)
+          </div>
+          <div class="card-badges">
+            <span id="funnel-active-count" class="badge badge-shield inactive">0 / 3 SHIELDS</span>
           </div>
         </div>
 
         <div class="side-panel-content">
-          <!-- Remote Defense Toggle -->
-          <div class="control-box">
+          <!-- W5-T1: BẢNG ĐIỀU KHIỂN 3 LỚP KHIÊN CHẮN (KHIÊN MẠNG - KHIÊN HĐH - KHIÊN ỨNG DỤNG) -->
+          <div class="control-box shield-funnel-box" aria-label="Bảng điều khiển 3 Lớp Khiên Chắn">
             <div class="control-header">
-              <span class="control-title">REMOTE DEFENSE TOGGLE</span>
+              <span class="control-title">3-LAYER SHIELD CONTROL PANEL</span>
               <span id="defense-state-pill" class="pill-inactive">BYPASSED</span>
             </div>
-            <p class="control-desc">
-              Bật/tắt khiên chắn L3/L7 (Parameterized Queries, Input Sanitization & Anti-DoS).
-            </p>
-            <div class="defense-toggle-wrapper">
-              <button id="btn-toggle-defense" class="cyber-btn btn-defense-toggle">
-                <span class="btn-glow"></span>
-                <span id="defense-btn-text">TOGGLE L3 DEFENSE</span>
+
+            <!-- LỚP 1: KHIÊN MẠNG (L1 - NETWORK L2/L4) -->
+            <div class="shield-layer-row layer-l1" id="shield-row-l1">
+              <div class="shield-layer-info">
+                <div class="shield-layer-top">
+                  <span class="shield-layer-name">① KHIÊN MẠNG (L1 · L2/L4)</span>
+                  <span id="defense-l1-pill" class="pill-inactive">BYPASSED</span>
+                </div>
+                <div class="shield-layer-tech">Static ARP · <code>iptables</code> SYN/RST Filter</div>
+              </div>
+              <button id="btn-toggle-defense-l1" class="cyber-btn btn-sm btn-layer-toggle btn-layer-l1" title="Bật/Tắt Khiên Mạng L1 (Static ARP & iptables)">
+                <span id="defense-l1-btn-text">ENABLE L1</span>
+              </button>
+            </div>
+
+            <!-- LỚP 2: KHIÊN HỆ ĐIỀU HÀNH & NHÂN (L2 - OS/KERNEL) -->
+            <div class="shield-layer-row layer-l2" id="shield-row-l2">
+              <div class="shield-layer-info">
+                <div class="shield-layer-top">
+                  <span class="shield-layer-name">② KHIÊN HĐH (L2 · OS/KERNEL)</span>
+                  <span id="defense-l2-pill" class="pill-inactive">BYPASSED</span>
+                </div>
+                <div class="shield-layer-tech"><code>tcp_syncookies=1</code> · <code>ulimit/cgroups</code> · <code>nologin</code></div>
+              </div>
+              <button id="btn-toggle-defense-l2" class="cyber-btn btn-sm btn-layer-toggle btn-layer-l2" title="Bật/Tắt Khiên Hệ điều hành L2 (Syncookies, ulimit & nologin)">
+                <span id="defense-l2-btn-text">ENABLE L2</span>
+              </button>
+            </div>
+
+            <!-- LỚP 3: KHIÊN ỨNG DỤNG (L3 - APPLICATION L7) -->
+            <div class="shield-layer-row layer-l3" id="shield-row-l3">
+              <div class="shield-layer-info">
+                <div class="shield-layer-top">
+                  <span class="shield-layer-name">③ KHIÊN ỨNG DỤNG (L3 · APP L7)</span>
+                  <span id="defense-l3-pill" class="pill-inactive">UNKNOWN</span>
+                </div>
+                <div class="shield-layer-tech">Prepared SQL · Token Bucket · Input Sanitizer</div>
+              </div>
+              <button id="btn-toggle-defense" class="cyber-btn btn-sm btn-layer-toggle btn-layer-l3" title="Bật/Tắt Khiên Ứng dụng L3/L7">
+                <span id="defense-btn-text">CHECK L3</span>
+              </button>
+            </div>
+
+            <!-- Cờ con L7 (Sub-flags) cho Kiểm thử Chéo -->
+            <div class="l3-subflags-row" aria-label="Cờ con Khiên Ứng dụng L7">
+              <button id="btn-subflag-sqli" class="subflag-chip" title="Toggle Prepared Statements (Chống SQLi)">
+                SQLi: <strong id="subflag-sqli-val">OFF</strong>
+              </button>
+              <button id="btn-subflag-ratelimit" class="subflag-chip" title="Toggle Token Bucket Rate Limiter (Chống Brute-force & Heavy DoS)">
+                RateLimit: <strong id="subflag-ratelimit-val">OFF</strong>
+              </button>
+              <button id="btn-subflag-sanitize" class="subflag-chip" title="Toggle Input Sanitization (Chống Command Injection & Path Traversal)">
+                Sanitizer: <strong id="subflag-sanitize-val">OFF</strong>
               </button>
             </div>
           </div>
