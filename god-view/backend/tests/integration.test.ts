@@ -88,7 +88,7 @@ test('hub integration contracts', { timeout: 15000 }, async (t) => {
     ];
     for (const { scenario, ...result } of results) {
       const run_id = `test-${scenario}-${result.outcome}`;
-      const evidence = { ...event, run_id, scenario, event_id: run_id + '-result', event_type: 'WORKER_EVENT',
+      const evidence = { ...event, execution_mode: 'simulated', run_id, scenario, event_id: run_id + '-result', event_type: 'WORKER_EVENT',
         payload: { run_id, type: 'result', result: { ...result, summary: 'Test fixture' } } };
       const delivered = once(socket, 'ATTACK_EVENT');
       assert.equal((await api('/api/events/attack', evidence)).status, 200);

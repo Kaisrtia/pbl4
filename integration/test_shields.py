@@ -34,6 +34,6 @@ class Shields(unittest.TestCase):
                 if "l2" in mode:
                     self.assertEqual(str(target["sysctls"]["net.ipv4.tcp_syncookies"]), "1")
                     self.assertEqual(target["pids_limit"], 128)
-                    self.assertEqual(target["ulimits"]["nofile"], {"soft": 1024, "hard": 2048})
+                    self.assertEqual(target["ulimits"]["nofile"], {"soft": 1024, "hard": 1024})
                     self.assertEqual(int(target["mem_limit"]), 512 * 1024**2)
                     self.assertEqual(float(target["cpus"]), 1)

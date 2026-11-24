@@ -183,6 +183,30 @@ Giỏ thuộc phiên trình duyệt, checkout chỉ dùng giỏ phiên đó; JWT
 Test tích hợp tạo đơn sandbox có địa chỉ `Integration verification (synthetic)`
 và giữ lại trong lịch sử để đối chiếu. Không xóa dữ liệu demo có sẵn.
 
+## W1-T2 · Demo quan sát mạng trên bốn khung Terminal
+
+Khi lab đang chạy, mở `./scripts/integration-lab.sh monitor` trên máy có
+Tmux và `watch`. Khung dịch vụ cho biết Client, Target và God-View có healthy
+hay không. Hai khung endpoint ghi tên node, IP và thời điểm của mẫu gần nhất
+mà God-View đã xác nhận. Khung còn lại hiển thị cấu hình phòng thủ trên Target.
+Dùng `Ctrl-b z` để phóng to hoặc thu lại khung hiện tại, `Ctrl-b d` để rời
+phiên. Lệnh monitor mở lại cùng phiên.
+
+| Nội dung trình bày | Thao tác quan sát | Cách đọc |
+|---|---|---|
+| ARP Spoofing (L2) | Đọc dòng ARP trên cả Client và Target. Đối chiếu MAC của từng peer với Docker endpoint hiện tại. | Thiếu dòng ARP nghĩa là chưa đủ bằng chứng. Để xác nhận phục hồi cần đọc lại cache ở cả hai đầu. |
+| TCP SYN Flood (L4) | Theo dõi `SYN_RECV` bên Target qua nhiều mẫu và đối chiếu trạng thái dịch vụ. | Chỉ số đếm socket ở trạng thái chờ tại thời điểm lấy mẫu. Một mẫu bằng 0 vẫn có thể bỏ qua đỉnh ngắn giữa hai mẫu. |
+| TCP RST Injection (L4) | Ghi `OutRsts` và `EstabResets` ở cả hai đầu qua hai lần làm mới. | Đây là bộ đếm tích lũy trong namespace. Chúng có thể tăng trong lưu lượng nền. Muốn quy kết một phiên cụ thể cần bằng chứng độc lập của phiên đó. |
+
+**Biên bản ngày 24/11/2026.** Chạy Tmux 3.8 trong một project Compose tạm,
+bridge `172.30.214.0/24`, các cổng công bố chỉ bind loopback. Ba dịch vụ đều
+healthy. Target có NET_ADMIN và `tcp_syncookies=1`; cả Client lẫn Target
+đều có `Privileged=false`. Trong hai mẫu UTC khoảng 09:36:45–46, Client
+và Target đều có `SYN_RECV=0`. MAC peer đọc tại mỗi đầu khớp kết quả
+Docker inspect. Client ghi `OutRsts/EstabResets=0/0`, Target ghi `20/20`.
+Đây là số liệu nền với lưu lượng ứng dụng bình thường. Phần thực thi ba
+đòn tấn công trong W1-T2 vẫn chưa được xác minh bằng lượt demo này.
+
 ## TV2 · Quan sát, bật khiên và reset mạng/HĐH
 
 Chạy từ thư mục gốc sau khi khởi tạo cấu hình lab. `./scripts/integration-lab.sh monitor`
@@ -193,7 +217,7 @@ trạng thái phòng thủ. Dùng Ctrl-b rồi d để rời màn hình. Các kh
 |---|---|
 | `defense-status` | Đọc entry ARP của Client tại Target, rule SYN trong INPUT và chain riêng, sysctl, giới hạn cgroup, UID và giới hạn FD của tiến trình Node. |
 | `shields l1` | Compose gán MAC cố định cho Client và truyền cùng MAC vào Target. Target đặt entry ARP permanent và cài bộ lọc SYN theo cổng dịch vụ khi khởi động. |
-| `shields l2` | Docker đặt SYN cookies, giới hạn 1 CPU, RAM 512 MiB, 128 PID và nofile 1024/2048. Web app chạy với UID www-data, shell nologin; SSH lab dùng tài khoản riêng. |
+| `shields l2` | Docker đặt SYN cookies, giới hạn 1 CPU, RAM 512 MiB, 128 PID và nofile 1024 cho cả giới hạn mềm và cứng. Web app chạy với UID www-data, shell nologin; SSH lab dùng tài khoản riêng. |
 | `shields both` | Áp dụng cả hai lớp. |
 | `shields off` | Trở về cấu hình Compose cơ sở. Các giá trị mặc định của kernel, kể cả SYN cookies, có thể vốn đã bật. |
 | `reset-network-os` | Tạo lại riêng Target và Client theo cấu hình cơ sở, đóng tiến trình và phiên kết nối cũ, tạo namespace mạng mới. Cần God-View đang chạy và image đã build. |
@@ -209,7 +233,32 @@ quyền sở hữu trong volume, không reset dữ liệu L7 và không xóa l�
 giới hạn thực tế của Node trong `/proc` và giá trị cgroup v2. Thông báo khởi động
 của một script chỉ xác nhận thao tác đã chạy. Đánh giá hiệu lực cần số đo runtime.
 
+Để kiểm tra cấu hình đang chạy, dùng `./scripts/integration-lab.sh defense-status --expect both`
+(hoặc `l1`, `l2`). Trường `checks` ghi từng điều kiện. Lệnh trả mã 1 nếu thiếu
+một điều kiện của khiên được chọn. Kiểm tra này chỉ đọc cấu hình và số liệu tại Target.
+
 **Thời gian W6.** Lệnh reset đo từ lúc gửi lệnh Compose đến khi cả hai service
 healthy. Nó in thời gian thực tế và `PASS` hoặc `MISSED` cho mục tiêu 3 giây.
-Thời gian dựng container và chu kỳ healthcheck được tính vào phép đo. Không có
-cam kết đạt 3 giây bằng cách tạo lại container.
+Thời gian dựng container và chu kỳ healthcheck được tính vào phép đo. Trong
+5 giây khởi động, Docker kiểm tra Target và Client mỗi 500 ms. Sau khi healthy,
+chu kỳ thường là 3 giây cho Target và 5 giây cho Client. Cấu hình này cần
+Docker Engine 25 trở lên và Compose hỗ trợ `start_interval`. Kết quả ba lượt trên máy lab ngày 24/11/2026 nằm trong
+[báo cáo TV2](../defense/tv2-network-os-results.md).
+
+Lưu mẫu bằng `./scripts/integration-lab.sh defense-status > before.json` khi
+lab đang ở cấu hình gốc và lấy `after.json` bằng cùng lệnh sau reset. Chạy
+`python3 integration/compare_defense.py before.json after.json` để so sánh
+rule SYN, ARP permanent phía Target, sysctl, cgroup, UID và giới hạn FD.
+`MATCH` (mã 0) chỉ xác nhận các cấu hình đã đo. `MISMATCH` (1) liệt kê
+giá trị trước/sau. `INCONCLUSIVE` (2) báo mẫu thiếu hoặc khác cặp IP.
+Mẫu cũ thiếu `lab_endpoints` cần lấy lại. PID mới và cache ARP động hết hạn
+là bình thường. Thời gian reset được đánh giá riêng.
+
+Để kiểm tra W5/W6 trong project Compose dùng một lần, chạy
+`python3 integration/check_shield_cycle.py`. Có thể chọn subnet riêng chưa
+dùng bằng `--subnet`. Công cụ chỉ khởi động God-View, Target và Client,
+xuất bản cổng trên loopback và dọn project thử sau khi kết thúc. Từng chế độ
+L1, L2 và cả hai đều được kiểm tra bên trong Target. Ở chế độ một khiên,
+các thiết lập của khiên còn lại phải khớp mẫu gốc. Dòng JSON cuối sau reset
+ghi thời gian đến khi hai endpoint healthy và từng sai khác còn lại trên
+Target. Mã 0 yêu cầu cả cấu hình khớp lẫn thời gian không quá 3 giây.

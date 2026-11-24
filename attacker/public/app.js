@@ -16,7 +16,7 @@ function renderParameters() {
   $('parameters').replaceChildren();
   for (const [name, value] of Object.entries(definition?.defaults || {})) {
     const label = document.createElement('label'); label.textContent = name;
-    const input = document.createElement('input'); input.type = 'number'; input.step = '1'; input.min = '1'; input.value = value;
+    const input = document.createElement('input'); input.type = 'number'; input.step = '1'; input.min = name === 'observe' ? '0' : '1'; input.value = value;
     input.dataset.parameter = name; label.append(input); $('parameters').append(label);
   }
 }
@@ -26,13 +26,13 @@ function buttons() {
 }
 async function refresh() {
   const [runs, config] = await Promise.all([api('runs'), api('config')]);
-  connected = true; $('connection').textContent = 'Đã kết nối · Real workers';
+  connected = true; $('connection').textContent = 'Đã kết nối';
   active = runs.find(r => ['STARTING', 'RUNNING', 'STOPPING'].includes(r.state));
   $('target').textContent = `Attacker ${config.attacker_ip} → Target ${config.target_ip} · SSH ${config.ssh_port} · HTTP ${config.http_port} | Telemetry đang chờ: ${config.telemetry.pending}${config.telemetry.delivery_error ? ' · God-View chưa nhận: ' + config.telemetry.delivery_error : ''}`;
   $('runs').replaceChildren();
   for (const run of runs) {
     const button = document.createElement('button');
-    button.textContent = `${run.scenario} · ${run.state} · ${run.started_at} · ${run.run_id.slice(0, 8)}`;
+    button.textContent = `${run.scenario}${run.execution_mode === 'simulated' ? ' · Mô phỏng' : ''} · ${run.state} · ${run.started_at} · ${run.run_id.slice(0, 8)}`;
     button.onclick = () => { selected = run.run_id; void update(); };
     $('runs').append(button);
   }
@@ -44,7 +44,7 @@ async function refresh() {
       requested = null;
     }
     $('run-id').textContent = run.run_id;
-    $('state').textContent = run.state;
+    $('state').textContent = run.execution_mode === 'simulated' ? run.state + ' · Mô phỏng' : run.state;
     $('result').textContent = JSON.stringify({ state: run.state, error: run.error, cleanup_pending: run.cleanup_pending, result: run.result || null }, null, 2);
     $('events').textContent = (await api('events?run_id=' + encodeURIComponent(run.run_id))).map(e => `${e.timestamp} ${JSON.stringify(e.payload)}`).join('\n');
   }
@@ -55,7 +55,13 @@ async function update() {
   catch (error) { connected = false; $('connection').textContent = 'Mất kết nối · Dữ liệu dưới đây có thể đã cũ'; notice(error); buttons(); }
 }
 $('connect').onclick = async () => {
-  try { definitions = await api('scenarios'); renderParameters(); notice(''); await update(); }
+  try {
+    definitions = await api('scenarios');
+    const previous = $('scenario').value;
+    $('scenario').replaceChildren(...definitions.map(s => new Option(s.id + ' · ' + s.name, s.id)));
+    if (definitions.some(s => s.id === previous)) $('scenario').value = previous;
+    renderParameters(); notice(''); await update();
+  }
   catch (error) { notice(error); }
 };
 $('scenario').onchange = renderParameters;

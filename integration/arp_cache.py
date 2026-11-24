@@ -12,15 +12,15 @@ def docker(*args):
                           text=True, timeout=10).stdout.strip()
 
 
-def endpoint(service):
-    ids = docker("ps", "--no-trunc", "--filter", "label=com.docker.compose.project=pbl4-integration",
+def endpoint(service, project):
+    ids = docker("ps", "--no-trunc", "--filter", f"label=com.docker.compose.project={project}",
                  "--filter", f"label=com.docker.compose.service={service}", "--format", "{{.ID}}").splitlines()
     if len(ids) != 1:
-        raise ValueError(f"Expected one running {service} in pbl4-integration")
+        raise ValueError(f"Expected one running {service} in {project}")
     networks = json.loads(docker("inspect", "--format", "{{json .NetworkSettings.Networks}}", ids[0]))
-    if set(networks) != {"pbl4-integration_lab"}:
+    if set(networks) != {f"{project}_lab"}:
         raise ValueError(f"Unexpected networks for {service}")
-    net = networks["pbl4-integration_lab"]
+    net = networks[f"{project}_lab"]
     if not all(net.get(key) for key in ("EndpointID", "NetworkID", "IPAddress", "MacAddress")):
         raise ValueError(f"Incomplete Docker endpoint metadata for {service}")
     return {"container": ids[0], "endpoint": net["EndpointID"], "network": net["NetworkID"],
@@ -38,15 +38,15 @@ def peer_status(table, peer):
     return "MATCH" if mac.lower() == peer["mac"] else "MISMATCH"
 
 
-def snapshot():
-    identities = {role: endpoint(role) for role in ("client", "target")}
+def snapshot(project="pbl4-integration"):
+    identities = {role: endpoint(role, project) for role in ("client", "target")}
     if identities["client"]["network"] != identities["target"]["network"]:
         raise ValueError("Endpoints belong to different networks")
     caches = {}
     for role, peer in (("client", "target"), ("target", "client")):
         table = docker("exec", identities[role]["container"], "cat", "/proc/net/arp")
         caches[role] = peer_status(table, identities[peer])
-    if any(endpoint(role) != identity for role, identity in identities.items()):
+    if any(endpoint(role, project) != identity for role, identity in identities.items()):
         raise ValueError("Endpoint identity changed during collection")
     return {"timestamp": datetime.now(timezone.utc).isoformat(), "endpoints": identities, "caches": caches}
 

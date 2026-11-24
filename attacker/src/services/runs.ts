@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { readdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import type { Config } from '../config.js';
-import { scenarios, validateStart } from '../attacks/catalog.js';
+import { executionMode, scenarios, validateStart } from '../attacks/catalog.js';
 import type { Run, WorkerResult } from '../types.js';
 import { Telemetry } from './telemetry.js';
 import { Receiver } from './receiver.js';
@@ -22,8 +22,9 @@ export class Runs {
     for (const name of readdirSync(config.dataDir).filter(n => n.endsWith('.run.json'))) {
       const run = JSON.parse(readFileSync(join(config.dataDir, name), 'utf8')) as Run;
       if (activeStates.has(run.state)) {
-        run.state = 'FAILED'; run.error = 'Controller restarted; inspect Target cleanup before retrying';
-        run.cleanup_pending = true; run.ended_at = new Date().toISOString(); this.save(run);
+        run.state = 'FAILED';
+        run.error = run.execution_mode === 'simulated' ? 'Controller restarted during replay' : 'Controller restarted; inspect Target cleanup before retrying';
+        run.cleanup_pending = run.execution_mode !== 'simulated'; run.ended_at = new Date().toISOString(); this.save(run);
       }
       this.records.set(run.run_id, run);
     }
@@ -42,7 +43,7 @@ export class Runs {
     if (this.active) throw new ConflictError('A run is already active; stop it or wait for completion');
     if (this.journalError) throw new Error(this.journalError);
     const input = validateStart(body);
-    const run: Run = { run_id: randomUUID(), ...input, state: 'STARTING', started_at: new Date().toISOString(), cleanup_pending: false };
+    const run: Run = { run_id: randomUUID(), ...input, execution_mode: executionMode(input.scenario), state: 'STARTING', started_at: new Date().toISOString(), cleanup_pending: false };
     this.save(run);
     this.records.set(run.run_id, run);
     const script = scenarios.find(s => s.id === run.scenario)!.script;
@@ -106,7 +107,7 @@ export class Runs {
         else finalResult.measurements.receiver_receipt = receipt;
       }
       this.receiver.unregister(run.run_id);
-      run.cleanup_pending = finalResult?.cleanup_pending ?? true;
+      run.cleanup_pending = finalResult?.cleanup_pending ?? (run.execution_mode !== 'simulated');
       if (run.error || protocolError || (run.state !== 'STOPPING' && (code !== 0 || !finalResult))) {
         run.state = 'FAILED'; run.error ||= protocolError || `Worker exited without a valid result (${code ?? signal}; diagnostic bytes: ${stderrBytes})`;
       } else if (run.state === 'STOPPING') run.state = 'STOPPED';
@@ -116,9 +117,11 @@ export class Runs {
       this.active = undefined;
       this.publish(run, 'RUN_STATE', { state: run.state, error: run.error, cleanup_pending: run.cleanup_pending, result: run.result });
     });
-    child.stdin!.end(JSON.stringify({ schema_version: '1.0', run_id: run.run_id, scenario: run.scenario,
-      parameters: run.parameters, target: { ip: this.config.targetIp, ssh_port: this.config.sshPort, http_port: this.config.httpPort },
-      ssh: this.config.ssh, receiver }));
+    const request = { schema_version: '1.0', run_id: run.run_id, scenario: run.scenario, parameters: run.parameters };
+    const target = { ip: this.config.targetIp, ssh_port: this.config.sshPort, http_port: this.config.httpPort };
+    child.stdin!.end(JSON.stringify(run.execution_mode === 'simulated'
+      ? request
+      : { ...request, target, ssh: this.config.ssh, receiver }));
     return run;
   }
   stop(id: string, error?: string) {

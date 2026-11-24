@@ -18,6 +18,7 @@ test('all six scenarios use the v1 worker envelope', () => {
       timestamp: '2026-01-01T00:00:00Z', payload: { type: 'ready', run_id, scenario },
     };
     assert.equal(validate(event), true);
+    assert.equal(validate({ ...event, execution_mode: 'simulated' }), scenario === 'S5' || scenario === 'S6');
     assert.equal(validate({ ...event, payload: { type: 'ready', scenario } }), false);
     assert.equal(validate({ ...event, scenario: 'S7' }), false);
   }

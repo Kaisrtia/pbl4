@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import { createConnection } from 'node:net';
 import { attackerRoot, InputError, type Config } from './config.js';
-import { scenarios } from './attacks/catalog.js';
+import { executionMode, scenarios } from './attacks/catalog.js';
 import { ConflictError, Runs } from './services/runs.js';
 import { Telemetry } from './services/telemetry.js';
 import { Receiver } from './services/receiver.js';
@@ -54,11 +54,11 @@ export async function startServer(config: Config) {
       if (req.headers.origin && req.headers.origin !== `http://${req.headers.host}` && req.headers.origin !== `https://${req.headers.host}`) {
         send(403, { error: 'Cross-origin browser control is disabled; use the God-View backend' }); return;
       }
-      if (url.pathname === '/api/v1/scenarios' && req.method === 'GET') { send(200, scenarios.map(({ script: _, ...s }) => s)); return; }
+      if (url.pathname === '/api/v1/scenarios' && req.method === 'GET') { send(200, scenarios.map(({ script: _, ...s }) => ({ ...s, execution_mode: executionMode(s.id) }))); return; }
       if (url.pathname === '/api/v1/config' && req.method === 'GET') {
         send(200, { target_ip: config.targetIp, ssh_port: config.sshPort, http_port: config.httpPort,
           attacker_ip: config.receiverIp, receiver_port: config.receiverPort, limits: config.limits,
-          telemetry: telemetry.status(), journal_error: runs.journalError, execution_mode: 'real' }); return;
+          telemetry: telemetry.status(), journal_error: runs.journalError, execution_mode: 'mixed', execution_modes: ['real', 'simulated'] }); return;
       }
       if (url.pathname === '/api/v1/preflight' && req.method === 'GET') {
         const [ssh, http] = await Promise.all([reachable(config.targetIp, config.sshPort), reachable(config.targetIp, config.httpPort)]);
