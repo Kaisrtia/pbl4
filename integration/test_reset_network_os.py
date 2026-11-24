@@ -26,3 +26,13 @@ class NetworkOsReset(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 reset_network_os.reset(["docker", "compose"])
         self.assertEqual(output.getvalue(), "")
+
+    def test_deadline_and_independent_peer_evidence(self):
+        both = {"client": "MATCH", "target": "MATCH"}
+        for elapsed, caches, expected in [
+            (3.0, both, 0), (3.001, both, 1),
+            (1.0, {**both, "target": "MISMATCH"}, 1),
+            (1.0, {**both, "client": "UNKNOWN"}, 2), (1.0, {}, 2),
+        ]:
+            with self.subTest(elapsed=elapsed, caches=caches):
+                self.assertEqual(reset_network_os.reset_result(elapsed, caches), expected)

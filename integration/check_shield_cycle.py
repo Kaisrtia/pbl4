@@ -8,8 +8,9 @@ import secrets
 import subprocess
 import uuid
 
+from arp_cache import snapshot as arp_snapshot
 from compare_defense import compare
-from reset_network_os import reset
+from reset_network_os import reset_and_verify, reset_result
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,11 +72,22 @@ def cycle(subnet):
                         'target:/tmp/check_os_access.py'], check=True, env=env)
         subprocess.run([*compose, 'exec', '-T', 'target', 'python3', '/tmp/check_os_access.py'],
                        check=True, env=env)
-        elapsed = reset(compose, env=env)
+        old = arp_snapshot(project)
+        elapsed, new = reset_and_verify(compose, env=env)
+        recreated = {}
+        for role in ('client', 'target'):
+            previous, current = old['endpoints'][role], new['endpoints'][role]
+            recreated[role] = (previous['network'] == current['network']
+                               and previous['ip'] == current['ip']
+                               and previous['container'] != current['container']
+                               and previous['endpoint'] != current['endpoint'])
         changes = compare(before, snapshot(compose, env))
         print(json.dumps({'reset_seconds': elapsed, 'deadline_met': elapsed <= 3,
-                          'differences_after_reset': changes}), flush=True)
-        return not changes and elapsed <= 3
+                          'differences_after_reset': changes, 'endpoints_recreated': recreated,
+                          'peer_cache_before': old['caches'], 'peer_cache_after': new['caches']}), flush=True)
+        healthy_cache = {'client': 'MATCH', 'target': 'MATCH'}
+        return (not changes and all(recreated.values())
+                and old['caches'] == healthy_cache and reset_result(elapsed, new['caches']) == 0)
     finally:
         subprocess.run([*compose, 'down', '--volumes', '--rmi', 'local'], env=env, check=True)
 
