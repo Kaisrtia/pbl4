@@ -1,6 +1,7 @@
 // Client Bot Traffic Generator for Integration Lab (Task W3-T3 - PBL4)
 // Phụ trách: Hoàng Trung (TV3) - Target App & Tấn công L7
 import { writeFileSync, renameSync } from 'node:fs';
+import { setTimeout as delay } from 'node:timers/promises';
 import { failedProbe } from './client-probe.mjs';
 
 const base = (process.env.TARGET_APP_URL || 'http://target:8000').replace(/\/+$/, '');
@@ -9,13 +10,13 @@ const username = process.env.CLIENT_USERNAME || 'engineer_user';
 const password = process.env.CLIENT_PASSWORD || 'pass123';
 const probeFile = process.env.PROBE_FILE_PATH || '/tmp/client-probe.json';
 
-let stopped = false;
+const shutdown = new AbortController();
 let accessToken = null;
 let iteration = 0;
 const sessionId = `integration-client-${Date.now()}`;
 
-process.on('SIGTERM', () => { stopped = true; });
-process.on('SIGINT', () => { stopped = true; });
+process.on('SIGTERM', () => shutdown.abort());
+process.on('SIGINT', () => shutdown.abort());
 
 async function req(path, options = {}) {
   const start = performance.now();
@@ -33,7 +34,7 @@ async function req(path, options = {}) {
     method: options.method || 'GET',
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
-    signal: AbortSignal.timeout(3000),
+    signal: AbortSignal.any([shutdown.signal, AbortSignal.timeout(3000)]),
   });
 
   const latency = performance.now() - start;
@@ -48,7 +49,7 @@ async function req(path, options = {}) {
   return { ok: response.ok, status: response.status, data, latency };
 }
 
-while (!stopped) {
+while (!shutdown.signal.aborted) {
   iteration++;
   const cycleStart = performance.now();
   let probeResult;
@@ -83,6 +84,7 @@ while (!stopped) {
       iteration,
     };
   } catch (error) {
+    if (shutdown.signal.aborted) break;
     probeResult = failedProbe(error, iteration, performance.now() - cycleStart);
   }
 
@@ -97,5 +99,9 @@ while (!stopped) {
 
   const elapsed = performance.now() - cycleStart;
   const sleepMs = Math.max(500, interval - elapsed);
-  await new Promise(resolve => setTimeout(resolve, sleepMs));
+  try {
+    await delay(sleepMs, undefined, { signal: shutdown.signal });
+  } catch (error) {
+    if (!shutdown.signal.aborted) throw error;
+  }
 }

@@ -35,7 +35,7 @@ chạy tiến trình vẫn do UID, quyền filesystem và các giới hạn kern
 | W3 | S2 có biên bản gửi và nhận sự kiện; schema S5/S6 đã được tích hợp. | Chưa có bằng chứng backlog đầy hoặc phiên TCP bị ngắt bởi worker. |
 | W4 | Biên bản S3 ghi nhận một tiến trình mở 32 FD và cleanup. S1 có kết quả SSH. Test procfs trên Linux xác nhận PID con, UID, tăng đúng 8 FD và PID biến mất sau khi thoát. | Các phép đo này chỉ bao phủ một phần đầu ra OS. |
 | W5 | Hai lượt Docker độc lập đi từ cấu hình gốc qua L1, L2 và cả hai. Mỗi lượt đạt 4/4, 6/6 và 10/10 phép kiểm tra tương ứng. | Đã đo cấu hình có hiệu lực trên Target. Hiệu quả dưới tải chưa được đo. |
-| W6 | Cấu hình Target khớp mẫu ban đầu sau cả hai lần reset. Client và Target đều healthy. | Hai lần mất 4,233 s và 4,211 s, đều vượt hạn 3 s. |
+| W6 | Ba lượt sau khi sửa client-bot đạt 2,695 s, 2,735 s và 2,703 s. Mỗi lượt Client và Target đều healthy và các mục cấu hình Target khớp baseline. | Kết quả đo trên máy lab này với image đã build. |
 
 [Biên bản S1–S4](../runbooks/integration-handoff.md#kết-quả-đã-kiểm-chứng) ·
 [Thao tác khiên và reset](../runbooks/integration-lab.md#tv2--quan-sát-bật-khiên-và-reset-mạnghđh)
@@ -50,6 +50,7 @@ qua procfs. Mẫu L1 xác nhận ARP permanent đúng MAC Client trên Target v�
 rule SYN. Phép so sau reset bao gồm cả UID và giới hạn FD.
 
 Trong lượt 4,233 s, sự kiện Docker cho thấy riêng giai đoạn từ tín hiệu dừng
-đến khi Client dừng mất khoảng 1,59 s. Client-bot hiện kiểm tra cờ dừng sau
-khi hết thời gian chờ giữa hai lượt. Đề xuất Trung (TV3) cho phép ngắt thời
-gian chờ khi nhận SIGTERM, rồi TV2 đo lại cùng điều kiện.
+đến khi Client dừng mất khoảng 1,59 s. Client-bot nay hủy request hoặc timer đang chờ khi nhận
+SIGTERM/SIGINT. Hai lượt trước thay đổi mất 4,233 s và 4,211 s. Sau thay đổi,
+ba lượt liên tiếp đạt mốc 3 giây. Cả ba lượt cũng đạt đủ 4 phép kiểm L1,
+6 phép kiểm L2 và 10 phép kiểm khi bật đồng thời hai lớp.
