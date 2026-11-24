@@ -58,6 +58,19 @@ export class DefenseService implements IDefenseService {
     return this.getStatus();
   }
 
+  resetFlags(): DefenseFlags {
+    this.flags = {
+      l3_master: envConfig.initialDefense.l3Master,
+      anti_sqli: envConfig.initialDefense.antiSqli,
+      rate_limit: envConfig.initialDefense.rateLimit,
+      input_sanitization: envConfig.initialDefense.inputSanitization,
+    };
+    this.logger.log(
+      `[DEFENSE RESET] Flags reset to initial defaults: ${JSON.stringify(this.flags)}`,
+    );
+    return this.getStatus();
+  }
+
   isAntiSqliEnabled(): boolean {
     return this.flags.l3_master || this.flags.anti_sqli;
   }

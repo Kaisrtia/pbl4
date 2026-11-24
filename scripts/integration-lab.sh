@@ -97,6 +97,10 @@ PY
     # Keep named volumes, including SQLite and credentials, and leave the hub running.
     python3 integration/reset_network_os.py "${compose[@]}"
     ;;
+  reset-target|reset-app)
+    # Khôi phục trạng thái sạch cho Target App (DB, Rate Limit, Defense Flags)
+    node scripts/reset-target.mjs
+    ;;
   telemetry-test)
     "${compose[@]}" up --build -d --wait --wait-timeout 120 godview target client
     "${compose[@]}" exec -T client python3 - client < integration/check_host_sample.py
@@ -104,5 +108,5 @@ PY
     ;;
   logs) "${compose[@]}" logs --tail 80 ;;
   test) node --env-file=integration/.env.local integration/verify.mjs ;;
-  *) echo 'Usage: ./scripts/integration-lab.sh {init|lan <IPv4>|local|urls|up|down|status|logs|test|telemetry-test|monitor|shields <off|l1|l2|both>|defense-status|reset-network-os}' >&2; exit 2 ;;
+  *) echo 'Usage: ./scripts/integration-lab.sh {init|lan <IPv4>|local|urls|up|down|status|logs|test|telemetry-test|monitor|shields <off|l1|l2|both>|defense-status|reset-network-os|reset-target}' >&2; exit 2 ;;
 esac

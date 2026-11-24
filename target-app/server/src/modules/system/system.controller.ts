@@ -1,6 +1,9 @@
 import {
   Controller,
   Get,
+  Post,
+  HttpCode,
+  HttpStatus,
   Query,
   Req,
   Res,
@@ -16,6 +19,8 @@ import {
   DEFENSE_SERVICE_TOKEN,
   IDefenseService,
 } from '../defense/defense.constants';
+import { DatabaseService } from '../../database/database.service';
+import { DynamicRateLimitGuard } from '../defense/guards/dynamic-rate-limit.guard';
 
 const execAsync = promisify(exec);
 
@@ -27,6 +32,8 @@ export class SystemController {
   constructor(
     @Inject(DEFENSE_SERVICE_TOKEN)
     private readonly defenseService: IDefenseService,
+    private readonly databaseService: DatabaseService,
+    private readonly rateLimitGuard: DynamicRateLimitGuard,
   ) {}
 
   @Get('ping')
@@ -187,6 +194,40 @@ export class SystemController {
       uptime_seconds: process.uptime(),
       memory_usage: process.memoryUsage(),
       defense_status: this.defenseService.getStatus(),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Post('reset')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Khôi phục toàn bộ Target App về trạng thái sạch ban đầu (Reset 1-chạm)',
+    description:
+      'Thực hiện: 1. Reset Database (xóa orders, giỏ hàng, re-seed toàn bộ data mặc định); 2. Xóa bộ đếm Rate Limiting trong RAM; 3. Đưa cấu hình Khiên L3 về mặc định.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Hệ thống Target App đã được khôi phục trạng thái sạch ban đầu thành công',
+  })
+  reset() {
+    const dbResult = this.databaseService.resetDatabase();
+    this.rateLimitGuard.resetRecords();
+    const defenseFlags = this.defenseService.resetFlags();
+
+    this.logger.log(
+      '[SYSTEM RESET] Complete 1-touch reset executed successfully.',
+    );
+
+    return {
+      status: 'success',
+      message:
+        'Target App đã được khôi phục về trạng thái sạch ban đầu (Reset 1-chạm)',
+      reset_summary: {
+        database: dbResult,
+        rate_limit_cleared: true,
+        defense_flags_reset: defenseFlags,
+      },
       timestamp: new Date().toISOString(),
     };
   }

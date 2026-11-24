@@ -65,4 +65,12 @@ export class DynamicRateLimitGuard implements CanActivate {
     record.timestamps.push(now);
     return true;
   }
+
+  resetRecords(): void {
+    this.ipRequests.clear();
+  }
+
+  getRecordCount(): number {
+    return this.ipRequests.size;
+  }
 }

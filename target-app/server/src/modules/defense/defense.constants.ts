@@ -10,6 +10,7 @@ export interface IDefenseService {
   toggleMaster(): boolean;
   toggleFlag(flag: keyof Omit<DefenseFlags, 'l3_master'>): boolean;
   setFlags(flags: Partial<DefenseFlags>): DefenseFlags;
+  resetFlags(): DefenseFlags;
   isAntiSqliEnabled(): boolean;
   isRateLimitEnabled(): boolean;
   isSanitizationEnabled(): boolean;
