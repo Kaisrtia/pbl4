@@ -68,3 +68,6 @@ integration/.artifacts/
 target-app/client/assets/ui.css
 target-app/client/assets/icons.woff2
 target-app/client/assets/icons-LICENSE.txt
+
+# Local developer workspace & personal notes
+local/
