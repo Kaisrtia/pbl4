@@ -14,9 +14,9 @@ class NetworkOsReset(unittest.TestCase):
             with self.subTest(elapsed=elapsed), patch.object(reset_network_os.subprocess, "run") as run:
                 output = StringIO()
                 with patch.object(reset_network_os.time, "monotonic", side_effect=[0, elapsed]), redirect_stdout(output):
-                    reset_network_os.reset(compose)
+                    self.assertEqual(reset_network_os.reset(compose), elapsed)
                 run.assert_called_once_with([*compose, "up", "-d", "--no-deps", "--force-recreate",
-                                             "--wait", "--wait-timeout", "120", "target", "client"], check=True)
+                                             "--wait", "--wait-timeout", "120", "target", "client"], check=True, env=None)
                 self.assertEqual(output.getvalue().splitlines()[-1], f"W6 three-second deadline: {verdict}")
 
     def test_compose_failure_cannot_report_healthy(self):

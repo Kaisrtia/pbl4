@@ -229,3 +229,12 @@ rule SYN, ARP permanent phía Target, sysctl, cgroup, UID và giới hạn FD.
 giá trị trước/sau. `INCONCLUSIVE` (2) báo mẫu thiếu hoặc khác cặp IP.
 Mẫu cũ thiếu `lab_endpoints` cần lấy lại. PID mới và cache ARP động hết hạn
 là bình thường. Thời gian reset được đánh giá riêng.
+
+Để kiểm tra W5/W6 trong project Compose dùng một lần, chạy
+`python3 integration/check_shield_cycle.py`. Có thể chọn subnet riêng chưa
+dùng bằng `--subnet`. Công cụ chỉ khởi động God-View, Target và Client,
+xuất bản cổng trên loopback và dọn project thử sau khi kết thúc. Từng chế độ
+L1, L2 và cả hai đều được kiểm tra bên trong Target. Ở chế độ một khiên,
+các thiết lập của khiên còn lại phải khớp mẫu gốc. Dòng JSON cuối sau reset
+ghi thời gian đến khi hai endpoint healthy và từng sai khác còn lại trên
+Target. Mã 0 yêu cầu cả cấu hình khớp lẫn thời gian không quá 3 giây.

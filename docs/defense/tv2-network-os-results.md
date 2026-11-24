@@ -33,9 +33,9 @@ chạy tiến trình vẫn do UID, quyền filesystem và các giới hạn kern
 | W1 | Compose LAN và lệnh quan sát bốn khung Tmux. | Chưa có biên bản demo đầy đủ ba kịch bản mạng. |
 | W2 | Hai agent đã chạy trong lab và God-View trả HTTP 200 cho cả hai. | Hub chưa lưu lịch sử kernel tách biệt theo node. |
 | W3 | S2 có biên bản gửi và nhận sự kiện; schema S5/S6 đã được tích hợp. | Chưa có bằng chứng backlog đầy hoặc phiên TCP bị ngắt bởi worker. |
-| W4 | Biên bản S3 ghi nhận một tiến trình mở 32 FD và cleanup. S1 có kết quả SSH. | Các phép đo này chỉ bao phủ một phần đầu ra OS. |
-| W5 | Kiểm thử cấu hình bao phủ bốn tổ hợp khiên trên subnet tùy chỉnh. | Chưa đo hiệu lực runtime của các chế độ mới. |
-| W6 | Reset tái tạo namespace Client/Target và đo đến lúc cả hai healthy. | Chưa có số đo runtime xác nhận hạn 3 giây. |
+| W4 | Biên bản S3 ghi nhận một tiến trình mở 32 FD và cleanup. S1 có kết quả SSH. Test procfs trên Linux xác nhận PID con, UID, tăng đúng 8 FD và PID biến mất sau khi thoát. | Các phép đo này chỉ bao phủ một phần đầu ra OS. |
+| W5 | Kiểm thử cấu hình bao phủ bốn tổ hợp khiên trên subnet tùy chỉnh. | Đã có bài kiểm tra tuần tự cả ba chế độ bật. Chưa có kết quả chạy trên Docker cho các chế độ mới. |
+| W6 | Reset tái tạo namespace Client/Target và đo đến lúc cả hai healthy. | Đã có phép so cấu hình Target trước/sau reset. Docker daemon chưa chạy trong lần kiểm tra này nên chưa có số đo xác nhận hạn 3 giây. |
 
 [Biên bản S1–S4](../runbooks/integration-handoff.md#kết-quả-đã-kiểm-chứng) ·
 [Thao tác khiên và reset](../runbooks/integration-lab.md#tv2--quan-sát-bật-khiên-và-reset-mạnghđh)
