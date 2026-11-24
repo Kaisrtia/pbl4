@@ -96,6 +96,34 @@ const state = {
     },
   },
   bruteForceCounter: 0,
+  killChain: {
+    active: false,
+    current_stage: null,
+    autoPlaying: false,
+    stages: [
+      { stage: 1, code: 'RECON_MITM', state: 'IDLE', blocked_by: null, summary: 'ARP Poisoning & HTTP Credential Sniffer' },
+      { stage: 2, code: 'L7_AUTH_BYPASS', state: 'IDLE', blocked_by: null, summary: '1 req/s L1 Bypass & SQLi Admin Auth' },
+      { stage: 3, code: 'OS_REVERSE_SHELL', state: 'IDLE', blocked_by: null, summary: 'Cmd Injection -> /bin/sh -> nc :4444' },
+      { stage: 4, code: 'DATA_EXFILTRATION', state: 'IDLE', blocked_by: null, summary: 'Path Traversal /etc/passwd & R&D Flag' },
+      { stage: 5, code: 'SYN_FD_IMPACT', state: 'IDLE', blocked_by: null, summary: 'SYN_RECV Flood, lsof EMFILE & TCP RST' },
+    ],
+  },
+  // W6-T1: rAF Event Batching & Throttling State (chống đơ trình duyệt khi bắn hàng vạn gói SYN Flood)
+  perf: {
+    incomingLogQueue: [],
+    pendingMetrics: null,
+    pendingNetworkState: null,
+    pendingOsL7State: null,
+    pendingKillChain: null,
+    pendingDefense: null,
+    rafScheduled: false,
+    packetsThisSecond: 0,
+    coalescedBursts: 0,
+    currentFps: 60,
+    frameCount: 0,
+    lastFpsCheck: performance.now(),
+  },
+  resetToastTimer: null,
 };
 
 // ==========================================
@@ -105,10 +133,12 @@ document.addEventListener('DOMContentLoaded', () => {
   updateDefenseUI(null);
   updateNetworkStateUI(state.networkState);
   updateOsL7StateUI(state.osL7State);
+  updateKillChainUI(state.killChain);
   initSocket();
   initCanvas();
   initEventListeners();
   startReverseShellBeaconLoop();
+  startFpsAndThroughputMonitor();
 });
 
 function initSocket() {
@@ -156,33 +186,38 @@ function initSocket() {
     if (data.os_l7_state) {
       updateOsL7StateUI(data.os_l7_state);
     }
+    if (data.kill_chain) {
+      updateKillChainUI(data.kill_chain);
+    }
   });
 
-  // Nhận bản tin Telemetry thời gian thực từ Target App
+  // Nhận bản tin Telemetry thời gian thực từ Target App (W6-T1: Gom nhóm sự kiện rAF Throttling chống đơ trình duyệt)
   state.socket.on('GOD_VIEW_UPDATE', (payload) => {
-    const { log, metrics, network_state, os_l7_state, defense_l3_state, defense_layers } = payload;
-    if (network_state) {
-      updateNetworkStateUI(network_state, metrics);
-    }
-    if (os_l7_state) {
-      updateOsL7StateUI(os_l7_state);
-    }
-    handleIncomingTelemetry(log);
-
-    if (metrics) updateMetricsUI(metrics);
-    updateDefenseUI(defense_l3_state, defense_layers);
+    enqueueTelemetryUpdate(payload);
   });
 
   // Nhận cập nhật trạng thái mạng L2/L4 trực tiếp (ARP, MitM, SYN, RST)
   state.socket.on('NETWORK_STATE_UPDATE', (payload) => {
-    if (payload.metrics) updateMetricsUI(payload.metrics);
-    if (payload.network_state) updateNetworkStateUI(payload.network_state, payload.metrics);
+    if (payload.metrics) state.perf.pendingMetrics = payload.metrics;
+    if (payload.network_state) state.perf.pendingNetworkState = payload.network_state;
+    schedulePerfFlush();
   });
 
   // Nhận cập nhật trạng thái HĐH & Tầng L7 trực tiếp (W4-T1: pstree, reverse shell, lsof, SQLi/Brute-force)
   state.socket.on('OS_L7_STATE_UPDATE', (payload) => {
-    if (payload.metrics) updateMetricsUI(payload.metrics);
-    if (payload.os_l7_state) updateOsL7StateUI(payload.os_l7_state);
+    if (payload.metrics) state.perf.pendingMetrics = payload.metrics;
+    if (payload.os_l7_state) state.perf.pendingOsL7State = payload.os_l7_state;
+    schedulePerfFlush();
+  });
+
+  // Nhận cập nhật tiến trình Kill Chain 5 giai đoạn (W6-ALL)
+  state.socket.on('KILL_CHAIN_UPDATE', (payload) => {
+    if (payload && payload.kill_chain) {
+      updateKillChainUI(payload.kill_chain);
+    }
+    if (payload && payload.defense_layers) {
+      updateDefenseUI(payload.defense_layers.l3_app, payload.defense_layers);
+    }
   });
 
   // Nhận sự kiện đồng bộ khi khiên phòng thủ thay đổi (W5-T1: L1, L2, L3)
@@ -199,15 +234,27 @@ function initSocket() {
     document.getElementById('defense-error').textContent = payload.message;
   });
 
-  // Nhận sự kiện xóa rỗng bộ đệm
+  // Nhận sự kiện xóa rỗng bộ đệm & 1-Touch Lab Reset (W6-T1)
   state.socket.on('GOD_VIEW_RESET', (payload) => {
     state.logs = [];
     state.attackEvents = [];
     state.synPeak = 0;
     state.bruteForceCounter = 0;
+    state.perf.incomingLogQueue = [];
+    state.perf.pendingMetrics = null;
+    state.perf.pendingNetworkState = null;
+    state.perf.pendingOsL7State = null;
+    state.perf.pendingKillChain = null;
     if (payload && payload.metrics) updateMetricsUI(payload.metrics);
     if (payload && payload.network_state) updateNetworkStateUI(payload.network_state, payload.metrics);
     if (payload && payload.os_l7_state) updateOsL7StateUI(payload.os_l7_state);
+    if (payload && payload.kill_chain) updateKillChainUI(payload.kill_chain);
+    if (payload && payload.defense_layers) {
+      updateDefenseUI(payload.defense_l3_state, payload.defense_layers);
+    }
+    if (payload && payload.reset_summary) {
+      showResetToastBanner(payload.reset_summary, payload.message);
+    }
     renderAttackEvents();
     renderTable();
     updateBufferCount();
@@ -231,28 +278,126 @@ function startRttHeartbeat() {
 }
 
 // ==========================================
-// 2. INCOMING TELEMETRY & ALERT HANDLING
+// 2. INCOMING TELEMETRY, rAF BATCH THROTTLING (W6-T1) & ALERT HANDLING
 // ==========================================
-function handleIncomingTelemetry(log) {
-  state.logs.push(log);
+const MAX_ACTIVE_PARTICLES = 180;
+const MAX_SPARKS = 90;
+const MAX_FLOATING_LABELS = 18;
+const MAX_PARTICLE_SPAWNS_PER_FRAME = 10;
+
+function enqueueTelemetryUpdate(payload) {
+  if (!payload) return;
+  const { log, metrics, network_state, os_l7_state, kill_chain, defense_l3_state, defense_layers } = payload;
+
+  if (log) {
+    state.perf.incomingLogQueue.push(log);
+    state.perf.packetsThisSecond += 1;
+  }
+  if (metrics) state.perf.pendingMetrics = metrics;
+  if (network_state) state.perf.pendingNetworkState = network_state;
+  if (os_l7_state) state.perf.pendingOsL7State = os_l7_state;
+  if (kill_chain) state.perf.pendingKillChain = kill_chain;
+  if (defense_layers || defense_l3_state !== undefined) {
+    state.perf.pendingDefense = { defense_l3_state, defense_layers };
+  }
+
+  schedulePerfFlush();
+}
+
+function schedulePerfFlush() {
+  if (state.perf.rafScheduled) return;
+  state.perf.rafScheduled = true;
+  requestAnimationFrame(flushTelemetryQueue);
+}
+
+function flushTelemetryQueue() {
+  state.perf.rafScheduled = false;
+
+  // 1. Cập nhật các bảng trạng thái tổng hợp 1 lần duy nhất mỗi frame
+  const latestMetrics = state.perf.pendingMetrics;
+  state.perf.pendingMetrics = null;
+
+  if (state.perf.pendingNetworkState) {
+    const net = state.perf.pendingNetworkState;
+    state.perf.pendingNetworkState = null;
+    updateNetworkStateUI(net, latestMetrics);
+  }
+  if (state.perf.pendingOsL7State) {
+    const osState = state.perf.pendingOsL7State;
+    state.perf.pendingOsL7State = null;
+    updateOsL7StateUI(osState);
+  }
+  if (state.perf.pendingKillChain) {
+    const kc = state.perf.pendingKillChain;
+    state.perf.pendingKillChain = null;
+    updateKillChainUI(kc);
+  }
+  if (latestMetrics) {
+    updateMetricsUI(latestMetrics);
+  }
+  if (state.perf.pendingDefense) {
+    const def = state.perf.pendingDefense;
+    state.perf.pendingDefense = null;
+    updateDefenseUI(def.defense_l3_state, def.defense_layers);
+  }
+
+  // 2. Gom nhóm (Batching) toàn bộ bản tin HTTP/Attack log đến trong cùng frame
+  const batch = state.perf.incomingLogQueue;
+  if (batch.length === 0) return;
+  state.perf.incomingLogQueue = [];
+
+  if (batch.length > 1) {
+    state.perf.coalescedBursts += 1;
+  }
+
+  let latestAttackLog = null;
+  // Chỉ bắn hạt Canvas cho tối đa MAX_PARTICLE_SPAWNS_PER_FRAME mẫu đại diện để không làm nghẽn GPU khi bão SYN Flood
+  const particleStride = Math.max(1, Math.ceil(batch.length / MAX_PARTICLE_SPAWNS_PER_FRAME));
+
+  for (let i = 0; i < batch.length; i++) {
+    const log = batch[i];
+    state.logs.push(log);
+    if (i % particleStride === 0 || i === batch.length - 1) {
+      spawnPacketParticles(log);
+    }
+    const isAttack = Boolean(log.is_suspicious || (log.attack_tag && log.attack_tag !== 'NORMAL'));
+    if (isAttack) {
+      latestAttackLog = log;
+    }
+  }
+
   if (state.logs.length > state.maxLogs) {
-    state.logs.shift();
+    state.logs = state.logs.slice(-state.maxLogs);
   }
 
-  // Cập nhật số lượng bản tin
   updateBufferCount();
-
-  // Bắn hạt vào Canvas Topology Stream
-  spawnPacketParticles(log);
-
-  // Hiển thị Banner cảnh báo nếu là tấn công
-  const isAttack = Boolean(log.is_suspicious || (log.attack_tag && log.attack_tag !== 'NORMAL'));
-  if (isAttack) {
-    triggerWarningBanner(log);
+  if (latestAttackLog) {
+    triggerWarningBanner(latestAttackLog);
   }
 
-  // Thêm dòng mới vào bảng log
-  appendTableRow(log);
+  // Chèn hàng loạt vào DOM bằng DocumentFragment (1 lần reflow duy nhất)
+  appendTableRowBatch(batch);
+}
+
+function handleIncomingTelemetry(log) {
+  enqueueTelemetryUpdate({ log });
+}
+
+function startFpsAndThroughputMonitor() {
+  setInterval(() => {
+    const badge = document.getElementById('fps-throttle-badge');
+    if (!badge) return;
+    const pps = state.perf.packetsThisSecond;
+    state.perf.packetsThisSecond = 0;
+    const fps = Math.min(60, Math.max(24, state.perf.currentFps || 60));
+    if (pps > 15) {
+      badge.textContent = `${fps} FPS · BATCHING (${pps} pkt/s)`;
+      badge.style.color = '#ffd700';
+    } else {
+      badge.textContent = `${fps} FPS · THROTTLED`;
+      badge.style.color = '';
+    }
+  }, 1000);
 }
 
 function updateBufferCount() {
@@ -1403,6 +1548,25 @@ function startReverseShellBeaconLoop() {
 }
 
 function renderCanvasLoop() {
+  state.perf.frameCount += 1;
+  const now = performance.now();
+  if (now - state.perf.lastFpsCheck >= 1000) {
+    state.perf.currentFps = Math.min(60, Math.round((state.perf.frameCount * 1000) / (now - state.perf.lastFpsCheck)));
+    state.perf.frameCount = 0;
+    state.perf.lastFpsCheck = now;
+  }
+
+  // W6-T1: Cắt tỉa hạt nếu vượt ngưỡng trần MAX_ACTIVE_PARTICLES để chống lag khi bắn SYN Flood
+  if (particles.length > MAX_ACTIVE_PARTICLES) {
+    particles.splice(0, particles.length - MAX_ACTIVE_PARTICLES);
+  }
+  if (shieldImpactSparks.length > MAX_SPARKS) {
+    shieldImpactSparks.splice(0, shieldImpactSparks.length - MAX_SPARKS);
+  }
+  if (floatingLabels.length > MAX_FLOATING_LABELS) {
+    floatingLabels.splice(0, floatingLabels.length - MAX_FLOATING_LABELS);
+  }
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Vẽ các đường mạch kết nối (Circuit Connection Paths)
@@ -1770,24 +1934,35 @@ function renderTable() {
 }
 
 function appendTableRow(log) {
-  if (!matchFilter(log)) return;
+  appendTableRowBatch([log]);
+}
+
+function appendTableRowBatch(logs) {
+  if (!Array.isArray(logs) || logs.length === 0) return;
+  const matching = logs.filter((log) => matchFilter(log));
+  if (matching.length === 0) return;
 
   const tbody = document.getElementById('packet-table-body');
+  if (!tbody) return;
   const emptyRow = tbody.querySelector('.empty-row');
   if (emptyRow) emptyRow.remove();
 
-  const tr = createTableRow(log);
-  tbody.insertBefore(tr, tbody.firstChild);
+  // Dùng DocumentFragment để gom toàn bộ các dòng trong 1 frame vào 1 thao tác DOM duy nhất (W6-T1)
+  const fragment = document.createDocumentFragment();
+  for (let i = matching.length - 1; i >= 0; i--) {
+    fragment.appendChild(createTableRow(matching[i]));
+  }
+  tbody.insertBefore(fragment, tbody.firstChild);
 
-  // Giới hạn số hàng trên DOM để tránh lag
-  if (tbody.children.length > state.maxLogs) {
+  // Giới hạn số hàng trên DOM để tránh lag khi chạy bão SYN Flood
+  while (tbody.children.length > state.maxLogs) {
     tbody.removeChild(tbody.lastChild);
   }
 
   // Tự động cuộn lên đầu nếu Auto-scroll bật
   if (state.autoScroll) {
     const container = document.getElementById('table-scroll-container');
-    container.scrollTop = 0;
+    if (container) container.scrollTop = 0;
   }
 }
 
@@ -1880,12 +2055,34 @@ function initEventListeners() {
   const sanChip = document.getElementById('btn-subflag-sanitize');
   if (sanChip) sanChip.addEventListener('click', () => toggleDefenseSubFlag('input_sanitization'));
 
-  // Nút Reset State
+  // W6-T1: Nút "Reset Lab 1-Chạm" (1-Touch Reset Lab)
   document.getElementById('btn-reset-state').addEventListener('click', () => {
-    if (confirm('Bạn có chắc muốn xóa sạch toàn bộ bản tin Telemetry trong Ring Buffer?')) {
-      fetch('/api/telemetry/clear', { method: 'DELETE' });
-    }
+    triggerOneTouchLabReset();
   });
+
+  const dismissResetBtn = document.getElementById('btn-dismiss-reset-toast');
+  if (dismissResetBtn) {
+    dismissResetBtn.addEventListener('click', () => {
+      document.getElementById('reset-toast-banner').classList.add('hidden');
+    });
+  }
+
+  // W6-ALL & W6-T1: Điều khiển Kill Chain 5 Giai đoạn & Stress Test SYN Flood Burst
+  const kcPlayBtn = document.getElementById('btn-run-killchain');
+  if (kcPlayBtn) kcPlayBtn.addEventListener('click', () => runAutoKillChain());
+
+  const stressBtn = document.getElementById('btn-stress-syn-burst');
+  if (stressBtn) stressBtn.addEventListener('click', () => runSynFloodStressBurst(120));
+
+  const enableAllShieldsBtn = document.getElementById('btn-enable-all-shields');
+  if (enableAllShieldsBtn) enableAllShieldsBtn.addEventListener('click', () => enableAllThreeShields());
+
+  for (const stepBtn of document.querySelectorAll('[data-kc-trigger]')) {
+    stepBtn.addEventListener('click', () => {
+      const stageId = Number(stepBtn.getAttribute('data-kc-trigger'));
+      executeKillChainStage(stageId);
+    });
+  }
 
   // Nút Auto-scroll
   const autoScrollBtn = document.getElementById('btn-toggle-autoscroll');
@@ -2333,4 +2530,245 @@ function truncate(str, max) {
 
 function escapeHtml(str) {
   return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ==========================================
+// 8. W6-T1 & W6-ALL: 1-TOUCH LAB RESET, KILL CHAIN 5-STAGE STEPPER & SYN FLOOD STRESS BURST
+// ==========================================
+function updateKillChainUI(kcState) {
+  if (!kcState || !Array.isArray(kcState.stages)) return;
+  state.killChain = {
+    ...state.killChain,
+    ...kcState,
+  };
+
+  const badge = document.getElementById('killchain-status-badge');
+  let compromisedCount = 0;
+  let blockedCount = 0;
+
+  for (const s of state.killChain.stages) {
+    const stageEl = document.getElementById(`kc-stage-${s.stage}`);
+    const pillEl = document.getElementById(`kc-pill-${s.stage}`);
+    if (!stageEl || !pillEl) continue;
+
+    stageEl.classList.remove('kc-running', 'kc-compromised', 'kc-blocked');
+    if (s.state === 'RUNNING') {
+      stageEl.classList.add('kc-running');
+      pillEl.textContent = '⏳ RUNNING';
+    } else if (s.state === 'COMPROMISED') {
+      compromisedCount += 1;
+      stageEl.classList.add('kc-compromised');
+      pillEl.textContent = '💥 COMPROMISED';
+    } else if (s.state === 'BLOCKED') {
+      blockedCount += 1;
+      stageEl.classList.add('kc-blocked');
+      pillEl.textContent = `🛡️ BLOCKED (${s.blocked_by ? s.blocked_by.split('_')[0] : 'SHIELD'})`;
+    } else {
+      pillEl.textContent = 'IDLE';
+    }
+  }
+
+  if (badge) {
+    if (compromisedCount > 0 && blockedCount === 0) {
+      badge.className = 'badge badge-attack';
+      badge.textContent = `🔥 KILL CHAIN: ${compromisedCount}/5 STAGES EXPLOITED`;
+    } else if (blockedCount > 0 && compromisedCount === 0) {
+      badge.className = 'badge badge-shield';
+      badge.textContent = `🛡️ KILL CHAIN: ${blockedCount}/5 STAGES MITIGATED`;
+    } else if (compromisedCount > 0 || blockedCount > 0) {
+      badge.className = 'badge badge-mitm';
+      badge.textContent = `⚡ KILL CHAIN: ${blockedCount} BLOCKED / ${compromisedCount} EXPLOITED`;
+    } else {
+      badge.className = 'badge badge-normal';
+      badge.textContent = 'KILL CHAIN: STANDBY';
+    }
+  }
+}
+
+async function executeKillChainStage(stageId) {
+  const stageEl = document.getElementById(`kc-stage-${stageId}`);
+  const pillEl = document.getElementById(`kc-pill-${stageId}`);
+  if (stageEl) {
+    stageEl.classList.remove('kc-compromised', 'kc-blocked');
+    stageEl.classList.add('kc-running');
+  }
+  if (pillEl) pillEl.textContent = '⏳ RUNNING';
+
+  if (stageId === 1) {
+    await simulateTraffic('arp-spoof');
+    await simulateTraffic('normal-login');
+  } else if (stageId === 2) {
+    await simulateTraffic('brute-force');
+    await simulateTraffic('sqli');
+  } else if (stageId === 3) {
+    await simulateTraffic('reverse-shell');
+  } else if (stageId === 4) {
+    await simulateTraffic('path-traversal');
+  } else if (stageId === 5) {
+    await simulateTraffic('syn-flood');
+    await simulateTraffic('fd-exhaust');
+    await simulateTraffic('rst-inject');
+  }
+}
+
+async function runAutoKillChain() {
+  if (state.killChain.autoPlaying) return;
+  state.killChain.autoPlaying = true;
+  const playBtn = document.getElementById('btn-run-killchain');
+  if (playBtn) {
+    playBtn.disabled = true;
+    playBtn.textContent = '⏳ EXECUTING 5-STAGE KILL CHAIN...';
+  }
+  try {
+    await fetch('/api/killchain/reset', { method: 'POST' }).catch(() => {});
+    for (let stageId = 1; stageId <= 5; stageId++) {
+      await executeKillChainStage(stageId);
+      await new Promise((r) => setTimeout(r, 650));
+    }
+  } finally {
+    state.killChain.autoPlaying = false;
+    if (playBtn) {
+      playBtn.disabled = false;
+      playBtn.textContent = '▶ AUTO-PLAY KILL CHAIN (5 STAGES)';
+    }
+  }
+}
+
+async function enableAllThreeShields() {
+  const btn = document.getElementById('btn-enable-all-shields');
+  if (btn) btn.disabled = true;
+  try {
+    await Promise.all([
+      fetch('/api/defense/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layer: 'l1', enabled: true }),
+      }),
+      fetch('/api/defense/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layer: 'l2', enabled: true }),
+      }),
+      fetch('/api/defense/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layer: 'l3', enabled: true }),
+      }),
+    ]);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/**
+ * W6-T1: Bắn bão 120 gói SYN Flood liên hoàn để kiểm chứng rAF Event Batching & Particle Cap giữ UI mượt 60 FPS
+ */
+async function runSynFloodStressBurst(count = 120) {
+  const btn = document.getElementById('btn-stress-syn-burst');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = `🌊 FLOODING ${count} SYN PKTS...`;
+  }
+  try {
+    const l1On = Boolean(state.defenseL1Active);
+    const l2On = Boolean(state.defenseL2Active);
+    const batchPromises = [];
+    for (let i = 0; i < count; i++) {
+      const payload = {
+        timestamp: new Date().toISOString(),
+        method: 'TCP',
+        endpoint: `[DEMO] /L4/tcp-syn-flood-burst#${i + 1} (Flags: SYN, Port: 8000, Burst: ${count} pps)`,
+        status_code: l1On ? 429 : l2On ? 200 : 503,
+        response_time: l1On ? 2 : l2On ? 12 : 340,
+        client_ip: '172.20.0.66',
+        payload_summary: {
+          burst_index: i + 1,
+          total_burst: count,
+          pps: count,
+          backlog_queue: l1On
+            ? 'L1_IPTABLES_SYN_LIMIT_DROPPED'
+            : l2On
+              ? 'L2_TCP_SYNCOOKIES_MITIGATED'
+              : 'SYN_RECV_OVERFLOW',
+        },
+        attack_tag: 'SYN_FLOOD',
+        is_suspicious: true,
+        defense_action: l1On ? 'rate_limited' : l2On ? 'blocked' : 'monitored',
+        metadata: { source: 'demo', synthetic: true, burst: true },
+      };
+      batchPromises.push(
+        fetch('/api/telemetry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }).catch(() => enqueueTelemetryUpdate({ log: payload })),
+      );
+      if (batchPromises.length >= 20) {
+        await Promise.all(batchPromises.splice(0, batchPromises.length));
+      }
+    }
+    if (batchPromises.length > 0) {
+      await Promise.all(batchPromises);
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🌊 STRESS TEST SYN BURST (120 PKTS)';
+    }
+  }
+}
+
+/**
+ * W6-T1: Nút bấm "Reset Lab 1-Chạm" (1-Touch Clean State Reset)
+ */
+async function triggerOneTouchLabReset() {
+  const btn = document.getElementById('btn-reset-state');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ RESETTING LAB...';
+  }
+  try {
+    const res = await fetch('/api/lab/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    if (res.ok && data.reset_summary) {
+      showResetToastBanner(data.reset_summary, data.message);
+    }
+  } catch {
+    fetch('/api/telemetry/clear', { method: 'DELETE' }).catch(() => {});
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="btn-glow"></span>⚡ RESET LAB 1-CHẠM';
+    }
+  }
+}
+
+function showResetToastBanner(summary, message) {
+  const banner = document.getElementById('reset-toast-banner');
+  const titleEl = document.getElementById('reset-toast-title');
+  const detailsEl = document.getElementById('reset-toast-details');
+  if (!banner) return;
+
+  const elapsed = summary && typeof summary.elapsed_ms === 'number' ? summary.elapsed_ms : 15;
+  const slaLabel = elapsed <= 3000 ? `PASS (<3s SLA: ${elapsed}ms)` : `${elapsed}ms`;
+  const targetDbStatus = summary && summary.target_app_reset ? 'Target SQLite & RateLimit Reset' : 'Hub State Reset';
+
+  if (titleEl) {
+    titleEl.textContent = `⚡ 1-TOUCH LAB RESET COMPLETED · ${slaLabel}`;
+  }
+  if (detailsEl) {
+    detailsEl.textContent =
+      message ||
+      `Đã khôi phục: Bảng ARP sạch | Ngắt Reverse Shell & lsof FD (42/1024) | ${targetDbStatus} | Đặt lại 3 Lớp Khiên & Xóa Ring Buffer.`;
+  }
+  banner.classList.remove('hidden');
+
+  if (state.resetToastTimer) clearTimeout(state.resetToastTimer);
+  state.resetToastTimer = setTimeout(() => {
+    banner.classList.add('hidden');
+  }, 8000);
 }

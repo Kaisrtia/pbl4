@@ -194,30 +194,32 @@ flowchart TD
 
 ---
 
-### 2.6. Điều khiển Bật/Tắt Khiên Phòng Thủ (`POST /api/defense/toggle`)
-* **Mô tả:** Chuyển tiếp (proxy) lệnh điều khiển phòng thủ tới Target Server (`http://172.20.0.20:8000/api/defense/toggle`) và đồng bộ trạng thái mới xuống toàn bộ client qua WebSocket.
-* **Hợp đồng dữ liệu đồng bộ (Contract Alignment):**
-  - **Request Body:** `{}` (toggle Master) hoặc `{ "flag": "anti_sqli" }` / `{ "flag": "rate_limit" }` / `{ "flag": "input_sanitization" }`.
-  - **Logic xử lý phản hồi từ Target Server:**
-    Target Server trả về cấu trúc:
-    ```json
-    {
-      "status": "success",
-      "message": "...",
-      "current_state": {
-        "l3_master": true,
-        "anti_sqli": true,
-        "rate_limit": true,
-        "input_sanitization": true
-      }
-    }
-    ```
-    God-View trích xuất giá trị `current_state.l3_master` để cập nhật trạng thái `defenseL3State`.
+### 2.6. Điều khiển Bật/Tắt Phễu Phòng Thủ 3 Lớp (`POST /api/defense/toggle` & `GET /api/defense/status`)
+* **Mô tả:** Điều phối trạng thái của cả 3 Lớp Khiên Chắn (**L1 Khiên Mạng**, **L2 Khiên HĐH**, **L3 Khiên Ứng dụng & 3 cờ con**) và đồng bộ trạng thái mới xuống toàn bộ client qua WebSocket (`DEFENSE_TOGGLED`).
+* **Request Body (`POST /api/defense/toggle`):**
+  - Bật/tắt Khiên Mạng L1: `{ "layer": "l1", "enabled": true }`
+  - Bật/tắt Khiên HĐH L2: `{ "layer": "l2", "enabled": true }`
+  - Bật/tắt Khiên Ứng dụng L3 (Master): `{ "layer": "l3", "enabled": true }` hoặc `{}`
+  - Bật/tắt từng cờ con L3 (Granular Sub-flag): `{ "layer": "l3", "flag": "anti_sqli" | "rate_limit" | "input_sanitization" }`
 * **Response trả về cho Client God-View (200 OK):**
   ```json
   {
     "success": true,
+    "layer": "l3",
+    "defense_l1_network": true,
+    "defense_l2_os": true,
     "defense_l3_app": true,
+    "defense_layers": {
+      "l1_network": true,
+      "l2_os": true,
+      "l3_app": true,
+      "l3_subflags": {
+        "anti_sqli": true,
+        "rate_limit": true,
+        "input_sanitization": true
+      },
+      "updated_at": "2026-11-24T15:00:00.000Z"
+    },
     "current_state": {
       "l3_master": true,
       "anti_sqli": true,
@@ -228,6 +230,40 @@ flowchart TD
     "message": "Khiên phòng thủ L3/L7 hiện đang: BẬT (SECURED)"
   }
   ```
+
+---
+
+### 2.7. Khôi phục Trạng thái Sạch Toàn Hệ Thống — Reset Lab 1-Chạm (`POST /api/lab/reset`)
+* **Mô tả (Task W6-T1 & W6-ALL):** Khôi phục nguyên tử toàn bộ hệ thống về trạng thái sạch ban đầu trong **$< 3\text{ giây}$**:
+  1. Gọi trực tiếp `POST /api/system/reset` sang Target Server để làm sạch & re-seed CSDL SQLite, xóa bộ đếm Rate Limit và đặt lại cờ Khiên L3.
+  2. Khôi phục bảng ARP sạch, tắt MitM Sniffing, đặt lại bộ đếm RST Injection và đưa hàng đợi `SYN_RECV` về `0`.
+  3. Ngắt tiến trình Reverse Shell (`/bin/sh -> nc`), đưa cây tiến trình `pstree` và đồng hồ File Descriptors (`lsof` = `42 / 1024`) về trạng thái chuẩn.
+  4. Đặt lại Khiên L1, L2, L3, thanh tiến trình Kill Chain 5 giai đoạn và xóa rỗng bộ đệm `RingBuffer`.
+* **Response (200 OK):**
+  ```json
+  {
+    "success": true,
+    "status": "CLEAN_STATE_RESTORED",
+    "message": "Đã khôi phục trạng thái sạch toàn hệ thống (Mạng, HĐH, Target App & 3 Lớp Khiên) trong 18ms.",
+    "reset_summary": {
+      "network_arp_restored": true,
+      "mitm_disabled": true,
+      "os_reverse_shell_killed": true,
+      "fd_table_reset": true,
+      "telemetry_buffer_cleared": true,
+      "defense_shields_reset": true,
+      "target_app_reset": true,
+      "elapsed_ms": 18,
+      "within_3s_sla": true,
+      "timestamp": "2026-11-24T15:05:00.000Z"
+    }
+  }
+  ```
+
+---
+
+### 2.8. Giám sát & Đặt lại Chuỗi Tấn Công Liên Hoàn 5 Giai Đoạn (`GET /api/killchain/status` & `POST /api/killchain/reset`)
+* **Mô tả (Task W6-ALL):** Trả về hoặc đặt lại tiến trình của 5 giai đoạn trong chuỗi Kill Chain (`① Recon & ARP MitM` $\rightarrow$ `② L7 SQLi & Brute-Force` $\rightarrow$ `③ OS Reverse Shell` $\rightarrow$ `④ Data Exfiltration` $\rightarrow$ `⑤ SYN Flood + FD/RST Impact`).
 
 ---
 

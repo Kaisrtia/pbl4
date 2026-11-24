@@ -1767,3 +1767,226 @@ body.cyber-theme {
 #attack-events summary { cursor: pointer; overflow-wrap: anywhere; }
 #attack-events pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 #defense-error { color: #ffb875; font-size: 14px; padding: 0 12px; }
+
+/* ==============================================================================
+   W6-T1 & W6-ALL: 1-TOUCH LAB RESET BANNER & KILL CHAIN 5-STAGE STEPPER
+   ============================================================================== */
+.reset-toast-banner {
+  margin: 10px 18px 0;
+  padding: 10px 16px;
+  background: rgba(0, 255, 102, 0.14);
+  border: 1px solid var(--neon-green);
+  border-left: 4px solid var(--neon-green);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 0 22px rgba(0, 255, 102, 0.28);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  z-index: 40;
+}
+
+.reset-toast-icon {
+  font-size: 18px;
+}
+
+.reset-toast-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reset-toast-body strong {
+  font-family: var(--font-display);
+  color: var(--neon-green);
+  font-size: 12px;
+  letter-spacing: 0.8px;
+}
+
+.reset-toast-body span {
+  color: #e2f8ec;
+  font-size: 11.5px;
+}
+
+/* Kill Chain Orchestrator Card */
+.killchain-card {
+  margin-bottom: 16px;
+  border-color: rgba(0, 240, 255, 0.32);
+}
+
+.killchain-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-killchain-play {
+  border-color: var(--neon-red);
+  color: #ffccd5;
+  background: rgba(255, 0, 60, 0.16);
+}
+
+.btn-killchain-play:hover {
+  background: var(--neon-red);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(255, 0, 60, 0.75);
+}
+
+.btn-stress-burst {
+  border-color: var(--neon-purple);
+  color: #e6b8ff;
+  background: rgba(157, 78, 221, 0.16);
+}
+
+.btn-stress-burst:hover {
+  background: var(--neon-purple);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(157, 78, 221, 0.75);
+}
+
+.btn-all-shields {
+  border-color: var(--neon-green);
+  color: var(--neon-green);
+  background: rgba(0, 255, 102, 0.12);
+}
+
+.btn-all-shields:hover {
+  background: var(--neon-green);
+  color: #000;
+  box-shadow: 0 0 16px rgba(0, 255, 102, 0.75);
+}
+
+.killchain-stepper {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.kc-stage {
+  background: rgba(5, 11, 22, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.22);
+  border-radius: 5px;
+  padding: 9px 11px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  position: relative;
+  transition: all 0.25s ease;
+}
+
+.kc-stage.kc-running {
+  border-color: var(--neon-yellow);
+  box-shadow: 0 0 18px rgba(255, 215, 0, 0.45);
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.kc-stage.kc-compromised {
+  border-color: var(--neon-red);
+  box-shadow: 0 0 18px rgba(255, 0, 60, 0.45);
+  background: rgba(255, 0, 60, 0.14);
+}
+
+.kc-stage.kc-blocked {
+  border-color: var(--neon-green);
+  box-shadow: 0 0 18px rgba(0, 255, 102, 0.35);
+  background: rgba(0, 255, 102, 0.1);
+}
+
+.kc-stage-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.kc-stage-num {
+  color: var(--neon-cyan);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.kc-stage-pill {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.kc-stage.kc-running .kc-stage-pill {
+  background: rgba(255, 215, 0, 0.22);
+  color: var(--neon-yellow);
+  border-color: var(--neon-yellow);
+}
+
+.kc-stage.kc-compromised .kc-stage-pill {
+  background: rgba(255, 0, 60, 0.28);
+  color: #ffccd5;
+  border-color: var(--neon-red);
+}
+
+.kc-stage.kc-blocked .kc-stage-pill {
+  background: rgba(0, 255, 102, 0.22);
+  color: var(--neon-green);
+  border-color: var(--neon-green);
+}
+
+.kc-stage-title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.kc-stage-desc {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.kc-stage-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+  padding-top: 5px;
+  border-top: 1px dashed rgba(0, 240, 255, 0.18);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.kc-shield-hint {
+  color: var(--text-muted);
+}
+
+.kc-shield-hint code {
+  color: var(--neon-cyan);
+}
+
+.btn-kc-step {
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-kc-step:hover {
+  background: var(--neon-cyan);
+  color: #000;
+}

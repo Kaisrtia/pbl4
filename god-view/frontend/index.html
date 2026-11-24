@@ -46,19 +46,126 @@
         <span class="pill-label">RTT:</span>
         <span id="rtt-value" class="pill-value">-- ms</span>
       </div>
+      <div class="metric-pill" title="Tối ưu hiệu năng gom nhóm sự kiện rAF Throttling & Giới hạn hạt Canvas (W6-T1)">
+        <span class="pill-label">UI ENGINE:</span>
+        <span id="fps-throttle-badge" class="pill-value">60 FPS · THROTTLED</span>
+      </div>
       <div class="metric-pill">
         <span class="pill-label">BUFFER:</span>
         <span id="buffer-count-badge" class="pill-value">0 / 300</span>
       </div>
-      <button id="btn-reset-state" class="cyber-btn btn-danger" title="Xóa rỗng bộ đệm Telemetry">
+      <button id="btn-reset-state" class="cyber-btn btn-danger" title="W6-T1: Khôi phục trạng thái sạch toàn Lab (Mạng ARP/SYN, HĐH Reverse Shell/lsof, Target App SQLite/Rate-Limit & 3 Lớp Khiên) trong 1 chạm (<3s)">
         <span class="btn-glow"></span>
-        RESET STATE
+        ⚡ RESET LAB 1-CHẠM
       </button>
     </div>
   </header>
 
+  <!-- W6-T1: 1-TOUCH LAB RESET CONFIRMATION BANNER -->
+  <div id="reset-toast-banner" class="reset-toast-banner hidden" role="status" aria-live="polite">
+    <div class="reset-toast-icon">✅</div>
+    <div class="reset-toast-body">
+      <strong id="reset-toast-title">1-TOUCH LAB RESET COMPLETED</strong>
+      <span id="reset-toast-details">Toàn bộ Mạng (ARP/SYN), HĐH (Reverse Shell/lsof), Target App (SQLite/RateLimit) &amp; 3 Lớp Khiên đã về trạng thái sạch ban đầu.</span>
+    </div>
+    <button id="btn-dismiss-reset-toast" class="btn-icon">✕</button>
+  </div>
+
   <!-- MAIN DASHBOARD CONTENT -->
   <main class="main-layout">
+
+    <!-- W6-ALL & W6-T1: MULTI-LAYER KILL CHAIN LIVE ORCHESTRATOR & STRESS TEST BAR -->
+    <section class="card killchain-card" id="killchain-card" aria-label="Chuỗi Tấn Công Liên Hoàn Kill Chain 5 Giai Đoạn">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="neon-icon">⛓️</span> MULTI-LAYER CYBER KILL CHAIN ORCHESTRATOR <small>(W6-ALL · L2 &rarr; L7 &rarr; OS &rarr; EXFIL &rarr; L4 SYN FLOOD)</small>
+        </div>
+        <div class="killchain-controls">
+          <span id="killchain-status-badge" class="badge badge-normal">KILL CHAIN: STANDBY</span>
+          <button id="btn-run-killchain" class="cyber-btn btn-sm btn-killchain-play" title="Tự động chạy liên hoàn 5 giai đoạn tấn công đa tầng để kiểm chứng Phễu Phòng Thủ 3 Lớp">
+            ▶ AUTO-PLAY KILL CHAIN (5 STAGES)
+          </button>
+          <button id="btn-stress-syn-burst" class="cyber-btn btn-sm btn-stress-burst" title="W6-T1: Bắn bão 120 gói SYN Flood tốc độ cao để kiểm chứng rAF Event Throttling không làm đơ trình duyệt">
+            🌊 STRESS TEST SYN BURST (120 PKTS)
+          </button>
+          <button id="btn-enable-all-shields" class="cyber-btn btn-sm btn-all-shields" title="Bật đồng thời cả 3 Lớp Khiên (L1 + L2 + L3) để chặn đứng toàn bộ Kill Chain">
+            🛡️ ENABLE ALL 3 SHIELDS
+          </button>
+        </div>
+      </div>
+
+      <div class="killchain-stepper" id="killchain-stepper">
+        <!-- Stage 1 -->
+        <div class="kc-stage" id="kc-stage-1" data-stage="1">
+          <div class="kc-stage-top">
+            <span class="kc-stage-num">STAGE 1 · L2 NET</span>
+            <span class="kc-stage-pill" id="kc-pill-1">IDLE</span>
+          </div>
+          <div class="kc-stage-title">① Recon &amp; ARP MitM</div>
+          <div class="kc-stage-desc" id="kc-desc-1">ARP Poisoning &amp; HTTP Credential Sniffer</div>
+          <div class="kc-stage-footer">
+            <span class="kc-shield-hint">Shield: <code>L1 Static ARP</code></span>
+            <button class="btn-kc-step" data-kc-trigger="1">Run S1</button>
+          </div>
+        </div>
+
+        <!-- Stage 2 -->
+        <div class="kc-stage" id="kc-stage-2" data-stage="2">
+          <div class="kc-stage-top">
+            <span class="kc-stage-num">STAGE 2 · L7 APP</span>
+            <span class="kc-stage-pill" id="kc-pill-2">IDLE</span>
+          </div>
+          <div class="kc-stage-title">② SQLi &amp; Brute-Force</div>
+          <div class="kc-stage-desc" id="kc-desc-2">1 req/s L1 Bypass &amp; SQLi Admin Auth</div>
+          <div class="kc-stage-footer">
+            <span class="kc-shield-hint">Shield: <code>L3 SQL/RateLimit</code></span>
+            <button class="btn-kc-step" data-kc-trigger="2">Run S2</button>
+          </div>
+        </div>
+
+        <!-- Stage 3 -->
+        <div class="kc-stage" id="kc-stage-3" data-stage="3">
+          <div class="kc-stage-top">
+            <span class="kc-stage-num">STAGE 3 · OS SHELL</span>
+            <span class="kc-stage-pill" id="kc-pill-3">IDLE</span>
+          </div>
+          <div class="kc-stage-title">③ OS Reverse Shell</div>
+          <div class="kc-stage-desc" id="kc-desc-3">Cmd Injection &rarr; <code>/bin/sh &rarr; nc :4444</code></div>
+          <div class="kc-stage-footer">
+            <span class="kc-shield-hint">Shield: <code>L3 Sanitizer / L2 OS</code></span>
+            <button class="btn-kc-step" data-kc-trigger="3">Run S3</button>
+          </div>
+        </div>
+
+        <!-- Stage 4 -->
+        <div class="kc-stage" id="kc-stage-4" data-stage="4">
+          <div class="kc-stage-top">
+            <span class="kc-stage-num">STAGE 4 · EXFIL</span>
+            <span class="kc-stage-pill" id="kc-pill-4">IDLE</span>
+          </div>
+          <div class="kc-stage-title">④ Data Exfiltration</div>
+          <div class="kc-stage-desc" id="kc-desc-4">Path Traversal <code>/etc/passwd</code> &amp; R&amp;D Flag</div>
+          <div class="kc-stage-footer">
+            <span class="kc-shield-hint">Shield: <code>L3 Path Sanitizer</code></span>
+            <button class="btn-kc-step" data-kc-trigger="4">Run S4</button>
+          </div>
+        </div>
+
+        <!-- Stage 5 -->
+        <div class="kc-stage" id="kc-stage-5" data-stage="5">
+          <div class="kc-stage-top">
+            <span class="kc-stage-num">STAGE 5 · L4/OS DoS</span>
+            <span class="kc-stage-pill" id="kc-pill-5">IDLE</span>
+          </div>
+          <div class="kc-stage-title">⑤ SYN Flood + FD + RST</div>
+          <div class="kc-stage-desc" id="kc-desc-5"><code>SYN_RECV</code> Flood, <code>lsof</code> EMFILE &amp; TCP RST</div>
+          <div class="kc-stage-footer">
+            <span class="kc-shield-hint">Shield: <code>L1 iptables + L2 Kernel</code></span>
+            <button class="btn-kc-step" data-kc-trigger="5">Run S5</button>
+          </div>
+        </div>
+      </div>
+    </section>
     
     <!-- TOP ROW: TOPOLOGY STREAM + DEFENSE SIDE PANEL -->
     <div class="top-section">

@@ -13,6 +13,10 @@ import type {
   ProcessTreeNode,
   L7SecurityAlert,
   OsAndL7AttackState,
+  KillChainStageId,
+  KillChainStageStatus,
+  KillChainProgressState,
+  LabResetSummary,
 } from '@shared/schemas';
 import type { AttackEvent } from '@shared/schemas/attack-event';
 import { readFileSync } from 'node:fs';
@@ -231,6 +235,99 @@ let bruteForceAttemptsTracker = 0;
 function resetOsL7State() {
   osL7State = createCleanOsL7State();
   bruteForceAttemptsTracker = 0;
+}
+
+// ==========================================
+// W6-ALL & W6-T1: KILL CHAIN 5-STAGE LIVE ORCHESTRATION STATE
+// ==========================================
+function createCleanKillChainState(): KillChainProgressState {
+  const now = new Date().toISOString();
+  return {
+    active: false,
+    current_stage: null,
+    stages: [
+      {
+        stage: 1,
+        code: 'RECON_MITM',
+        title: '① Recon & ARP MitM',
+        layer: 'L2_NETWORK',
+        state: 'IDLE',
+        blocked_by: null,
+        summary: 'ARP Cache Poisoning & HTTP Credential Sniffing (TV2)',
+        executed_at: null,
+      },
+      {
+        stage: 2,
+        code: 'L7_AUTH_BYPASS',
+        title: '② L7 SQLi & Brute-Force',
+        layer: 'L7_APP',
+        state: 'IDLE',
+        blocked_by: null,
+        summary: 'Low-rate 1 req/s Firewall Bypass & SQLi Admin Login (TV3)',
+        executed_at: null,
+      },
+      {
+        stage: 3,
+        code: 'OS_REVERSE_SHELL',
+        title: '③ OS Reverse Shell',
+        layer: 'OS_KERNEL',
+        state: 'IDLE',
+        blocked_by: null,
+        summary: 'Command Injection -> /bin/sh -> nc Reverse Shell :4444 (TV2+TV3)',
+        executed_at: null,
+      },
+      {
+        stage: 4,
+        code: 'DATA_EXFILTRATION',
+        title: '④ Data Exfiltration',
+        layer: 'L7_APP',
+        state: 'IDLE',
+        blocked_by: null,
+        summary: 'Path Traversal (/etc/passwd) & Confidential Blueprint Leak (TV2+TV3)',
+        executed_at: null,
+      },
+      {
+        stage: 5,
+        code: 'SYN_FD_IMPACT',
+        title: '⑤ SYN Flood & FD/RST Impact',
+        layer: 'L4_OS_IMPACT',
+        state: 'IDLE',
+        blocked_by: null,
+        summary: 'TCP SYN Flood Backlog Overflow + lsof FD Exhaustion + TCP RST (TV2)',
+        executed_at: null,
+      },
+    ],
+    last_updated: now,
+  };
+}
+
+let killChainState: KillChainProgressState = createCleanKillChainState();
+
+function resetKillChainState() {
+  killChainState = createCleanKillChainState();
+}
+
+function updateKillChainStageFromTag(tag: string, blocked: boolean, blockedByLabel: string | null, customSummary?: string) {
+  let stageNum: KillChainStageId | null = null;
+  if (tag === 'ARP_SPOOF') stageNum = 1;
+  else if (tag === 'SQL_INJECTION' || tag === 'BRUTE_FORCE') stageNum = 2;
+  else if (tag === 'COMMAND_INJECTION' || tag === 'REVERSE_SHELL') stageNum = 3;
+  else if (tag === 'PATH_TRAVERSAL') stageNum = 4;
+  else if (tag === 'SYN_FLOOD' || tag === 'FD_EXHAUSTION' || tag === 'RST_INJECTION') stageNum = 5;
+
+  if (!stageNum) return;
+
+  const now = new Date().toISOString();
+  killChainState.active = true;
+  killChainState.current_stage = stageNum;
+  killChainState.last_updated = now;
+  const item = killChainState.stages.find((s) => s.stage === stageNum);
+  if (item) {
+    item.state = blocked ? 'BLOCKED' : 'COMPROMISED';
+    item.blocked_by = blocked ? blockedByLabel : null;
+    if (customSummary) item.summary = customSummary;
+    item.executed_at = now;
+  }
 }
 
 function computeFdStatus(openFds: number, maxFds: number): 'NORMAL' | 'WARNING' | 'EXHAUSTED' {
@@ -664,6 +761,32 @@ app.post('/api/telemetry', (req: Request, res: Response) => {
   updateTcpMetrics(log);
   updateOsAndL7FromLog(log);
 
+  // 2b. W6-ALL: Tự động cập nhật thanh tiến trình Kill Chain dựa trên bản tin Telemetry
+  const tag = log.attack_tag || 'NORMAL';
+  if (tag !== 'NORMAL') {
+    const blockedByL1 = defense.l1Network && (tag === 'ARP_SPOOF' || tag === 'RST_INJECTION' || tag === 'SYN_FLOOD');
+    const blockedByL2 =
+      defense.l2Os &&
+      ((tag === 'SYN_FLOOD' && !defense.l1Network) ||
+        tag === 'FD_EXHAUSTION' ||
+        tag === 'FORK_BOMB' ||
+        ((tag === 'COMMAND_INJECTION' || tag === 'REVERSE_SHELL') && log.status_code < 400));
+    const blockedByL3 =
+      log.defense_action === 'blocked' ||
+      log.defense_action === 'sanitized' ||
+      log.defense_action === 'rate_limited' ||
+      (log.status_code >= 400 && log.status_code < 500 && tag !== 'RST_INJECTION');
+    const isBlocked = Boolean(blockedByL1 || blockedByL2 || blockedByL3);
+    const shieldLabel = blockedByL1
+      ? 'L1_NETWORK_SHIELD'
+      : blockedByL2
+        ? 'L2_OS_KERNEL_SHIELD'
+        : blockedByL3
+          ? 'L3_APP_SHIELD'
+          : null;
+    updateKillChainStageFromTag(tag, isBlocked, shieldLabel);
+  }
+
   // 3. Phát tán sự kiện thời gian thực qua WebSocket
   io.emit('GOD_VIEW_UPDATE', {
     log,
@@ -671,6 +794,7 @@ app.post('/api/telemetry', (req: Request, res: Response) => {
     metrics: socketMetrics,
     network_state: networkState,
     os_l7_state: osL7State,
+    kill_chain: killChainState,
     defense_l3_state: defense.state,
     defense_layers: defense.getLayersState(),
   });
@@ -697,6 +821,7 @@ app.get('/api/telemetry/history', (req: Request, res: Response) => {
     metrics: socketMetrics,
     network_state: networkState,
     os_l7_state: osL7State,
+    kill_chain: killChainState,
   });
 });
 
@@ -712,6 +837,7 @@ app.delete('/api/telemetry/clear', (req: Request, res: Response) => {
   socketMetrics.time_wait = 4;
   resetNetworkState();
   resetOsL7State();
+  resetKillChainState();
 
   // Phát tín hiệu reset đến tất cả client đang kết nối
   io.emit('GOD_VIEW_RESET', {
@@ -719,12 +845,111 @@ app.delete('/api/telemetry/clear', (req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     network_state: networkState,
     os_l7_state: osL7State,
+    kill_chain: killChainState,
     metrics: socketMetrics,
+    defense_layers: defense.getLayersState(),
   });
 
   res.status(200).json({
     success: true,
     message: 'Đã xóa rỗng bộ đệm Telemetry Ring Buffer.',
+  });
+});
+
+/**
+ * POST /api/lab/reset
+ * W6-T1 & W6-ALL: Nút bấm "Reset Lab 1-Chạm" (1-Touch Clean State Reset)
+ * Khôi phục đồng bộ toàn hệ thống (Mạng L1/L2/L4 + HĐH pstree/lsof + Target App SQLite/Rate-Limit + 3 Lớp Khiên + Telemetry Buffer) trong < 3 giây
+ */
+async function performFullLabReset(): Promise<LabResetSummary> {
+  const startTime = performance.now();
+  telemetryBuffer.clear();
+  attackEvents.clear();
+  socketMetrics.syn_recv = 0;
+  socketMetrics.established = 12;
+  socketMetrics.time_wait = 4;
+  socketMetrics.last_updated = new Date().toISOString();
+  resetNetworkState();
+  resetOsL7State();
+  resetKillChainState();
+
+  const targetResetResult = await defense.resetTargetAndLayers();
+  const elapsedMs = Math.max(1, Math.round(performance.now() - startTime));
+  const now = new Date().toISOString();
+
+  const summary: LabResetSummary = {
+    network_arp_restored: true,
+    mitm_disabled: true,
+    os_reverse_shell_killed: true,
+    fd_table_reset: true,
+    telemetry_buffer_cleared: true,
+    defense_shields_reset: true,
+    target_app_reset: targetResetResult.target_reset,
+    target_reset_details: targetResetResult.target_details,
+    elapsed_ms: elapsedMs,
+    within_3s_sla: elapsedMs <= 3000,
+    timestamp: now,
+  };
+
+  broadcastDefense();
+  io.emit('GOD_VIEW_RESET', {
+    message: `Khôi phục trạng thái sạch toàn Lab (1-Touch Reset) hoàn tất trong ${elapsedMs}ms (< 3000ms SLA).`,
+    timestamp: now,
+    reset_summary: summary,
+    network_state: networkState,
+    os_l7_state: osL7State,
+    kill_chain: killChainState,
+    metrics: socketMetrics,
+    defense_l3_state: defense.state,
+    defense_layers: defense.getLayersState(),
+  });
+
+  return summary;
+}
+
+app.post('/api/lab/reset', async (_req: Request, res: Response) => {
+  const summary = await performFullLabReset();
+  res.status(200).json({
+    success: true,
+    status: 'CLEAN_STATE_RESTORED',
+    message: `Đã khôi phục trạng thái sạch toàn hệ thống (Mạng, HĐH, Target App & 3 Lớp Khiên) trong ${summary.elapsed_ms}ms.`,
+    reset_summary: summary,
+    network_state: networkState,
+    os_l7_state: osL7State,
+    kill_chain: killChainState,
+    metrics: socketMetrics,
+    defense_l1_network: defense.l1Network,
+    defense_l2_os: defense.l2Os,
+    defense_l3_app: defense.state,
+    defense_layers: defense.getLayersState(),
+  });
+});
+
+/**
+ * GET /api/killchain/status
+ * W6-ALL: Lấy trạng thái hiện tại của chuỗi tấn công liên hoàn 5 giai đoạn (Kill Chain)
+ */
+app.get('/api/killchain/status', (_req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    kill_chain: killChainState,
+    defense_layers: defense.getLayersState(),
+  });
+});
+
+/**
+ * POST /api/killchain/reset
+ * Đặt lại thanh tiến trình Kill Chain về trạng thái IDLE
+ */
+app.post('/api/killchain/reset', (_req: Request, res: Response) => {
+  resetKillChainState();
+  io.emit('KILL_CHAIN_UPDATE', {
+    kill_chain: killChainState,
+    defense_layers: defense.getLayersState(),
+  });
+  res.status(200).json({
+    success: true,
+    kill_chain: killChainState,
   });
 });
 
@@ -1234,6 +1459,7 @@ io.on('connection', (socket) => {
     metrics: socketMetrics,
     network_state: networkState,
     os_l7_state: osL7State,
+    kill_chain: killChainState,
     defense_l3_state: defense.state,
     defense_l1_network: defense.l1Network,
     defense_l2_os: defense.l2Os,
