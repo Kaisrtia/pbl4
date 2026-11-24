@@ -311,6 +311,44 @@ export interface ThreeLayerDefenseState {
 }
 
 // ==========================================
+// W6-T1 & W6-ALL: 1-Touch Lab Reset & Multi-Layer Kill Chain Schemas
+// ==========================================
+
+export type KillChainStageId = 1 | 2 | 3 | 4 | 5;
+
+export interface KillChainStageStatus {
+  stage: KillChainStageId;
+  code: 'RECON_MITM' | 'L7_AUTH_BYPASS' | 'OS_REVERSE_SHELL' | 'DATA_EXFILTRATION' | 'SYN_FD_IMPACT';
+  title: string;
+  layer: 'L2_NETWORK' | 'L7_APP' | 'OS_KERNEL' | 'L4_OS_IMPACT';
+  state: 'IDLE' | 'RUNNING' | 'COMPROMISED' | 'BLOCKED';
+  blocked_by: string | null;
+  summary: string;
+  executed_at: string | null;
+}
+
+export interface KillChainProgressState {
+  active: boolean;
+  current_stage: KillChainStageId | null;
+  stages: KillChainStageStatus[];
+  last_updated: string;
+}
+
+export interface LabResetSummary {
+  network_arp_restored: boolean;
+  mitm_disabled: boolean;
+  os_reverse_shell_killed: boolean;
+  fd_table_reset: boolean;
+  telemetry_buffer_cleared: boolean;
+  defense_shields_reset: boolean;
+  target_app_reset: boolean;
+  target_reset_details: Record<string, unknown> | null;
+  elapsed_ms: number;
+  within_3s_sla: boolean;
+  timestamp: string;
+}
+
+// ==========================================
 // Type Guards (Kiểm tra kiểu lúc runtime)
 // ==========================================
 

@@ -63,6 +63,64 @@ export class TargetDefense {
     return this.l2Os;
   }
 
+  /**
+   * W6-T1 & W6-T3: Khôi phục toàn bộ trạng thái sạch cho cả 3 lớp khiên và gọi POST /api/system/reset trên Target App
+   */
+  async resetTargetAndLayers(): Promise<{
+    target_reset: boolean;
+    target_details: Record<string, unknown> | null;
+  }> {
+    this.l1Network = false;
+    this.l2Os = false;
+    try {
+      const response = await fetch(`${this.targetUrl}/api/system/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+        signal: AbortSignal.timeout(2500),
+      });
+      if (response.ok) {
+        const data = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+        const resetSummary =
+          data && typeof data.reset_summary === 'object' && data.reset_summary !== null
+            ? (data.reset_summary as Record<string, unknown>)
+            : null;
+        const flagsReset =
+          resetSummary &&
+          typeof resetSummary.defense_flags_reset === 'object' &&
+          resetSummary.defense_flags_reset !== null
+            ? (resetSummary.defense_flags_reset as Record<string, unknown>)
+            : null;
+        if (flagsReset && typeof flagsReset.l3_master === 'boolean') {
+          this.state = flagsReset.l3_master;
+          this.currentState = {
+            l3_master: flagsReset.l3_master,
+            anti_sqli:
+              typeof flagsReset.anti_sqli === 'boolean' ? flagsReset.anti_sqli : flagsReset.l3_master,
+            rate_limit:
+              typeof flagsReset.rate_limit === 'boolean' ? flagsReset.rate_limit : flagsReset.l3_master,
+            input_sanitization:
+              typeof flagsReset.input_sanitization === 'boolean'
+                ? flagsReset.input_sanitization
+                : flagsReset.l3_master,
+          };
+          return { target_reset: true, target_details: resetSummary };
+        }
+      }
+    } catch {
+      // Nếu Target chưa hỗ trợ /api/system/reset hoặc đang chạy mock server, fallback gọi change(false)
+    }
+
+    try {
+      await this.change(false);
+      return { target_reset: true, target_details: null };
+    } catch {
+      this.state = null;
+      this.currentState = null;
+      return { target_reset: false, target_details: null };
+    }
+  }
+
   // Serialize reads and writes so a slow poll cannot overwrite a newer toggle.
   private enqueue(endpoint: string, body?: unknown): Promise<boolean> {
     const next = this.pending.then(() => this.request(endpoint, body));

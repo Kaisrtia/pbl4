@@ -44,7 +44,10 @@ docs/
 │   └── attacker-verification.md  # Kịch bản kiểm chứng Attacker Controller & Docker 4-node fixture
 │
 └── reports/                      # Báo cáo đồ án tổng kết PBL4 & Slide thuyết trình bảo vệ
-    └── .gitkeep                  # Báo cáo tổng kết đồ án (Word/PDF) & Slide PowerPoint
+    ├── bao-cao-chuyen-sau-god-view-ui.md   # Báo cáo chuyên sâu TV1 (God-View SIEM, Canvas 60FPS, 3-Layer Funnel, 1-Touch Reset)
+    ├── bao-cao-tv2-mang-va-he-dieu-hanh.pdf # Báo cáo chuyên sâu TV2 (Mạng L2/L4 & Nhân Hệ điều hành)
+    ├── bao-cao-chuyen-sau-l7-target-app.md # Báo cáo chuyên sâu TV3 (Kiến trúc Target App & Tấn công/Phòng thủ L7)
+    └── slide-outline-va-kich-ban-bao-ve.md # Đề cương 12 Slide thuyết trình, Kịch bản Live Demo Kill Chain & Q&A Phản biện
 ```
 
 ---
