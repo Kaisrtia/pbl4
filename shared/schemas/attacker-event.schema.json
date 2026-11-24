@@ -15,10 +15,13 @@
     "target_ip": { "type": "string" },
     "scenario": { "enum": ["S1", "S2", "S3", "S4", "S5", "S6"] },
     "event_type": { "enum": ["RUN_STATE", "WORKER_EVENT"] },
-    "execution_mode": { "const": "real" },
+    "execution_mode": { "enum": ["real", "simulated"] },
     "payload": { "type": "object" }
   },
   "allOf": [{
+    "if": { "properties": { "execution_mode": { "const": "simulated" } } },
+    "then": { "properties": { "scenario": { "enum": ["S5", "S6"] } } }
+  }, {
     "if": { "properties": { "event_type": { "const": "RUN_STATE" } } },
     "then": { "properties": { "payload": {
       "required": ["state"],

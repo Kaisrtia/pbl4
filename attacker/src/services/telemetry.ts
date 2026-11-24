@@ -28,7 +28,7 @@ export class Telemetry {
       schema_version: '1.0', event_id: randomUUID(), run_id: run.run_id,
       timestamp: new Date().toISOString(), source_node: 'ATTACKER',
       source_ip: this.config.receiverIp, target_ip: this.config.targetIp,
-      scenario: run.scenario, event_type: eventType, execution_mode: 'real', payload: structuredClone(payload),
+      scenario: run.scenario, event_type: eventType, execution_mode: run.execution_mode ?? 'real', payload: structuredClone(payload),
     };
     // Persist before attempting delivery. No network wait in the run lifecycle.
     appendFileSync(join(this.config.dataDir, `${run.run_id}.jsonl`), JSON.stringify(event) + '\n');

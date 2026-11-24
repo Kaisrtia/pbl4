@@ -1631,14 +1631,14 @@ function renderAttackEvents() {
   const container = document.getElementById('attack-events');
   container.replaceChildren();
   if (!state.attackEvents.length) {
-    container.textContent = 'Chưa nhận sự kiện Attacker. Chạy kịch bản từ Attacker Lab để xem dữ liệu thật.';
+    container.textContent = 'Chưa nhận sự kiện Attacker. Chạy kịch bản từ Attacker Lab để xem sự kiện.';
     return;
   }
   for (const event of state.attackEvents.slice(-50).reverse()) {
     const details = document.createElement('details');
     const summary = document.createElement('summary');
     const step = event.payload.state || event.payload.stage || event.payload.type || event.event_type;
-    summary.textContent = `${event.timestamp} | ${event.scenario} | ${step} | run ${event.run_id}`;
+    summary.textContent = `${event.timestamp} | ${event.scenario}${event.execution_mode === 'simulated' ? ' · Mô phỏng' : ''} | ${step} | run ${event.run_id}`;
     const evidence = document.createElement('pre');
     evidence.textContent = JSON.stringify(event, null, 2);
     details.append(summary, evidence);

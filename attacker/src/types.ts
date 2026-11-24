@@ -8,6 +8,7 @@ export interface WorkerResult {
   cleanup_pending: boolean;
 }
 export interface Run {
+  execution_mode?: AttackEvent['execution_mode'];
   run_id: string;
   scenario: Scenario;
   state: State;
@@ -28,6 +29,6 @@ export interface AttackEvent {
   target_ip: string;
   scenario: Scenario;
   event_type: 'RUN_STATE' | 'WORKER_EVENT';
-  execution_mode: 'real';
+  execution_mode: 'real' | 'simulated';
   payload: Record<string, unknown>;
 }

@@ -23,7 +23,7 @@ function fixture(mode: string, python = process.execPath, watchdog = 2000) {
   return { dir, config, runs, telemetry, async close() { await runs.close(); telemetry.close(); rmSync(dir, { recursive: true, force: true }); } };
 }
 test('validation rejects destination injection and invalid bounds', () => {
-  for (const input of [null, { scenario: 'S5' }, { scenario: 'S2', target: '8.8.8.8' },
+  for (const input of [null, { scenario: 'S7' }, { scenario: 'S2', target: '8.8.8.8' },
     { scenario: 'S2', parameters: { pps: -1 } }, { scenario: 'S2', parameters: { pps: 151 } },
     { scenario: 'S2', parameters: { duration_sec: 1.5 } }, { scenario: 'S3', parameters: { command: 'anything' } }])
     assert.throws(() => validateStart(input));
@@ -141,5 +141,36 @@ test('HTTP auth, input errors and no false start', async () => {
     const configResponse = await (await fetch(base + '/api/v1/config', { headers })).text();
     assert.ok(!configResponse.includes('test-only-token'));
     assert.equal((await fetch(base + '/api/v1/runs', { headers: { ...headers, Origin: 'http://unrelated.test' } })).status, 403);
+  } finally { await app.close(); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('replay parameters are bounded and execution mode is controller-owned', () => {
+  assert.deepEqual(validateStart({ scenario: 'S5' }).parameters, { duration_sec: 8, interval_sec: 2, observe: 1 });
+  assert.deepEqual(validateStart({ scenario: 'S6' }).parameters, { duration_sec: 8, max_rst: 3, cooldown_sec: 1 });
+  for (const body of [
+    { scenario: 'S5', execution_mode: 'real' },
+    { scenario: 'S5', lab: {} },
+    { scenario: 'S5', parameters: { observe: 2 } },
+    { scenario: 'S5', parameters: { interval_sec: 0 } },
+    { scenario: 'S6', parameters: { duration_sec: 16 } },
+    { scenario: 'S6', parameters: { max_rst: 6 } },
+    { scenario: 'S6', parameters: { cooldown_sec: 0 } },
+  ]) assert.throws(() => validateStart(body));
+});
+
+test('controller starts and stops the bundled replay worker and labels every event', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pbl4-replay-'));
+  const config = loadConfig({ ATTACKER_DATA_DIR: dir, GODVIEW_TELEMETRY_URL: 'http://127.0.0.1:1' });
+  config.port = 0; config.receiverPort = 0; config.receiverBind = '127.0.0.1';
+  const app = await startServer(config);
+  try {
+    const run = app.runs.start({ scenario: 'S5' });
+    await until(() => run.state === 'RUNNING');
+    assert.throws(() => app.runs.start({ scenario: 'S6' }), ConflictError);
+    app.runs.stop(run.run_id);
+    await until(() => run.state === 'STOPPED');
+    assert.equal(run.execution_mode, 'simulated');
+    assert.equal(run.cleanup_pending, false);
+    assert.ok(app.telemetry.events(run.run_id).every(event => event.execution_mode === 'simulated'));
   } finally { await app.close(); rmSync(dir, { recursive: true, force: true }); }
 });

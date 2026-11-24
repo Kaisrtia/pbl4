@@ -9,6 +9,6 @@ export interface AttackEvent {
   target_ip: string;
   scenario: 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6';
   event_type: 'RUN_STATE' | 'WORKER_EVENT';
-  execution_mode: 'real';
+  execution_mode: 'real' | 'simulated';
   payload: Record<string, unknown>;
 }
