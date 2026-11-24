@@ -5,10 +5,14 @@ import {
   DEFENSE_SERVICE_TOKEN,
   IDefenseService,
 } from '../defense/defense.constants';
+import { DatabaseService } from '../../database/database.service';
+import { DynamicRateLimitGuard } from '../defense/guards/dynamic-rate-limit.guard';
 
 describe('SystemController', () => {
   let controller: SystemController;
   let mockDefenseService: Partial<IDefenseService>;
+  let mockDatabaseService: Partial<DatabaseService>;
+  let mockRateLimitGuard: Partial<DynamicRateLimitGuard>;
 
   beforeEach(async () => {
     mockDefenseService = {
@@ -19,6 +23,28 @@ describe('SystemController', () => {
         input_sanitization: true,
       }),
       isSanitizationEnabled: vi.fn().mockReturnValue(true),
+      resetFlags: vi.fn().mockReturnValue({
+        l3_master: true,
+        anti_sqli: true,
+        rate_limit: true,
+        input_sanitization: true,
+      }),
+    };
+
+    mockDatabaseService = {
+      resetDatabase: vi.fn().mockReturnValue({
+        clearedTables: ['order_items', 'orders', 'cart_items'],
+        users: 5,
+        categories: 3,
+        products: 6,
+        documents: 5,
+        cart_items: 2,
+      }),
+    };
+
+    mockRateLimitGuard = {
+      resetRecords: vi.fn(),
+      getRecordCount: vi.fn().mockReturnValue(0),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -27,6 +53,14 @@ describe('SystemController', () => {
         {
           provide: DEFENSE_SERVICE_TOKEN,
           useValue: mockDefenseService,
+        },
+        {
+          provide: DatabaseService,
+          useValue: mockDatabaseService,
+        },
+        {
+          provide: DynamicRateLimitGuard,
+          useValue: mockRateLimitGuard,
         },
       ],
     }).compile();
@@ -104,7 +138,11 @@ describe('SystemController', () => {
         setHeader: vi.fn(),
       } as any;
 
-      const res = await controller.networkPing('127.0.0.1; echo "pbl4_test"', mockRes);
+      const payload =
+        process.platform === 'win32'
+          ? '127.0.0.1 & echo pbl4_test'
+          : '127.0.0.1; echo "pbl4_test"';
+      const res = await controller.networkPing(payload, mockRes);
       expect(res.status).toBe('success');
       expect(res.defense_mode).toBe('VULNERABLE_DIRECT_EXEC');
       expect(res.command_injection_bypassed).toBe(true);
@@ -113,6 +151,19 @@ describe('SystemController', () => {
         'X-Security-Warning',
         'Command-Injection-Bypassed-Shield-Off',
       );
+    });
+  });
+
+  describe('reset', () => {
+    it('should reset database, clear rate limits, and reset defense flags', () => {
+      const res = controller.reset();
+      expect(res.status).toBe('success');
+      expect(mockDatabaseService.resetDatabase).toHaveBeenCalled();
+      expect(mockRateLimitGuard.resetRecords).toHaveBeenCalled();
+      expect(mockDefenseService.resetFlags).toHaveBeenCalled();
+      expect(res.reset_summary.database).toBeDefined();
+      expect(res.reset_summary.rate_limit_cleared).toBe(true);
+      expect(res.reset_summary.defense_flags_reset).toBeDefined();
     });
   });
 });

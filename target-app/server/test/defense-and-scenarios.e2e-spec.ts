@@ -374,4 +374,38 @@ describe('Target System E2E: Defense Engine & Lab Scenarios', () => {
     expect(res.body.data[0].order_code).toMatch(/^ORD-/);
     expect(Array.isArray(res.body.data[0].items)).toBe(true);
   });
+
+  it('26. POST /api/system/reset - 1-touch clean reset restores DB, clears rate limits, and resets defense flags', async () => {
+    // 1. Thay đổi trạng thái khiên sang ON
+    defenseService.setFlags({ l3_master: true, anti_sqli: true });
+    expect(defenseService.getStatus().l3_master).toBe(true);
+
+    // 2. Gọi endpoint reset
+    const res = await request(app.getHttpServer())
+      .post('/api/system/reset')
+      .expect(200);
+
+    expect(res.body.status).toBe('success');
+    expect(res.body.reset_summary.database.clearedTables).toBeDefined();
+    expect(res.body.reset_summary.rate_limit_cleared).toBe(true);
+
+    // 3. Kiểm tra flags đã được khôi phục về mặc định của file cấu hình
+    expect(defenseService.getStatus().l3_master).toBe(
+      res.body.reset_summary.defense_flags_reset.l3_master,
+    );
+    expect(defenseService.getStatus().anti_sqli).toBe(
+      res.body.reset_summary.defense_flags_reset.anti_sqli,
+    );
+
+    // 4. Kiểm tra giỏ hàng đã được re-seed 2 sản phẩm mẫu
+    const cartRes = await request(app.getHttpServer()).get('/api/cart').expect(200);
+    expect(cartRes.body.data.total_items).toBe(2);
+
+    // 5. Kiểm tra bảng orders đã được dọn sạch
+    const ordersRes = await request(app.getHttpServer())
+      .get('/api/cart/orders')
+      .set('Authorization', `Bearer ${adminJwtToken}`)
+      .expect(200);
+    expect(ordersRes.body.total).toBe(0);
+  });
 });

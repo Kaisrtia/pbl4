@@ -426,6 +426,76 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.db.exec('DELETE FROM orders;');
   }
 
+  /**
+   * Khôi phục toàn bộ cơ sở dữ liệu về trạng thái sạch ban đầu (Reset 1-chạm)
+   */
+  resetDatabase(): {
+    clearedTables: string[];
+    users: number;
+    categories: number;
+    products: number;
+    documents: number;
+    cart_items: number;
+  } {
+    this.db.exec('BEGIN TRANSACTION;');
+    try {
+      this.db.exec('DELETE FROM order_items;');
+      this.db.exec('DELETE FROM orders;');
+      this.db.exec('DELETE FROM cart_items;');
+      this.db.exec('DELETE FROM documents;');
+      this.db.exec('DELETE FROM products;');
+      this.db.exec('DELETE FROM categories;');
+      this.db.exec('DELETE FROM users;');
+      this.db.exec("DELETE FROM sqlite_sequence WHERE name IN ('order_items', 'orders', 'cart_items', 'documents', 'products', 'categories', 'users');");
+
+      this.seedDefaultUsers();
+      this.seedDefaultCategories();
+      this.seedDefaultProducts();
+      this.seedDefaultDocuments();
+      this.seedDefaultCart();
+
+      this.db.exec('COMMIT;');
+      this.logger.log('Database successfully reset to initial clean state.');
+
+      const userCount = (
+        this.db.prepare('SELECT COUNT(*) as count FROM users').get() as any
+      ).count;
+      const catCount = (
+        this.db.prepare('SELECT COUNT(*) as count FROM categories').get() as any
+      ).count;
+      const prodCount = (
+        this.db.prepare('SELECT COUNT(*) as count FROM products').get() as any
+      ).count;
+      const docCount = (
+        this.db.prepare('SELECT COUNT(*) as count FROM documents').get() as any
+      ).count;
+      const cartCount = (
+        this.db.prepare('SELECT COUNT(*) as count FROM cart_items').get() as any
+      ).count;
+
+      return {
+        clearedTables: [
+          'order_items',
+          'orders',
+          'cart_items',
+          'documents',
+          'products',
+          'categories',
+          'users',
+        ],
+        users: userCount,
+        categories: catCount,
+        products: prodCount,
+        documents: docCount,
+        cart_items: cartCount,
+      };
+    } catch (err) {
+      this.db.exec('ROLLBACK;');
+      this.logger.error('Failed to reset database, rolled back transaction.', err);
+      throw err;
+    }
+  }
+
   private seedDefaultCart() {
     const countStatement = this.db.prepare(
       'SELECT COUNT(*) as count FROM cart_items',
