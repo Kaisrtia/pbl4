@@ -1,0 +1,9 @@
+services:
+  client:
+    networks:
+      lab:
+        mac_address: ${LAB_CLIENT_MAC:-02:42:ac:1e:2c:0a}
+  target:
+    environment:
+      LAB_L1_ENABLED: "1"
+      CLIENT_MAC: ${LAB_CLIENT_MAC:-02:42:ac:1e:2c:0a}

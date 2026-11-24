@@ -182,3 +182,34 @@ mặc định `../client` tính từ cwd server. Không dùng Live Server riêng
 Giỏ thuộc phiên trình duyệt, checkout chỉ dùng giỏ phiên đó; JWT xác định chủ đơn.
 Test tích hợp tạo đơn sandbox có địa chỉ `Integration verification (synthetic)`
 và giữ lại trong lịch sử để đối chiếu. Không xóa dữ liệu demo có sẵn.
+
+## TV2 · Quan sát, bật khiên và reset mạng/HĐH
+
+Chạy từ thư mục gốc sau khi khởi tạo cấu hình lab. `./scripts/integration-lab.sh monitor`
+mở bốn khung Tmux trên host Linux để xem service, mẫu Client, mẫu Target và
+trạng thái phòng thủ. Dùng Ctrl-b rồi d để rời màn hình. Các khung chỉ đọc số liệu.
+
+| Lệnh của `./scripts/integration-lab.sh` | Tác dụng trong lab |
+|---|---|
+| `defense-status` | Đọc entry ARP của Client tại Target, rule SYN trong INPUT và chain riêng, sysctl, giới hạn cgroup, UID và giới hạn FD của tiến trình Node. |
+| `shields l1` | Compose gán MAC cố định cho Client và truyền cùng MAC vào Target. Target đặt entry ARP permanent và cài bộ lọc SYN theo cổng dịch vụ khi khởi động. |
+| `shields l2` | Docker đặt SYN cookies, giới hạn 1 CPU, RAM 512 MiB, 128 PID và nofile 1024/2048. Web app chạy với UID www-data, shell nologin; SSH lab dùng tài khoản riêng. |
+| `shields both` | Áp dụng cả hai lớp. |
+| `shields off` | Trở về cấu hình Compose cơ sở. Các giá trị mặc định của kernel, kể cả SYN cookies, có thể vốn đã bật. |
+| `reset-network-os` | Tạo lại riêng Target và Client theo cấu hình cơ sở, đóng tiến trình và phiên kết nối cũ, tạo namespace mạng mới. Cần God-View đang chạy và image đã build. |
+
+Chọn lại một chế độ bằng lệnh `shields` sau khi dùng `up` của Compose cơ sở.
+Đổi chế độ có thể tạo lại container và gián đoạn phiên đang mở. SQLite, credentials
+và nội dung trong named volumes tồn tại qua reset. Khi dùng L2, thư mục dữ liệu và
+các file SQLite hiện có được cấp cho UID dịch vụ để ghi WAL. Reset không hoàn tác
+quyền sở hữu trong volume, không reset dữ liệu L7 và không xóa lịch sử của hub.
+
+**Cách đọc số liệu W5.** Lưu `defense-status` trước và sau đổi chế độ. Với L1,
+đối chiếu MAC permanent và cả rule chuyển từ INPUT vào chain. Với L2, đối chiếu
+giới hạn thực tế của Node trong `/proc` và giá trị cgroup v2. Thông báo khởi động
+của một script chỉ xác nhận thao tác đã chạy. Đánh giá hiệu lực cần số đo runtime.
+
+**Thời gian W6.** Lệnh reset đo từ lúc gửi lệnh Compose đến khi cả hai service
+healthy. Nó in thời gian thực tế và `PASS` hoặc `MISSED` cho mục tiêu 3 giây.
+Thời gian dựng container và chu kỳ healthcheck được tính vào phép đo. Không có
+cam kết đạt 3 giây bằng cách tạo lại container.
