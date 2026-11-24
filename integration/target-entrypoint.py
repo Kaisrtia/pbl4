@@ -1,5 +1,6 @@
 """Run the real Target backend plus an SSH sandbox inside this lab container."""
 import os
+import pwd
 from pathlib import Path
 import signal
 import subprocess
@@ -51,8 +52,21 @@ def stop(*_):
 signal.signal(signal.SIGTERM, stop)
 signal.signal(signal.SIGINT, stop)
 try:
+    if os.environ.get('LAB_L1_ENABLED') == '1':
+        subprocess.run(['/app/defense/l1-enable.sh'], check=True)
+    app_identity = {}
+    if os.environ.get('LAB_L2_ENABLED') == '1':
+        account = pwd.getpwnam('www-data')
+        if not account.pw_shell.endswith('/nologin'):
+            raise RuntimeError('Expected a nologin service account')
+        # Existing SQLite volumes can contain root-owned files from the baseline image.
+        for path in [Path('/data'), *(Path('/data') / ('target.sqlite' + suffix)
+                                     for suffix in ('', '-wal', '-shm', '-journal'))]:
+            if path.exists():
+                os.chown(path, account.pw_uid, account.pw_gid, follow_symlinks=False)
+        app_identity = dict(user=account.pw_uid, group=account.pw_gid, extra_groups=[])
     children.append(subprocess.Popen(['/usr/sbin/sshd', '-D', '-e']))
-    children.append(subprocess.Popen(['node', 'dist/main.js']))
+    children.append(subprocess.Popen(['node', 'dist/main.js'], **app_identity))
     while not stopping and all(p.poll() is None for p in children):
         time.sleep(0.2)
     failed = not stopping

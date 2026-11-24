@@ -1,0 +1,13 @@
+services:
+  target:
+    environment:
+      LAB_L2_ENABLED: "1"
+    sysctls:
+      net.ipv4.tcp_syncookies: "1"
+    cpus: 1.0
+    mem_limit: 512m
+    pids_limit: 128
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 2048

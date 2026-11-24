@@ -3,7 +3,7 @@ set -euo pipefail
 
 TARGET_PORT="${SERVER_PORT:-8000}"
 CLIENT_IP="${CLIENT_IP:-172.20.0.10}"
-CLIENT_MAC="${CLIENT_MAC:-02:42:ac:14:00:0a}"
+CLIENT_MAC="${CLIENT_MAC:?Set CLIENT_MAC to the trusted Docker client MAC}"
 NET_IFACE="${NET_IFACE:-eth0}"
 SYN_RATE_LIMIT="${SYN_RATE_LIMIT:-50/s}"
 SYN_RATE_BURST="${SYN_RATE_BURST:-100}"
@@ -15,12 +15,12 @@ bind_static_arp() {
   local ip="$1"
   local mac="$2"
   if command -v arp >/dev/null 2>&1; then
-    arp -s "$ip" "$mac" 2>/dev/null || echo "[L1 SHIELD] Warning: failed to set static ARP for ${ip} via arp" >&2
+    arp -i "$NET_IFACE" -s "$ip" "$mac"
   elif command -v ip >/dev/null 2>&1; then
-    ip neigh replace "$ip" lladdr "$mac" dev "$NET_IFACE" nud permanent 2>/dev/null \
-      || echo "[L1 SHIELD] Warning: failed to set static ARP for ${ip} via ip neigh" >&2
+    ip neigh replace "$ip" lladdr "$mac" dev "$NET_IFACE" nud permanent
   else
-    echo "[L1 SHIELD] Warning: neither 'arp' nor 'ip' found; skipping static ARP binding" >&2
+    echo "[L1 SHIELD] Cannot configure static ARP: no arp or ip command" >&2
+    return 1
   fi
 }
 
