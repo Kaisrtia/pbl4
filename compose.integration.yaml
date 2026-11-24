@@ -45,6 +45,8 @@ services:
     depends_on: { godview: { condition: service_healthy } }
     healthcheck:
       test: [CMD, python3, /integration/target-health.py]
+      start_period: 5s
+      start_interval: 500ms
       interval: 3s
       retries: 30
   attacker:
@@ -90,6 +92,8 @@ services:
     depends_on: { target: { condition: service_healthy } }
     healthcheck:
       test: [CMD, node, -e, "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/client-probe.json'));process.exit(x.ok&&Date.now()-Date.parse(x.timestamp)<15000?0:1)"]
+      start_period: 5s
+      start_interval: 500ms
       interval: 5s
       retries: 20
 networks:

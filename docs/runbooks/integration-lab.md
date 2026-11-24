@@ -215,8 +215,11 @@ một điều kiện của khiên được chọn. Kiểm tra này chỉ đọc 
 
 **Thời gian W6.** Lệnh reset đo từ lúc gửi lệnh Compose đến khi cả hai service
 healthy. Nó in thời gian thực tế và `PASS` hoặc `MISSED` cho mục tiêu 3 giây.
-Thời gian dựng container và chu kỳ healthcheck được tính vào phép đo. Không có
-cam kết đạt 3 giây bằng cách tạo lại container.
+Thời gian dựng container và chu kỳ healthcheck được tính vào phép đo. Trong
+5 giây khởi động, Docker kiểm tra Target và Client mỗi 500 ms. Sau khi healthy,
+chu kỳ thường là 3 giây cho Target và 5 giây cho Client. Cấu hình này cần
+Docker Engine 25 trở lên và Compose hỗ trợ `start_interval`. Vẫn cần đo trên
+lab để kết luận reset đạt hay vượt 3 giây.
 
 Lưu mẫu bằng `./scripts/integration-lab.sh defense-status > before.json` khi
 lab đang ở cấu hình gốc và lấy `after.json` bằng cùng lệnh sau reset. Chạy
