@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import selectors
 import subprocess
 import uuid
 
@@ -44,6 +45,24 @@ def snapshot(compose, env, mode=None):
     return json.loads(result.stdout)
 
 
+def reset_with_idle_process(compose, env):
+    # Attach to one harmless process in the old target and watch its exit across reset.
+    command = [*compose, 'exec', '-T', '--user', 'www-data', 'target', 'python3', '-u', '-c',
+               'import time; print("ready"); time.sleep(300)']
+    with subprocess.Popen(command, env=env, stdout=subprocess.PIPE) as child:
+        try:
+            with selectors.DefaultSelector() as selector:
+                selector.register(child.stdout, selectors.EVENT_READ)
+                if not selector.select(timeout=10) or child.stdout.readline() != b'ready\n':
+                    raise RuntimeError('Idle process did not start on target')
+            elapsed, endpoints = reset_and_verify(compose, env=env)
+            code = child.wait(timeout=5)
+            return elapsed, endpoints, code
+        finally:
+            if child.poll() is None:
+                child.kill()
+
+
 def cycle(subnet):
     env = lab_environment(subnet)
     project = 'tv2-check-' + uuid.uuid4().hex
@@ -73,7 +92,7 @@ def cycle(subnet):
         subprocess.run([*compose, 'exec', '-T', 'target', 'python3', '/tmp/check_os_access.py'],
                        check=True, env=env)
         old = arp_snapshot(project)
-        elapsed, new = reset_and_verify(compose, env=env)
+        elapsed, new, exit_code = reset_with_idle_process(compose, env)
         recreated = {}
         for role in ('client', 'target'):
             previous, current = old['endpoints'][role], new['endpoints'][role]
@@ -84,9 +103,10 @@ def cycle(subnet):
         changes = compare(before, snapshot(compose, env))
         print(json.dumps({'reset_seconds': elapsed, 'deadline_met': elapsed <= 3,
                           'differences_after_reset': changes, 'endpoints_recreated': recreated,
+                          'idle_process_exit_code': exit_code,
                           'peer_cache_before': old['caches'], 'peer_cache_after': new['caches']}), flush=True)
         healthy_cache = {'client': 'MATCH', 'target': 'MATCH'}
-        return (not changes and all(recreated.values())
+        return (not changes and all(recreated.values()) and exit_code in (137, 143)
                 and old['caches'] == healthy_cache and reset_result(elapsed, new['caches']) == 0)
     finally:
         subprocess.run([*compose, 'down', '--volumes', '--rmi', 'local'], env=env, check=True)

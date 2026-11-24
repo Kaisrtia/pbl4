@@ -67,7 +67,13 @@ PY
   down) "${compose[@]}" down ;;
   status) "${compose[@]}" ps ;;
   defense-status) shift; "${compose[@]}" exec -T target python3 - "$@" < integration/defense_status.py ;;
-  monitor) exec ./scripts/monitor-network-os.sh "${compose[@]}" ;;
+  monitor)
+    shift
+    if (( $# > 1 )) || [[ $# == 1 && $1 != --replay ]]; then
+      echo 'Usage: integration-lab.sh monitor [--replay]' >&2; exit 2
+    fi
+    exec ./scripts/monitor-network-os.sh "$@" "${compose[@]}"
+    ;;
   shields)
     case "${2:-}" in
       l1) compose+=(-f integration/shield-l1.yaml) ;;
@@ -94,5 +100,5 @@ PY
     ;;
   logs) "${compose[@]}" logs --tail 80 ;;
   test) node --env-file=integration/.env.local integration/verify.mjs ;;
-  *) echo 'Usage: ./scripts/integration-lab.sh {init|lan <IPv4>|local|urls|up|down|status|logs|test|telemetry-test|monitor|shields <off|l1|l2|both>|defense-status|reset-network-os|reset-target}' >&2; exit 2 ;;
+  *) echo 'Usage: ./scripts/integration-lab.sh {init|lan <IPv4>|local|urls|up|down|status|logs|test|telemetry-test|monitor [--replay]|shields <off|l1|l2|both>|defense-status|reset-network-os|reset-target}' >&2; exit 2 ;;
 esac
