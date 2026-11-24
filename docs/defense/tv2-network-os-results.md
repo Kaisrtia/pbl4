@@ -30,7 +30,7 @@ chạy tiến trình vẫn do UID, quyền filesystem và các giới hạn kern
 
 | Tuần | Bằng chứng hiện có | Giới hạn kết luận |
 |---|---|---|
-| W1 | Compose LAN và lệnh quan sát bốn khung Tmux. | Chưa có biên bản demo đầy đủ ba kịch bản mạng. |
+| W1 | Đã chạy LAN và bốn khung Tmux, đối chiếu MAC ở cả hai đầu và ghi số liệu nền TCP. [Biên bản W1](../runbooks/integration-lab.md#w1-t2--demo-quan-sát-mạng-trên-bốn-khung-terminal) | Chưa có biên bản demo đầy đủ ba kịch bản mạng. |
 | W2 | Hai agent đã chạy trong lab và God-View trả HTTP 200 cho cả hai. | Hub chưa lưu lịch sử kernel tách biệt theo node. |
 | W3 | S2 có biên bản gửi và nhận sự kiện; schema S5/S6 đã được tích hợp. | Chưa có bằng chứng backlog đầy hoặc phiên TCP bị ngắt bởi worker. |
 | W4 | Biên bản S3 ghi nhận một tiến trình mở 32 FD và cleanup. S1 có kết quả SSH. Test procfs trên Linux xác nhận PID con, UID, tăng đúng 8 FD và PID biến mất sau khi thoát. | Các phép đo này chỉ bao phủ một phần đầu ra OS. |

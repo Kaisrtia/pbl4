@@ -183,6 +183,30 @@ Giỏ thuộc phiên trình duyệt, checkout chỉ dùng giỏ phiên đó; JWT
 Test tích hợp tạo đơn sandbox có địa chỉ `Integration verification (synthetic)`
 và giữ lại trong lịch sử để đối chiếu. Không xóa dữ liệu demo có sẵn.
 
+## W1-T2 · Demo quan sát mạng trên bốn khung Terminal
+
+Khi lab đang chạy, mở `./scripts/integration-lab.sh monitor` trên máy có
+Tmux và `watch`. Khung dịch vụ cho biết Client, Target và God-View có healthy
+hay không. Hai khung endpoint ghi tên node, IP và thời điểm của mẫu gần nhất
+mà God-View đã xác nhận. Khung còn lại hiển thị cấu hình phòng thủ trên Target.
+Dùng `Ctrl-b z` để phóng to hoặc thu lại khung hiện tại, `Ctrl-b d` để rời
+phiên. Lệnh monitor mở lại cùng phiên.
+
+| Nội dung trình bày | Thao tác quan sát | Cách đọc |
+|---|---|---|
+| ARP Spoofing (L2) | Đọc dòng ARP trên cả Client và Target. Đối chiếu MAC của từng peer với Docker endpoint hiện tại. | Thiếu dòng ARP nghĩa là chưa đủ bằng chứng. Để xác nhận phục hồi cần đọc lại cache ở cả hai đầu. |
+| TCP SYN Flood (L4) | Theo dõi `SYN_RECV` bên Target qua nhiều mẫu và đối chiếu trạng thái dịch vụ. | Chỉ số đếm socket ở trạng thái chờ tại thời điểm lấy mẫu. Một mẫu bằng 0 vẫn có thể bỏ qua đỉnh ngắn giữa hai mẫu. |
+| TCP RST Injection (L4) | Ghi `OutRsts` và `EstabResets` ở cả hai đầu qua hai lần làm mới. | Đây là bộ đếm tích lũy trong namespace. Chúng có thể tăng trong lưu lượng nền. Muốn quy kết một phiên cụ thể cần bằng chứng độc lập của phiên đó. |
+
+**Biên bản ngày 24/11/2026.** Chạy Tmux 3.8 trong một project Compose tạm,
+bridge `172.30.214.0/24`, các cổng công bố chỉ bind loopback. Ba dịch vụ đều
+healthy. Target có NET_ADMIN và `tcp_syncookies=1`; cả Client lẫn Target
+đều có `Privileged=false`. Trong hai mẫu UTC khoảng 09:36:45–46, Client
+và Target đều có `SYN_RECV=0`. MAC peer đọc tại mỗi đầu khớp kết quả
+Docker inspect. Client ghi `OutRsts/EstabResets=0/0`, Target ghi `20/20`.
+Đây là số liệu nền với lưu lượng ứng dụng bình thường. Phần thực thi ba
+đòn tấn công trong W1-T2 vẫn chưa được xác minh bằng lượt demo này.
+
 ## TV2 · Quan sát, bật khiên và reset mạng/HĐH
 
 Chạy từ thư mục gốc sau khi khởi tạo cấu hình lab. `./scripts/integration-lab.sh monitor`

@@ -67,21 +67,7 @@ PY
   down) "${compose[@]}" down ;;
   status) "${compose[@]}" ps ;;
   defense-status) shift; "${compose[@]}" exec -T target python3 - "$@" < integration/defense_status.py ;;
-  monitor)
-    command -v tmux >/dev/null || { echo 'Install tmux on the Docker host to open the four panes.' >&2; exit 1; }
-    session=pbl4-tv2-monitor
-    if ! tmux has-session -t "=$session" 2>/dev/null; then
-      tmux new-session -d -s "$session" -c "$task_root" watch -n 3 -x "$task_root/scripts/integration-lab.sh" status
-      for service in client target; do
-        tmux split-window -d -t "$session" -c "$task_root" watch -n 5 -x "${compose[@]}" exec -T "$service" \
-          python3 -c 'import json; s=json.load(open("/tmp/pbl4-host-telemetry.json")); print(s["node"],s["timestamp"]); print(json.dumps(s["metrics"],indent=2)); print(json.dumps(s["arp_neighbors"],indent=2))'
-        tmux select-layout -t "$session" tiled >/dev/null
-      done
-      tmux split-window -d -t "$session" -c "$task_root" watch -n 5 -x "$task_root/scripts/integration-lab.sh" defense-status
-      tmux select-layout -t "$session" tiled >/dev/null
-    fi
-    exec tmux attach-session -t "$session"
-    ;;
+  monitor) exec ./scripts/monitor-network-os.sh "${compose[@]}" ;;
   shields)
     case "${2:-}" in
       l1) compose+=(-f integration/shield-l1.yaml) ;;
