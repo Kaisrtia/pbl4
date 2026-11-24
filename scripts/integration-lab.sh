@@ -66,7 +66,7 @@ PY
   up) "${compose[@]}" up --build -d --wait --wait-timeout 120 ;;
   down) "${compose[@]}" down ;;
   status) "${compose[@]}" ps ;;
-  defense-status) "${compose[@]}" exec -T target python3 - < integration/defense_status.py ;;
+  defense-status) shift; "${compose[@]}" exec -T target python3 - "$@" < integration/defense_status.py ;;
   monitor)
     command -v tmux >/dev/null || { echo 'Install tmux on the Docker host to open the four panes.' >&2; exit 1; }
     session=pbl4-tv2-monitor

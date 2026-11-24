@@ -209,6 +209,10 @@ quyền sở hữu trong volume, không reset dữ liệu L7 và không xóa l�
 giới hạn thực tế của Node trong `/proc` và giá trị cgroup v2. Thông báo khởi động
 của một script chỉ xác nhận thao tác đã chạy. Đánh giá hiệu lực cần số đo runtime.
 
+Để kiểm tra cấu hình đang chạy, dùng `./scripts/integration-lab.sh defense-status --expect both`
+(hoặc `l1`, `l2`). Trường `checks` ghi từng điều kiện. Lệnh trả mã 1 nếu thiếu
+một điều kiện của khiên được chọn. Kiểm tra này chỉ đọc cấu hình và số liệu tại Target.
+
 **Thời gian W6.** Lệnh reset đo từ lúc gửi lệnh Compose đến khi cả hai service
 healthy. Nó in thời gian thực tế và `PASS` hoặc `MISSED` cho mục tiêu 3 giây.
 Thời gian dựng container và chu kỳ healthcheck được tính vào phép đo. Không có
