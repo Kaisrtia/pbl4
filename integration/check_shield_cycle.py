@@ -66,6 +66,11 @@ def cycle(subnet):
                               'unexpected_changes': unexpected}), flush=True)
             if unexpected:
                 raise RuntimeError(f'{mode} changed inactive shield settings')
+        # Copy the probe only into this disposable target before the timed reset.
+        subprocess.run([*compose, 'cp', str(ROOT / 'integration/check_os_access.py'),
+                        'target:/tmp/check_os_access.py'], check=True, env=env)
+        subprocess.run([*compose, 'exec', '-T', 'target', 'python3', '/tmp/check_os_access.py'],
+                       check=True, env=env)
         elapsed = reset(compose, env=env)
         changes = compare(before, snapshot(compose, env))
         print(json.dumps({'reset_seconds': elapsed, 'deadline_met': elapsed <= 3,
