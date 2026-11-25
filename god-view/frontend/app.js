@@ -392,7 +392,7 @@ function startFpsAndThroughputMonitor() {
     const fps = Math.min(60, Math.max(24, state.perf.currentFps || 60));
     if (pps > 15) {
       badge.textContent = `${fps} FPS · BATCHING (${pps} pkt/s)`;
-      badge.style.color = '#ffd700';
+      badge.style.color = '#D97706';
     } else {
       badge.textContent = `${fps} FPS · THROTTLED`;
       badge.style.color = '';
@@ -979,10 +979,10 @@ function renderFdGauge(fdMetrics) {
     const files = Array.isArray(fdMetrics.suspicious_files) ? fdMetrics.suspicious_files : [];
     if (files.length > 0) {
       filesListEl.textContent = files.join(' | ');
-      filesListEl.style.color = '#ff4d6d';
+      filesListEl.style.color = '#DC2626';
     } else {
       filesListEl.textContent = 'Standard sockets & SQLite WAL descriptors healthy';
-      filesListEl.style.color = 'var(--text-main)';
+      filesListEl.style.color = 'var(--text-navy)';
     }
   }
 }
@@ -1072,7 +1072,7 @@ function resolveBlockingShieldLayer(tag) {
       return {
         layer: 'L1',
         radius: SHIELD_RADII.L1_NETWORK,
-        color: '#00f0ff',
+        color: '#1D4ED8',
         label: '🛡️ BLOCKED [L1: STATIC ARP]',
       };
     }
@@ -1084,7 +1084,7 @@ function resolveBlockingShieldLayer(tag) {
       return {
         layer: 'L1',
         radius: SHIELD_RADII.L1_NETWORK,
-        color: '#00f0ff',
+        color: '#1D4ED8',
         label: '🛡️ DROPPED [L1: IPTABLES RST FILTER]',
       };
     }
@@ -1097,7 +1097,7 @@ function resolveBlockingShieldLayer(tag) {
       return {
         layer: 'L1',
         radius: SHIELD_RADII.L1_NETWORK,
-        color: '#00f0ff',
+        color: '#1D4ED8',
         label: '🛡️ DROPPED [L1: IPTABLES SYN LIMIT]',
       };
     }
@@ -1105,7 +1105,7 @@ function resolveBlockingShieldLayer(tag) {
       return {
         layer: 'L2',
         radius: SHIELD_RADII.L2_OS,
-        color: '#ffd700',
+        color: '#1D4ED8',
         label: '🛡️ MITIGATED [L2: TCP_SYNCOOKIES=1]',
       };
     }
@@ -1118,7 +1118,7 @@ function resolveBlockingShieldLayer(tag) {
       return {
         layer: 'L2',
         radius: SHIELD_RADII.L2_OS,
-        color: '#ffd700',
+        color: '#1D4ED8',
         label: '🛡️ CONTAINED [L2: ULIMIT / CGROUPS]',
       };
     }
@@ -1136,7 +1136,7 @@ function resolveBlockingShieldLayer(tag) {
       return {
         layer: 'L3',
         radius: SHIELD_RADII.L3_APP,
-        color: '#00ff66',
+        color: '#1D4ED8',
         label: '🛡️ BLOCKED [L3: INPUT SANITIZER]',
       };
     }
@@ -1144,7 +1144,7 @@ function resolveBlockingShieldLayer(tag) {
       return {
         layer: 'L2',
         radius: SHIELD_RADII.L2_OS,
-        color: '#ffd700',
+        color: '#1D4ED8',
         label: '🛡️ SHELL KILLED [L2: NOLOGIN / CGROUPS]',
       };
     }
@@ -1160,7 +1160,7 @@ function resolveBlockingShieldLayer(tag) {
       return {
         layer: 'L3',
         radius: SHIELD_RADII.L3_APP,
-        color: '#00ff66',
+        color: '#1D4ED8',
         label: '🛡️ BLOCKED [L3: PREPARED STATEMENTS]',
       };
     }
@@ -1175,7 +1175,7 @@ function resolveBlockingShieldLayer(tag) {
       return {
         layer: 'L3',
         radius: SHIELD_RADII.L3_APP,
-        color: '#00ff66',
+        color: '#1D4ED8',
         label: '🛡️ 429 BLOCKED [L3: TOKEN BUCKET]',
       };
     }
@@ -1190,7 +1190,7 @@ function resolveBlockingShieldLayer(tag) {
       return {
         layer: 'L3',
         radius: SHIELD_RADII.L3_APP,
-        color: '#00ff66',
+        color: '#1D4ED8',
         label: '🛡️ BLOCKED [L3: PATH SANITIZER]',
       };
     }
@@ -1202,7 +1202,7 @@ function resolveBlockingShieldLayer(tag) {
     return {
       layer: 'L3',
       radius: SHIELD_RADII.L3_APP,
-      color: '#00ff66',
+      color: '#1D4ED8',
       label: '🛡️ BLOCKED [L3: APP SHIELD]',
     };
   }
@@ -1276,8 +1276,8 @@ function spawnPacketParticles(log) {
           progress: 0,
           speed: 0.018 + Math.random() * 0.012,
           type: 'ARP_SPOOF',
-          color: '#ffd700',
-          size: 3.5 + Math.random() * 2,
+          color: '#EF4444',
+          size: 3.5 + Math.random() * 1.8,
           tag: 'ARP_SPOOF',
           spread: (Math.random() - 0.5) * 25,
         });
@@ -1288,10 +1288,10 @@ function spawnPacketParticles(log) {
       y: hackerPos.y - 25,
       text: state.defenseL1Active ? '🛡️ ARP SPOOF -> BLOCKED BY L1 STATIC ARP!' : '⚠️ ARP REPLY: SPOOFED MAC!',
       alpha: 1,
-      color: state.defenseL1Active ? '#00f0ff' : '#ffd700',
+      color: state.defenseL1Active ? '#1D4ED8' : '#D97706',
     });
     // Nếu Khiên Mạng L1 tắt -> luồng gói tin Client bị bẻ góc đi vòng qua Hacker -> Server
-    // Nếu Khiên Mạng L1 bật -> Static ARP bảo vệ luồng Client -> Server đi thẳng xanh lá bình thường!
+    // Nếu Khiên Mạng L1 bật -> Static ARP bảo vệ luồng Client -> Server đi thẳng xanh ngọc bình thường!
     if (!state.defenseL1Active) {
       spawnMitmBentParticles(clientPos, hackerPos, serverPos);
     } else {
@@ -1306,8 +1306,8 @@ function spawnPacketParticles(log) {
           progress: 0,
           speed: 0.014 + Math.random() * 0.008,
           type: 'NORMAL',
-          color: '#00ff66',
-          size: 2.8,
+          color: '#10B981',
+          size: 3.2,
           tag: 'NORMAL',
           spread: (Math.random() - 0.5) * 20,
         });
@@ -1334,7 +1334,7 @@ function spawnPacketParticles(log) {
       // Hủy các hạt xanh đang bay trên đường truyền Client <-> Server (hiệu ứng đứt phiên)
       for (let i = particles.length - 1; i >= 0; i--) {
         if (particles[i].type === 'NORMAL') {
-          spawnShieldDeflection(particles[i].x, particles[i].y, '#ff003c', '⚡ TCP RST! SESSION DROPPED');
+          spawnShieldDeflection(particles[i].x, particles[i].y, '#DC2626', '⚡ TCP RST! SESSION DROPPED');
           particles.splice(i, 1);
         }
       }
@@ -1355,8 +1355,8 @@ function spawnPacketParticles(log) {
           progress: 0,
           speed: 0.025 + Math.random() * 0.015,
           type: 'RST_INJECTION',
-          color: '#ff003c',
-          size: 4 + Math.random() * 2,
+          color: '#EF4444',
+          size: 4 + Math.random() * 1.5,
           tag: 'RST_INJECTION',
           spread: (Math.random() - 0.5) * 18,
         });
@@ -1367,7 +1367,7 @@ function spawnPacketParticles(log) {
       y: midY,
       text: state.defenseL1Active ? '🛡️ L1 IPTABLES: FORGED RST DROPPED' : '⚡ TCP RST [CONN RESET]',
       alpha: 1,
-      color: state.defenseL1Active ? '#00f0ff' : '#ff003c',
+      color: state.defenseL1Active ? '#1D4ED8' : '#DC2626',
     });
     return;
   }
@@ -1390,8 +1390,8 @@ function spawnPacketParticles(log) {
         progress: 0,
         speed: 0.018 + Math.random() * 0.012,
         type: 'ATTACK',
-        color: '#ff005f',
-        size: 3.5 + Math.random() * 2,
+        color: '#EF4444',
+        size: 3.5 + Math.random() * 1.8,
         tag: log.attack_tag,
         spread: (Math.random() - 0.5) * 28,
       });
@@ -1404,14 +1404,14 @@ function spawnPacketParticles(log) {
         y: (serverPos.y + hackerPos.y) / 2 - 15,
         text: '🐚 REVERSE SHELL: /bin/sh -> HACKER:4444',
         alpha: 1,
-        color: '#ff005f',
+        color: '#DC2626',
       });
     }
     return;
   }
 
   if (isAttack) {
-    // Kẻ tấn công bắn hạt đỏ/tím sang Server
+    // Kẻ tấn công bắn hạt đỏ #EF4444 từ Hacker đến Server
     const isSynFlood = log.attack_tag === 'SYN_FLOOD';
     const particleCount = isSynFlood ? 24 : log.attack_tag === 'HEAVY_DOS' ? 18 : 8;
     for (let i = 0; i < particleCount; i++) {
@@ -1425,8 +1425,8 @@ function spawnPacketParticles(log) {
         progress: 0,
         speed: 0.015 + Math.random() * 0.018,
         type: 'ATTACK',
-        color: isSynFlood ? '#cc66ff' : '#ff003c',
-        size: 3 + Math.random() * 2.5,
+        color: '#EF4444',
+        size: 3.2 + Math.random() * 2.0,
         tag: log.attack_tag || 'ATTACK',
         spread: (Math.random() - 0.5) * 45,
       });
@@ -1437,7 +1437,7 @@ function spawnPacketParticles(log) {
         y: (hackerPos.y + serverPos.y) / 2,
         text: '🌊 SYN FLOOD (+SYN_RECV)',
         alpha: 1,
-        color: '#cc66ff',
+        color: '#DC2626',
       });
     }
 
@@ -1450,7 +1450,7 @@ function spawnPacketParticles(log) {
     if (state.networkState.mitm_active) {
       spawnMitmBentParticles(clientPos, hackerPos, serverPos);
     } else {
-      // Đường truyền thẳng bình thường Client -> Server
+      // Đường truyền thẳng bình thường Client -> Server (Chấm tròn xanh ngọc #10B981)
       for (let i = 0; i < 4; i++) {
         particles.push({
           x: clientPos.x,
@@ -1462,8 +1462,8 @@ function spawnPacketParticles(log) {
           progress: 0,
           speed: 0.012 + Math.random() * 0.01,
           type: 'NORMAL',
-          color: '#00ff66',
-          size: 2.5 + Math.random() * 2,
+          color: '#10B981',
+          size: 3.2 + Math.random() * 1.6,
           tag: 'NORMAL',
           spread: (Math.random() - 0.5) * 24,
         });
@@ -1474,8 +1474,8 @@ function spawnPacketParticles(log) {
 
 /**
  * Tạo hạt di chuyển theo đường gấp khúc bẻ góc qua Node Hacker:
- * Chặng 1: Client -> Hacker (màu xanh lá)
- * Chặng 2: Hacker -> Target Server (đổi sang màu cam #ff9900 báo hiệu đã bị Sniff!)
+ * Chặng 1: Client -> Hacker (màu xanh ngọc #10B981)
+ * Chặng 2: Hacker -> Target Server (đổi sang màu cam #D97706 báo hiệu đã bị Sniff!)
  */
 function spawnMitmBentParticles(clientPos, hackerPos, serverPos) {
   for (let i = 0; i < 5; i++) {
@@ -1493,8 +1493,8 @@ function spawnMitmBentParticles(clientPos, hackerPos, serverPos) {
       progress: 0,
       speed: 0.016 + Math.random() * 0.01,
       type: 'NORMAL',
-      color: '#00ff66',
-      size: 3 + Math.random() * 1.8,
+      color: '#10B981',
+      size: 3.2 + Math.random() * 1.5,
       tag: 'MITM_SNIFFED',
       spread: (Math.random() - 0.5) * 14,
     });
@@ -1516,8 +1516,8 @@ function spawnReverseShellOutboundParticles(serverPos, hackerPos, count = 6) {
       progress: 0,
       speed: 0.015 + Math.random() * 0.012,
       type: 'REVERSE_SHELL',
-      color: i % 2 === 0 ? '#ff005f' : '#ffd700',
-      size: 3.5 + Math.random() * 1.8,
+      color: i % 2 === 0 ? '#EF4444' : '#D97706',
+      size: 3.5 + Math.random() * 1.6,
       tag: 'REVERSE_SHELL',
       spread: (Math.random() - 0.5) * 22,
     });
@@ -1567,9 +1567,10 @@ function renderCanvasLoop() {
     floatingLabels.splice(0, floatingLabels.length - MAX_FLOATING_LABELS);
   }
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Vẽ nền trắng tinh #FFFFFF kèm lưới tọa độ kỹ thuật mờ #F1F5F9 trực tiếp trên Canvas
+  drawBlueprintCanvasBackground();
 
-  // Vẽ các đường mạch kết nối (Circuit Connection Paths)
+  // Vẽ các đường mạch kết nối (Circuit Connection Paths) & bức tường chắn Cobalt #1D4ED8
   drawNetworkLinks();
 
   // Cập nhật và vẽ các hạt di chuyển
@@ -1582,6 +1583,99 @@ function renderCanvasLoop() {
   updateAndDrawFloatingLabels();
 
   requestAnimationFrame(renderCanvasLoop);
+}
+
+function drawBlueprintCanvasBackground() {
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.fillStyle = '#FEFEFF';
+  ctx.fillRect(0, 0, w, h);
+
+  // 1. Lưới tọa độ vuông kỹ thuật mờ (Orthogonal Technical Grid #F1F5F9)
+  const sqStep = 20;
+  ctx.save();
+  ctx.beginPath();
+  ctx.strokeStyle = '#F1F5F9';
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= w; x += sqStep) {
+    ctx.moveTo(x + 0.5, 0);
+    ctx.lineTo(x + 0.5, h);
+  }
+  for (let y = 0; y <= h; y += sqStep) {
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(w, y + 0.5);
+  }
+  ctx.stroke();
+
+  // 2. Lưới kim cương Isometric đặc trưng của Protocol Explorer (62.354 x 36, stroke #E4EAF5)
+  const isoW = 62.354;
+  const isoH = 36;
+  ctx.beginPath();
+  ctx.strokeStyle = '#E4EAF5';
+  ctx.lineWidth = 1;
+  const cols = Math.ceil(w / isoW) + 4;
+  const rows = Math.ceil(h / isoH) + 4;
+  for (let r = -2; r < rows; r++) {
+    for (let c = -2; c < cols; c++) {
+      const x0 = c * isoW;
+      const y0 = r * isoH;
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x0 + isoW, y0 + isoH);
+      ctx.moveTo(x0 + isoW, y0);
+      ctx.lineTo(x0, y0 + isoH);
+    }
+  }
+  ctx.stroke();
+
+  // 3. Hiệu ứng Radial Vignette mờ dần ở rìa vùng vẽ như Protocol Explorer (#grid-vignette)
+  const grad = ctx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.22, w * 0.5, h * 0.5, Math.max(w, h) * 0.72);
+  grad.addColorStop(0, 'rgba(254, 254, 255, 0)');
+  grad.addColorStop(0.65, 'rgba(254, 254, 255, 0.25)');
+  grad.addColorStop(1, 'rgba(254, 254, 255, 0.85)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+}
+
+function drawDirectionalLane(x1, y1, x2, y2, strokeColor = '#BCCAE6', lineDash = [6, 5], lineWidth = 2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 40) return;
+
+  // Rút ngắn điểm đầu & điểm cuối để mũi tên dừng gọn ở mép thẻ Node như Protocol Explorer
+  const padStart = 76;
+  const padEnd = 86;
+  if (dist <= padStart + padEnd) return;
+
+  const ux = dx / dist;
+  const uy = dy / dist;
+  const sx = x1 + ux * padStart;
+  const sy = y1 + uy * padStart;
+  const ex = x2 - ux * padEnd;
+  const ey = y2 - uy * padEnd;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = lineWidth;
+  ctx.setLineDash(lineDash);
+  ctx.moveTo(sx, sy);
+  ctx.lineTo(ex, ey);
+  ctx.stroke();
+
+  // Vẽ đầu mũi tên sắc nét (marker-end #head-idle)
+  ctx.setLineDash([]);
+  const angle = Math.atan2(ey - sy, ex - sx);
+  const headLen = 7.5;
+  ctx.fillStyle = strokeColor;
+  ctx.beginPath();
+  ctx.moveTo(ex, ey);
+  ctx.lineTo(ex - headLen * Math.cos(angle - Math.PI / 6), ey - headLen * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(ex - headLen * Math.cos(angle + Math.PI / 6), ey - headLen * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawNetworkLinks() {
@@ -1606,72 +1700,90 @@ function drawNetworkLinks() {
 
   if (state.networkState.mitm_active) {
     // Đường thẳng Client -> Server bị vô hiệu hóa khi bị ARP Spoofing
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(255, 0, 60, 0.22)';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([3, 8]);
-    ctx.moveTo(cX, cY);
-    ctx.lineTo(sX, sY);
-    ctx.stroke();
+    drawDirectionalLane(cX, cY, sX, sY, '#CBD5E1', [4, 6], 1.5);
 
     ctx.save();
-    ctx.font = 'bold 11px Share Tech Mono';
-    ctx.fillStyle = 'rgba(255, 80, 100, 0.85)';
+    ctx.font = '700 10.5px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#DC2626';
     ctx.textAlign = 'center';
-    ctx.fillText('✕ DIRECT LINK BYPASSED (ARP POISONED)', (cX + sX) / 2, (cY + sY) / 2 - 10);
+    ctx.fillText('✕ DIRECT LINK BYPASSED (ARP POISONED)', (cX + sX) / 2, (cY + sY) / 2 - 12);
     ctx.restore();
 
-    // Vẽ đường truyền BẺ GÓC đi vòng qua Node Hacker (Client -> Hacker -> Server)
+    // Đường truyền BẺ GÓC đi vòng qua Node Hacker (Client -> Hacker -> Server) có mũi tên chỉ hướng
+    drawDirectionalLane(cX, cY, hX, hY, '#D97706', [6, 4], 2.2);
+    drawDirectionalLane(hX, hY, sX, sY, '#D97706', [6, 4], 2.2);
+
     ctx.save();
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(255, 153, 0, 0.85)';
-    ctx.lineWidth = 3;
-    ctx.setLineDash([8, 5]);
-    ctx.shadowColor = '#ff9900';
-    ctx.shadowBlur = 12;
-    ctx.moveTo(cX, cY);
-    ctx.lineTo(hX, hY);
-    ctx.lineTo(sX, sY);
-    ctx.stroke();
-
-    // Nhãn trên 2 nhánh bẻ góc
-    ctx.font = 'bold 11px Orbitron';
-    ctx.fillStyle = '#ffd700';
+    ctx.font = '800 10.5px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#92400E';
     ctx.textAlign = 'center';
-    ctx.fillText('① MITM INTERCEPT', (cX + hX) / 2 - 30, (cY + hY) / 2 + 12);
-    ctx.fillStyle = '#ff9900';
-    ctx.fillText('② RELAY TO SERVER', (hX + sX) / 2 + 35, (hY + sY) / 2 + 12);
+    ctx.fillText('① MITM INTERCEPT', (cX + hX) / 2 - 28, (cY + hY) / 2 + 14);
+    ctx.fillStyle = '#D97706';
+    ctx.fillText('② RELAY TO SERVER', (hX + sX) / 2 + 32, (hY + sY) / 2 + 14);
     ctx.restore();
-    ctx.setLineDash([]);
   } else {
-    // Đường link chuẩn Client -> Server
+    // Phong cách Protocol Explorer: Đường nối đôi song song hai chiều nét đứt (stroke #94A3B8 / #BCCAE6, dash 6,5) kèm mũi tên
+    drawDirectionalLane(cX, cY - 7, sX, sY - 7, '#94A3B8', [6, 5], 1.85);
+    drawDirectionalLane(sX, sY + 7, cX, cY + 7, '#BCCAE6', [6, 5], 1.65);
+
+    // Đường nối từ Hacker -> Target Server (song song 2 làn Request/Response)
+    drawDirectionalLane(hX - 5, hY - 5, sX - 5, sY + 12, '#94A3B8', [6, 5], 1.85);
+    drawDirectionalLane(sX + 5, sY + 18, hX + 5, hY + 2, '#BCCAE6', [6, 5], 1.5);
+  }
+
+  // Khi công tắc Khiên phòng thủ BẬT: vẽ bức tường chắn nét liền màu xanh Cobalt #1D4ED8 trước Target Server
+  const l3AnyActive = Boolean(
+    state.defenseL3Active ||
+      (typeof state.defenseL3Active === 'boolean' &&
+        (state.defenseL3Subflags.anti_sqli ||
+          state.defenseL3Subflags.rate_limit ||
+          state.defenseL3Subflags.input_sanitization)),
+  );
+  const anyShieldActive = Boolean(state.defenseL1Active || state.defenseL2Active || l3AnyActive);
+
+  if (anyShieldActive) {
+    ctx.save();
+    const activeLayers = [
+      state.defenseL1Active ? { radius: SHIELD_RADII.L1_NETWORK, tag: 'L1' } : null,
+      state.defenseL2Active ? { radius: SHIELD_RADII.L2_OS, tag: 'L2' } : null,
+      l3AnyActive ? { radius: SHIELD_RADII.L3_APP, tag: 'L3' } : null,
+    ].filter(Boolean);
+
+    for (const layer of activeLayers) {
+      ctx.beginPath();
+      ctx.strokeStyle = '#1D4ED8';
+      ctx.lineWidth = 2.4;
+      ctx.setLineDash([]);
+      ctx.arc(sX, sY, layer.radius, Math.PI * 0.58, Math.PI * 1.42);
+      ctx.stroke();
+    }
+
+    // Bức tường chắn thẳng đứng nét liền màu xanh Cobalt #1D4ED8 ngay phía trước mặt Target Server
+    const wallX = sR.left - wrapRect.left - 18;
+    const wallTop = sY - 58;
+    const wallBottom = sY + 58;
     ctx.beginPath();
-    ctx.strokeStyle = 'rgba(0, 255, 102, 0.25)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([4, 6]);
-    ctx.moveTo(cX, cY);
-    ctx.quadraticCurveTo((cX + sX) / 2, cY - 25, sX, sY);
+    ctx.strokeStyle = '#1D4ED8';
+    ctx.lineWidth = 3.5;
+    ctx.setLineDash([]);
+    ctx.moveTo(wallX, wallTop);
+    ctx.lineTo(wallX, wallBottom);
     ctx.stroke();
 
-    // Đường link Hacker -> Server
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(255, 0, 60, 0.2)';
-    ctx.lineWidth = 2;
-    ctx.moveTo(hX, hY);
-    ctx.quadraticCurveTo((hX + sX) / 2, (hY + sY) / 2, sX, sY);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.font = '800 10px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#0B3AA8';
+    ctx.textAlign = 'right';
+    ctx.fillText('COBALT SHIELD WALL [ACTIVE]', wallX - 6, wallTop - 6);
+    ctx.restore();
   }
 
   // W4-T1: Vẽ đường kết nối Reverse Shell NGƯỢC từ Target Server (.20) về Hacker (.66)
   if (state.osL7State && state.osL7State.reverse_shell && state.osL7State.reverse_shell.active) {
     ctx.save();
     ctx.beginPath();
-    ctx.strokeStyle = '#ff005f';
-    ctx.lineWidth = 3.2;
-    ctx.setLineDash([10, 6]);
-    ctx.shadowColor = '#ff005f';
-    ctx.shadowBlur = 15;
+    ctx.strokeStyle = '#DC2626';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([8, 5]);
     const ctrlX = (sX + hX) / 2 + 45;
     const ctrlY = (sY + hY) / 2 + 28;
     ctx.moveTo(sX, sY);
@@ -1683,7 +1795,7 @@ function drawNetworkLinks() {
     const midY = 0.25 * sY + 0.5 * ctrlY + 0.25 * hY;
     const angle = Math.atan2(hY - sY, hX - sX);
     ctx.setLineDash([]);
-    ctx.fillStyle = '#ff005f';
+    ctx.fillStyle = '#DC2626';
     ctx.beginPath();
     ctx.moveTo(midX + Math.cos(angle) * 9, midY + Math.sin(angle) * 9);
     ctx.lineTo(midX + Math.cos(angle + 2.5) * 8, midY + Math.sin(angle + 2.5) * 8);
@@ -1692,8 +1804,8 @@ function drawNetworkLinks() {
     ctx.fill();
 
     // Nhãn đường kết nối Reverse Shell ngược
-    ctx.font = 'bold 11px Orbitron';
-    ctx.fillStyle = '#ffb3d1';
+    ctx.font = '800 10.5px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#991B1B';
     ctx.textAlign = 'center';
     const port = state.osL7State.reverse_shell.hacker_port || 4444;
     ctx.fillText(`🐚 REVERSE SHELL (SERVER ➔ HACKER:${port})`, midX + 35, midY + 18);
@@ -1707,7 +1819,7 @@ function updateAndDrawParticles() {
     p.progress += p.speed;
 
     if (p.recoil) {
-      // Hạt độc hại bị Khiên Chắn đánh bật và dội ngược (Bounce-Back) về phía Hacker!
+      // Hạt độc hại bị Khiên Chắn đánh bật và dội ngược/tan biến về phía Hacker!
       const t = Math.min(1, p.progress);
       p.x = p.startX + (p.targetX - p.startX) * t;
       p.y = p.startY + (p.targetY - p.startY) * t - Math.sin(t * Math.PI) * 18;
@@ -1716,12 +1828,10 @@ function updateAndDrawParticles() {
         continue;
       }
       ctx.save();
-      ctx.globalAlpha = Math.max(0.15, 1 - t * 0.85);
+      ctx.globalAlpha = Math.max(0.08, 1 - t * 0.92);
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       ctx.fillStyle = p.color;
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur = 10;
       ctx.fill();
       ctx.restore();
       continue;
@@ -1768,14 +1878,14 @@ function updateAndDrawParticles() {
         p.startY = p.targetY;
         p.targetX = p.finalTargetX;
         p.targetY = p.finalTargetY;
-        p.color = '#ff9900'; // Đổi sang màu cam cảnh báo gói tin đã bị Hacker đọc trộm!
+        p.color = '#D97706'; // Đổi sang màu cam cảnh báo gói tin đã bị Hacker đọc trộm!
         if (Math.random() > 0.55) {
           floatingLabels.push({
             x: p.startX - 55,
             y: p.startY - 18,
             text: '🕵️ SNIFFED CREDENTIALS!',
             alpha: 1,
-            color: '#ff9900',
+            color: '#92400E',
           });
         }
         continue;
@@ -1789,33 +1899,34 @@ function updateAndDrawParticles() {
       continue;
     }
 
-    // Vẽ hạt phát sáng
+    // Vẽ hạt gói tin sắc nét trên nền sáng (không dùng hiệu ứng neon loè loẹt)
     ctx.save();
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
     ctx.fillStyle = p.color;
-    ctx.shadowColor = p.color;
-    ctx.shadowBlur = 12;
     ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.stroke();
     ctx.restore();
   }
 }
 
-function spawnShieldDeflection(x, y, customColor = '#00f0ff', customText = '🛡️ BLOCKED [L3]', bounceBackTarget = null) {
-  // 1. Tạo tia lửa va chạm tại mặt khiên
+function spawnShieldDeflection(x, y, customColor = '#1D4ED8', customText = '🛡️ BLOCKED [L3]', bounceBackTarget = null) {
+  // 1. Tạo hiệu ứng hạt gói tin vỡ/tan biến tại mặt tường chắn Cobalt #1D4ED8
   for (let i = 0; i < 8; i++) {
     shieldImpactSparks.push({
       x,
       y,
-      vx: (Math.random() - 0.5) * 7,
-      vy: (Math.random() * 4 + 1),
-      color: customColor,
+      vx: (Math.random() - 0.5) * 6,
+      vy: (Math.random() - 0.5) * 6,
+      color: i % 2 === 0 ? customColor : '#EF4444',
       alpha: 1,
-      size: Math.random() * 2.5 + 1.5,
+      size: Math.random() * 2.2 + 1.5,
     });
   }
 
-  // 2. W5-T1: Hiệu ứng hạt độc hại bị DỘI NGƯỢC (Bounce-Back Recoil) bay trả về phía Hacker
+  // 2. W5-T1: Hiệu ứng hạt độc hại bị DỘI NGƯỢC & TAN BIẾN (Bounce-Back Recoil) bay trả về phía Hacker
   if (bounceBackTarget && Math.random() > 0.25) {
     const bounceX = x + (bounceBackTarget.x - x) * (0.45 + Math.random() * 0.35) + (Math.random() - 0.5) * 40;
     const bounceY = y + (bounceBackTarget.y - y) * (0.45 + Math.random() * 0.35) + (Math.random() - 0.5) * 30;
@@ -1831,7 +1942,7 @@ function spawnShieldDeflection(x, y, customColor = '#00f0ff', customText = '🛡
       type: 'RECOIL',
       recoil: true,
       color: customColor,
-      size: 2.6,
+      size: 2.8,
       tag: 'DEFLECTED',
       spread: 0,
     });
@@ -1865,21 +1976,19 @@ function updateAndDrawSparks() {
     const s = shieldImpactSparks[i];
     s.x += s.vx;
     s.y += s.vy;
-    s.alpha -= 0.04;
+    s.alpha -= 0.045;
 
     if (s.alpha <= 0) {
       shieldImpactSparks.splice(i, 1);
       continue;
     }
 
-    const col = s.color || '#00f0ff';
+    const col = s.color || '#1D4ED8';
     ctx.save();
     ctx.globalAlpha = Math.max(0, s.alpha);
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
     ctx.fillStyle = col;
-    ctx.shadowColor = col;
-    ctx.shadowBlur = 8;
     ctx.fill();
     ctx.restore();
   }
@@ -1896,13 +2005,11 @@ function updateAndDrawFloatingLabels() {
       continue;
     }
 
-    const col = l.color || '#00f0ff';
+    const col = l.color || '#1D4ED8';
     ctx.save();
     ctx.globalAlpha = Math.max(0, l.alpha);
-    ctx.font = 'bold 11px Orbitron';
+    ctx.font = '700 11px "JetBrains Mono", monospace';
     ctx.fillStyle = col;
-    ctx.shadowColor = col;
-    ctx.shadowBlur = 8;
     ctx.fillText(l.text, l.x, l.y);
     ctx.restore();
   }
