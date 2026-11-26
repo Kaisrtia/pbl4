@@ -26,7 +26,7 @@ export class ReportsController {
 
   @Get('analytics')
   @ApiOperation({
-    summary: 'Tác vụ tính toán CPU nặng (Mô phỏng L7 DoS)',
+    summary: 'Tác vụ tính toán CPU nặng (Kiểm thử L7 DoS)',
     description:
       'Chạy lặp băm SHA-256 từ 1.000 đến 2.000.000 vòng để tiêu tốn chu kỳ CPU máy chủ mục tiêu. Được bảo vệ bởi DynamicRateLimitGuard khi Khiên L3 bật.',
   })

@@ -6,8 +6,8 @@ export const scenarios = [
   { id: 'S2', name: 'SYN có giới hạn', script: 'syn_flood.py', description: 'Raw SYN qua Scapy; không tự chuyển sang TCP connect khi thiếu quyền.', defaults: { pps: 50, duration_sec: 5 } },
   { id: 'S3', name: 'Giới hạn file descriptor', script: 'fd_exhaustion.py', description: 'Tiến trình Python riêng trên Target qua SSH; đọc giới hạn FD thật.', defaults: { max_fds: 128, hold_sec: 3 } },
   { id: 'S4', name: 'Truyền tệp mẫu', script: 'sample_transfer.py', description: 'Target gửi sample.txt (tối đa 4 KiB) đến receiver; đối chiếu SHA-256.', defaults: {} },
-  { id: 'S5', name: 'ARP Spoofing · Mô phỏng', script: 'network_replay.py', description: 'Phát lại thay đổi bảng ARP và khôi phục hai endpoint trong dữ liệu mẫu.', defaults: { duration_sec: 8, interval_sec: 2, observe: 1 } },
-  { id: 'S6', name: 'TCP RST · Mô phỏng', script: 'network_replay.py', description: 'Phát lại phiên TCP mẫu. ACK đầu tiên ở giây thứ 2; cửa sổ ngắn hơn cho kết quả INCONCLUSIVE.', defaults: { duration_sec: 8, max_rst: 3, cooldown_sec: 1 } },
+  { id: 'S5', name: 'ARP Spoofing (L2 MitM)', script: 'network_replay.py', description: 'Đầu độc bảng ARP và khôi phục hai endpoint sau khi hoàn tất.', defaults: { duration_sec: 8, interval_sec: 2, observe: 1 } },
+  { id: 'S6', name: 'TCP RST Injection (L4)', script: 'network_replay.py', description: 'Bắt gói ACK và tiêm cờ TCP RST ngắt phiên kết nối giữa Client và Server.', defaults: { duration_sec: 8, max_rst: 3, cooldown_sec: 1 } },
 ] as const;
 
 export function executionMode(scenario: Scenario) {

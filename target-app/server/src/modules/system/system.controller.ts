@@ -86,7 +86,7 @@ export class SystemController {
 
   @Get('network-ping')
   @ApiOperation({
-    summary: 'Kiểm tra kết nối mạng (Mô phỏng lỗ hổng OS Command Injection)',
+    summary: 'Kiểm tra kết nối mạng (Kiểm thử lỗ hổng OS Command Injection)',
     description:
       'Khi Khiên L3 BẬT: Chặn các ký tự điều hướng shell `;`, `|`, `&`, `$`, backticks (mã lỗi 400 Bad Request). Khi Khiên L3 TẮT: Nối chuỗi thực thi trực tiếp qua Shell (VULNERABLE), phục vụ kịch bản leo quyền Reverse Shell.',
   })

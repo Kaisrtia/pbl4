@@ -95,7 +95,7 @@ export class DocumentsController {
   @ApiOperation({
     summary: 'Tải file tài liệu kỹ thuật về máy',
     description:
-      'Đối với tài liệu tuyệt mật (Confidential): Khi Khiên L3 BẬT -> chặn 403 Forbidden. Khi Khiên L3 TẮT -> cho phép tải lậu (mô phỏng rò rỉ dữ liệu).',
+      'Đối với tài liệu tuyệt mật (Confidential): Khi Khiên L3 BẬT -> chặn 403 Forbidden. Khi Khiên L3 TẮT -> cho phép tải file (rò rỉ dữ liệu).',
   })
   @ApiParam({ name: 'id', example: 1, description: 'ID tài liệu cần tải' })
   @ApiResponse({ status: 200, description: 'Tải file thành công' })

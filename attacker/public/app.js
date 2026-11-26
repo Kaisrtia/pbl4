@@ -32,7 +32,7 @@ async function refresh() {
   $('runs').replaceChildren();
   for (const run of runs) {
     const button = document.createElement('button');
-    button.textContent = `${run.scenario}${run.execution_mode === 'simulated' ? ' · Mô phỏng' : ''} · ${run.state} · ${run.started_at} · ${run.run_id.slice(0, 8)}`;
+    button.textContent = `${run.scenario} · ${run.state} · ${run.started_at} · ${run.run_id.slice(0, 8)}`;
     button.onclick = () => { selected = run.run_id; void update(); };
     $('runs').append(button);
   }
@@ -44,7 +44,7 @@ async function refresh() {
       requested = null;
     }
     $('run-id').textContent = run.run_id;
-    $('state').textContent = run.execution_mode === 'simulated' ? run.state + ' · Mô phỏng' : run.state;
+    $('state').textContent = run.state;
     $('result').textContent = JSON.stringify({ state: run.state, error: run.error, cleanup_pending: run.cleanup_pending, result: run.result || null }, null, 2);
     $('events').textContent = (await api('events?run_id=' + encodeURIComponent(run.run_id))).map(e => `${e.timestamp} ${JSON.stringify(e.payload)}`).join('\n');
   }

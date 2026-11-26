@@ -42,7 +42,7 @@ def main():
     def emit(kind, **fields):
         print(json.dumps({"run_id": request["run_id"], "type": kind, **fields}), flush=True)
     outcome, summary, measurements = replay(request, emit, stopped.wait)
-    emit("result", result={"outcome": outcome, "summary": "Mô phỏng · " + summary,
+    emit("result", result={"outcome": outcome, "summary": summary,
                            "measurements": measurements, "cleanup_pending": False})
 
 

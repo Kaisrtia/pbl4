@@ -48,6 +48,17 @@ export class TelemetryInterceptor implements NestInterceptor {
     ).replace('::ffff:', '');
     const endpoint = req.originalUrl || req.url || '';
     const method = req.method || 'GET';
+    const userAgent = String(req.headers['user-agent'] || '');
+
+    // Bỏ qua các request hệ thống chạy nền (Docker healthcheck, God-View defense status sync, hoặc ClientBot chạy ngầm)
+    // để God-View chỉ hiển thị các thao tác thật của người dùng trên Client và Hacker.
+    if (
+      endpoint.startsWith('/api/system/health') ||
+      (method === 'GET' && endpoint.startsWith('/api/defense/status')) ||
+      userAgent.includes('PBL4-ClientBot')
+    ) {
+      return;
+    }
 
     // Xác định dấu hiệu tấn công sơ bộ
     let attackTag: string | undefined = undefined;

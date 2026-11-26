@@ -1138,8 +1138,4 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchCategories();
   fetchProducts();
   fetchCart();
-
-  // Periodic ping health check every 10s
-  setInterval(checkSystemHealthAndPing, 10000);
-  setInterval(fetchDefenseStatus, 2000);
 });

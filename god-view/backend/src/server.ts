@@ -1356,28 +1356,47 @@ app.post('/api/events/attack', (req: Request, res: Response) => {
   attackEvents.set(event.event_id, event);
   if (attackEvents.size > config.maxBufferSize) attackEvents.delete(attackEvents.keys().next().value!);
 
-  // Đồng bộ biểu đồ SYN_RECV khi nhận sự kiện kịch bản S2 (TCP SYN Flood) từ Attacker
-  if (event.scenario === 'S2') {
-    const p = event.payload as Record<string, unknown>;
+  const p = (event.payload || {}) as Record<string, unknown>;
+  const resultObj = typeof p.result === 'object' && p.result !== null
+    ? (p.result as Record<string, unknown>)
+    : {};
+  const isActiveOrDone =
+    p.state === 'STARTING' ||
+    p.state === 'RUNNING' ||
+    p.type === 'progress' ||
+    p.type === 'result' ||
+    p.state === 'COMPLETED';
+  const outcomeBlocked = resultObj.outcome === 'BLOCKED';
+
+  if (event.scenario === 'S1' && isActiveOrDone) {
+    const blocked = Boolean(defense.l2Os || outcomeBlocked);
+    if (!blocked && (p.type === 'progress' || p.type === 'result' || p.state === 'COMPLETED')) {
+      spawnReverseShellInTree('ssh_chain -> remote command execution');
+    }
+    updateKillChainStageFromTag('COMMAND_INJECTION', blocked, blocked ? 'L2_OS_KERNEL_SHIELD' : null);
+    io.emit('OS_L7_STATE_UPDATE', { os_l7_state: osL7State, metrics: socketMetrics });
+    io.emit('KILL_CHAIN_UPDATE', { kill_chain: killChainState, defense_layers: defense.getLayersState() });
+  } else if (event.scenario === 'S2') {
+    // Đồng bộ biểu đồ SYN_RECV khi nhận sự kiện kịch bản S2 (TCP SYN Flood) từ Attacker
     if (p.state === 'STARTING' || p.state === 'RUNNING' || p.type === 'progress') {
       socketMetrics.syn_recv = Math.min(250, Math.max(socketMetrics.syn_recv + 35, 95));
       recordSynHistory(socketMetrics.syn_recv);
+      const blocked = Boolean(defense.l1Network || defense.l2Os || outcomeBlocked);
+      const shield = defense.l1Network ? 'L1_NETWORK_SHIELD' : defense.l2Os ? 'L2_OS_KERNEL_SHIELD' : null;
+      updateKillChainStageFromTag('SYN_FLOOD', blocked, shield);
       io.emit('NETWORK_STATE_UPDATE', { network_state: networkState, metrics: socketMetrics });
+      io.emit('KILL_CHAIN_UPDATE', { kill_chain: killChainState, defense_layers: defense.getLayersState() });
     }
   } else if (event.scenario === 'S3') {
     // Đồng bộ đồng hồ File Descriptors (lsof) khi nhận sự kiện kịch bản S3 (FD Exhaustion)
-    const p = event.payload as Record<string, unknown>;
     const measurements = typeof p.measurements === 'object' && p.measurements !== null
       ? (p.measurements as Record<string, unknown>)
-      : {};
-    const resultObj = typeof p.result === 'object' && p.result !== null
-      ? (p.result as Record<string, unknown>)
       : {};
     const resultMeasurements = typeof resultObj.measurements === 'object' && resultObj.measurements !== null
       ? (resultObj.measurements as Record<string, unknown>)
       : {};
 
-    if (p.state === 'STARTING' || p.state === 'RUNNING' || p.type === 'progress' || p.state === 'COMPLETED') {
+    if (isActiveOrDone) {
       const opened = typeof resultMeasurements.opened_fds === 'number'
         ? resultMeasurements.opened_fds
         : typeof measurements.requested_fds === 'number'
@@ -1395,8 +1414,38 @@ app.post('/api/events/attack', (req: Request, res: Response) => {
       const hitEmfile = Boolean(resultMeasurements.hit_emfile);
       const effectiveOpen = hitEmfile ? limitVal : Math.max(opened, Math.round(limitVal * 0.9));
       updateFdMetrics(effectiveOpen, limitVal, '/tmp/pbl4_fd_exhaust_*');
+      const blocked = Boolean(defense.l2Os || outcomeBlocked);
+      updateKillChainStageFromTag('FD_EXHAUSTION', blocked, blocked ? 'L2_OS_KERNEL_SHIELD' : null);
       io.emit('OS_L7_STATE_UPDATE', { os_l7_state: osL7State, metrics: socketMetrics });
+      io.emit('KILL_CHAIN_UPDATE', { kill_chain: killChainState, defense_layers: defense.getLayersState() });
     }
+  } else if (event.scenario === 'S4' && isActiveOrDone) {
+    const blocked = Boolean(defense.state || outcomeBlocked);
+    updateKillChainStageFromTag('PATH_TRAVERSAL', blocked, blocked ? 'L3_APP_SHIELD' : null);
+    io.emit('KILL_CHAIN_UPDATE', { kill_chain: killChainState, defense_layers: defense.getLayersState() });
+  } else if (event.scenario === 'S5' && isActiveOrDone) {
+    const blocked = Boolean(defense.l1Network || outcomeBlocked);
+    if (!blocked && p.peer_binding === 'MISMATCH') {
+      poisonArpCache();
+    }
+    updateKillChainStageFromTag('ARP_SPOOF', blocked, blocked ? 'L1_NETWORK_SHIELD' : null);
+    io.emit('NETWORK_STATE_UPDATE', { network_state: networkState, metrics: socketMetrics });
+    io.emit('KILL_CHAIN_UPDATE', { kill_chain: killChainState, defense_layers: defense.getLayersState() });
+  } else if (event.scenario === 'S6' && isActiveOrDone) {
+    const blocked = Boolean(defense.l1Network || outcomeBlocked);
+    if (!blocked && p.type === 'progress') {
+      networkState.rst_injection = {
+        active: true,
+        disrupted_sessions: networkState.rst_injection.disrupted_sessions + 1,
+        last_rst_at: new Date().toISOString(),
+        last_seq_num: Math.floor(100000000 + Math.random() * 900000000),
+        victim_ip: config.nodes.client,
+        target_ip: config.nodes.target,
+      };
+    }
+    updateKillChainStageFromTag('RST_INJECTION', blocked, blocked ? 'L1_NETWORK_SHIELD' : null);
+    io.emit('NETWORK_STATE_UPDATE', { network_state: networkState, metrics: socketMetrics });
+    io.emit('KILL_CHAIN_UPDATE', { kill_chain: killChainState, defense_layers: defense.getLayersState() });
   }
 
   io.emit('ATTACK_EVENT', event);

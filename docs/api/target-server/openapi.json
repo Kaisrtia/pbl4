@@ -193,7 +193,7 @@
             "description": "Bị Rate Limit chặn đứng"
           }
         },
-        "summary": "Tác vụ tính toán CPU nặng (Mô phỏng L7 DoS)",
+        "summary": "Tác vụ tính toán CPU nặng (Kiểm thử L7 DoS)",
         "tags": [
           "Reports"
         ]
@@ -264,7 +264,7 @@
             "description": "Không tìm thấy file"
           }
         },
-        "summary": "Tải file công khai (Mô phỏng tấn công Path Traversal)",
+        "summary": "Tải file công khai (Kiểm thử tấn công Path Traversal)",
         "tags": [
           "Files"
         ]
@@ -329,7 +329,7 @@
             "description": "Bị Khiên Input Sanitization chặn đứng do phát hiện ký tự Shell nguy hiểm"
           }
         },
-        "summary": "Kiểm tra kết nối mạng (Mô phỏng lỗ hổng OS Command Injection)",
+        "summary": "Kiểm tra kết nối mạng (Kiểm thử lỗ hổng OS Command Injection)",
         "tags": [
           "System"
         ]
@@ -345,6 +345,22 @@
           }
         },
         "summary": "Kiểm tra trạng thái sống của máy chủ & Khiên L3",
+        "tags": [
+          "System"
+        ]
+      }
+    },
+    "/api/system/reset": {
+      "post": {
+        "description": "Thực hiện: 1. Reset Database (xóa orders, giỏ hàng, re-seed toàn bộ data mặc định); 2. Xóa bộ đếm Rate Limiting trong RAM; 3. Đưa cấu hình Khiên L3 về mặc định.",
+        "operationId": "SystemController_reset",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Hệ thống Target App đã được khôi phục trạng thái sạch ban đầu thành công"
+          }
+        },
+        "summary": "Khôi phục toàn bộ Target App về trạng thái sạch ban đầu (Reset 1-chạm)",
         "tags": [
           "System"
         ]
@@ -818,7 +834,7 @@
     },
     "/api/documents/{id}/download": {
       "get": {
-        "description": "Đối với tài liệu tuyệt mật (Confidential): Khi Khiên L3 BẬT -> chặn 403 Forbidden. Khi Khiên L3 TẮT -> cho phép tải lậu (mô phỏng rò rỉ dữ liệu).",
+        "description": "Đối với tài liệu tuyệt mật (Confidential): Khi Khiên L3 BẬT -> chặn 403 Forbidden. Khi Khiên L3 TẮT -> cho phép tải file (rò rỉ dữ liệu).",
         "operationId": "DocumentsController_downloadDocument",
         "parameters": [
           {
@@ -879,11 +895,11 @@
     },
     {
       "name": "Reports",
-      "description": "Mô phỏng tác vụ CPU nặng phục vụ kịch bản L7 DoS"
+      "description": "Tác vụ xử lý báo cáo CPU nặng (Kịch bản L7 DoS)"
     },
     {
       "name": "Files",
-      "description": "Tải tài liệu và mô phỏng tấn công Path Traversal"
+      "description": "Tải tài liệu và kiểm thử lỗ hổng Path Traversal"
     },
     {
       "name": "System",

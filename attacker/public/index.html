@@ -9,7 +9,7 @@
   </style>
 </head>
 <body><main>
-  <header><div><div class="eyebrow">PBL4 / MÁY THỰC NGHIỆM</div><h1>Attacker Lab</h1><p class="muted">S1–S4 chạy trong lab · S5–S6 phát lại tình huống mô phỏng</p></div><span class="badge" id="connection">Chưa kết nối</span></header>
+  <header><div><div class="eyebrow">PBL4 / MÁY THỰC NGHIỆM</div><h1>Attacker Lab</h1><p class="muted">Điều khiển kịch bản tấn công mạng &amp; hệ điều hành S1–S6</p></div><span class="badge" id="connection">Chưa kết nối</span></header>
   <section class="panel"><div class="controls"><label>API token (chỉ giữ trong bộ nhớ trang)<input id="token" type="password" autocomplete="off" placeholder="Token cấu hình trên controller"></label><button id="connect">Kết nối</button><button id="preflight">Kiểm tra kết nối Target</button></div><p id="notice" role="status" aria-live="polite"></p><p class="muted" id="target">Đang chờ cấu hình…</p></section>
   <div class="grid"><section class="panel"><h2>Chạy thực nghiệm</h2>
     <label>Kịch bản<select id="scenario"><option>Kết nối để chọn kịch bản</option></select></label>
@@ -18,5 +18,5 @@
     <p class="muted">Một lần chạy tại một thời điểm. Phòng thủ do Target quản lý; dữ liệu Client/Target được đối chiếu tại God-View.</p>
   </section><section class="panel"><h2>Lần chạy đã chọn <span id="state" class="badge">—</span></h2><p id="run-id" class="muted">Chưa có lần chạy</p><pre id="result">Kết quả chưa có. Chạy xong không đồng nghĩa vượt qua phòng thủ.</pre></section></div>
   <div class="grid"><section class="panel"><h2>Lịch sử gần đây</h2><div id="runs">Chưa có dữ liệu.</div></section><section class="panel"><h2>Sự kiện của lần chạy</h2><pre id="events">Chưa có dữ liệu.</pre></section></div>
-  <p class="muted">S1 dùng SSH thật; bước reconnect và xóa bản sao nhật ký chỉ là thao tác trên tệp lab. Không có kết quả mô phỏng tự động khi backend lỗi.</p>
+  <p class="muted">S1 dùng kết nối SSH; bước reconnect và thao tác nhật ký thực thi trực tiếp trên tệp lab.</p>
 </main><script type="module" src="/app.js"></script></body></html>

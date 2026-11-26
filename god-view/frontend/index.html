@@ -127,13 +127,7 @@
         </div>
 
         <div class="killchain-toolbar">
-          <button id="btn-run-killchain" class="cyber-btn btn-sm btn-killchain-play" title="Tự động chạy liên hoàn 5 giai đoạn tấn công đa tầng để kiểm chứng Phễu Phòng Thủ 3 Lớp">
-            ▶ AUTO-PLAY 5 STAGES
-          </button>
-          <button id="btn-stress-syn-burst" class="cyber-btn btn-sm btn-stress-burst" title="W6-T1: Bắn bão 120 gói SYN Flood tốc độ cao để kiểm chứng rAF Event Throttling không làm đơ trình duyệt">
-            SYN BURST (120)
-          </button>
-          <button id="btn-enable-all-shields" class="cyber-btn btn-sm btn-all-shields" title="Bật đồng thời cả 3 Lớp Khiên (L1 + L2 + L3) để chặn đứng toàn bộ Kill Chain">
+          <button id="btn-enable-all-shields" class="cyber-btn btn-sm btn-all-shields" style="grid-column: span 2;" title="Bật đồng thời cả 3 Lớp Khiên (L1 + L2 + L3) để chặn đứng toàn bộ Kill Chain">
             ENABLE ALL 3 SHIELDS
           </button>
         </div>
@@ -151,7 +145,6 @@
               <div class="kc-stage-desc" id="kc-desc-1">ARP Poisoning &amp; HTTP Credential Sniffer</div>
               <div class="kc-stage-footer">
                 <span class="kc-shield-hint">Shield: <code>L1 Static ARP</code></span>
-                <button class="btn-kc-step" data-kc-trigger="1">STEP 1</button>
               </div>
             </div>
           </div>
@@ -168,7 +161,6 @@
               <div class="kc-stage-desc" id="kc-desc-2">1 req/s L1 Bypass &amp; SQLi Admin Auth</div>
               <div class="kc-stage-footer">
                 <span class="kc-shield-hint">Shield: <code>L3 SQL/RateLimit</code></span>
-                <button class="btn-kc-step" data-kc-trigger="2">STEP 2</button>
               </div>
             </div>
           </div>
@@ -185,7 +177,6 @@
               <div class="kc-stage-desc" id="kc-desc-3">Cmd Injection &rarr; <code>/bin/sh &rarr; nc :4444</code></div>
               <div class="kc-stage-footer">
                 <span class="kc-shield-hint">Shield: <code>L3 Sanitizer / L2 OS</code></span>
-                <button class="btn-kc-step" data-kc-trigger="3">STEP 3</button>
               </div>
             </div>
           </div>
@@ -202,7 +193,6 @@
               <div class="kc-stage-desc" id="kc-desc-4">Path Traversal <code>/etc/passwd</code> &amp; R&amp;D Flag</div>
               <div class="kc-stage-footer">
                 <span class="kc-shield-hint">Shield: <code>L3 Path Sanitizer</code></span>
-                <button class="btn-kc-step" data-kc-trigger="4">STEP 4</button>
               </div>
             </div>
           </div>
@@ -219,7 +209,6 @@
               <div class="kc-stage-desc" id="kc-desc-5"><code>SYN_RECV</code> Flood, <code>lsof</code> EMFILE &amp; TCP RST</div>
               <div class="kc-stage-footer">
                 <span class="kc-shield-hint">Shield: <code>L1 iptables + L2 Kernel</code></span>
-                <button class="btn-kc-step" data-kc-trigger="5">STEP 5</button>
               </div>
             </div>
           </div>
@@ -461,26 +450,6 @@
                     <div id="meter-time-wait-fill" class="meter-fill fill-yellow" style="width: 15%;"></div>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <!-- Quick Test Traffic Generator -->
-            <div class="demo-tools-box">
-              <div class="box-title">SYNTHETIC PACKET TRIGGERS</div>
-              <div class="demo-btn-group">
-                <button id="btn-demo-ping" class="btn-micro btn-micro-green">Ping Check</button>
-                <button id="btn-demo-user" class="btn-micro btn-micro-cyan">Normal Login</button>
-                <button id="btn-demo-arp" class="btn-micro btn-micro-yellow" title="Giả mạo MAC & Bẻ đường truyền MitM">ARP Spoof</button>
-                <button id="btn-demo-syn" class="btn-micro btn-micro-purple" title="Bão gói tin TCP SYN làm vọt biểu đồ SYN_RECV">SYN Flood</button>
-                <button id="btn-demo-rst" class="btn-micro btn-micro-red" title="Tiêm cờ TCP RST ngắt phiên Client-Server">TCP RST</button>
-                <button id="btn-demo-clean-arp" class="btn-micro btn-micro-green" title="Khôi phục bảng ARP sạch">Clean ARP</button>
-                <button id="btn-demo-sqli" class="btn-micro btn-micro-red" title="Tấn công SQL Injection bypass đăng nhập">SQLi (L7)</button>
-                <button id="btn-demo-bruteforce" class="btn-micro btn-micro-orange" title="Rà quét mật khẩu Brute-Force (Low-rate 1 req/s)">Brute-Force</button>
-                <button id="btn-demo-revshell" class="btn-micro btn-micro-red" title="OS Command Injection mở Reverse Shell (/bin/sh -> nc)">Reverse Shell</button>
-                <button id="btn-demo-fd-exhaust" class="btn-micro btn-micro-purple" title="Tấn công làm cạn kiệt File Descriptors (lsof / Fork Bomb)">FD Exhaust</button>
-                <button id="btn-demo-traversal" class="btn-micro btn-micro-yellow" title="Khai thác Path Traversal đọc /etc/passwd">Traversal</button>
-                <button id="btn-demo-dos" class="btn-micro btn-micro-orange" title="Spam Heavy Report API làm treo CPU">Heavy DoS</button>
-                <button id="btn-demo-clean-os" class="btn-micro btn-micro-green" style="grid-column: span 3;" title="Ngắt tiến trình Reverse Shell & Khôi phục OS sạch">Kill Reverse Shell &amp; Reset OS</button>
               </div>
             </div>
           </div>

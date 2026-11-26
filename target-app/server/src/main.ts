@@ -57,8 +57,8 @@ async function bootstrap() {
       'Defense',
       'Điều khiển Khiên L3 (Master Toggle, Anti-SQLi, Rate Limit, Sanitization)',
     )
-    .addTag('Reports', 'Mô phỏng tác vụ CPU nặng phục vụ kịch bản L7 DoS')
-    .addTag('Files', 'Tải tài liệu và mô phỏng tấn công Path Traversal')
+    .addTag('Reports', 'Tác vụ xử lý báo cáo CPU nặng (Kịch bản L7 DoS)')
+    .addTag('Files', 'Tải tài liệu và kiểm thử lỗ hổng Path Traversal')
     .addTag('System', 'Kiểm tra trạng thái máy chủ (health, ping latency)')
     .build();
 

@@ -870,11 +870,6 @@ body[data-active-workspace="telemetry"] .pe-primary-stage {
   padding: 4px 8px;
   box-shadow: none;
   pointer-events: auto;
-  transition: transform 0.2s ease;
-}
-
-.topo-node:hover {
-  transform: translateY(-2px);
 }
 
 .topo-node.compromised .node-name {

@@ -16,7 +16,7 @@ export class FilesController {
 
   @Get('download')
   @ApiOperation({
-    summary: 'Tải file công khai (Mô phỏng tấn công Path Traversal)',
+    summary: 'Tải file công khai (Kiểm thử tấn công Path Traversal)',
     description:
       'Khi Khiên L3 BẬT: Chặn các payload chứa `..`, `/`, `\\` (mã lỗi 400 Bad Request). Khi Khiên L3 TẮT: Nối chuỗi đường dẫn trực tiếp cho phép đọc file tùy ý.',
   })
